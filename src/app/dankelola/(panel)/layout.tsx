@@ -1,5 +1,6 @@
 'use client'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { ChevronRight, LogOut, Menu, X } from 'lucide-react'
@@ -137,7 +138,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const sidebarContent = (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 px-6 py-6">
-        <span className="grid h-10 w-10 place-items-center rounded-2xl bg-indigo-600 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20">DU</span>
+        <Image src="/logo-hima-ti.png" alt="Logo HIMA TI" width={40} height={40} className="rounded-lg" />
         <div className="leading-tight">
           <p className="text-sm font-semibold text-slate-900">Dana Usaha HMTI</p>
           <p className="text-xs text-slate-500">Dana Usaha - Dies Natalis</p>
