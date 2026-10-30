@@ -6,7 +6,10 @@ export const metadata: Metadata = {
   title: "Dana Usaha HMTI",
   description: "Sistem Pengelolaan Open Tenant Dana Usaha HMTI",
   icons: {
-    icon: '/logo-hima-ti.png',
+    icon: [
+      { url: '/logo-hima-ti.png', type: 'image/png', sizes: '32x32' },
+      { url: '/favicon.png', type: 'image/png' },
+    ],
     apple: '/logo-hima-ti.png',
   },
 };
@@ -19,6 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
         <link rel="icon" href="/logo-hima-ti.png" type="image/png" />
+        <link rel="shortcut icon" href="/favicon.png" type="image/png" />
       </head>
       <body className="font-sans antialiased">
         {children}
