@@ -219,7 +219,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       )}
 
       {/* Desktop sidebar */}
-      <aside className="hidden md:fixed md:inset-y-0 md:left-0 md:w-56 md:border-r md:border-slate-200 md:bg-white md:shadow-sm">{sidebarContent}</aside>
+      <aside className="hidden md:flex md:fixed md:inset-y-0 md:left-0 md:w-56 md:border-r md:border-slate-200 md:bg-white md:shadow-sm">{sidebarContent}</aside>
 
       {/* Main content */}
       <main className="md:pl-56">
