@@ -81,6 +81,7 @@ export const menuConfig: MenuGroup[] = [
       { label: 'Tugas', href: '/dankelola/tugas' },
       { label: 'Laporan', href: '/dankelola/laporan' },
       { label: 'Pengaturan Acara', href: '/dankelola/acara' },
+      { label: 'Pengaturan QRIS', href: '/dankelola/pengaturan/qris' },
       { label: 'Audit Log', href: '/dankelola/audit' },
     ],
   },

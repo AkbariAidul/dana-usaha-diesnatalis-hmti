@@ -1,5 +1,142 @@
-import PlaceholderPage from '../../placeholder'
+'use client'
 
-export default function Page() {
-  return <PlaceholderPage title="Penjualan Hari H" desc="Halaman ini untuk pencatatan penjualan merchandise langsung pada hari pelaksanaan." />
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
+import { getJSON } from '../../../api'
+import { PageSkeleton } from '../../ui'
+
+type KasirTransaksi = {
+  id: string
+  tanggal: string
+  produk: string
+  qty: number
+  total: number
+  metode: string
+  dicatat_oleh: string
+}
+
+// Mock data untuk demo
+const MOCK_TRANSASI: KasirTransaksi[] = [
+  { id: '1', tanggal: '2026-10-30T10:30:00Z', produk: 'Kaos Dies Natalis', qty: 2, total: 150000, metode: 'Tunai', dicatat_oleh: 'Admin 1' },
+  { id: '2', tanggal: '2026-10-30T11:00:00Z', produk: 'Hoodie Dies Natalis', qty: 1, total: 250000, metode: 'QRIS', dicatat_oleh: 'Admin 2' },
+  { id: '3', tanggal: '2026-10-30T11:30:00Z', produk: 'Kaos Dies Natalis', qty: 3, total: 225000, metode: 'Tunai', dicatat_oleh: 'Admin 1' },
+]
+
+export default function KasirPage() {
+  const [transaksi, setTransaksi] = useState<KasirTransaksi[]>(MOCK_TRANSASI)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState({ produk: '', qty: 1, metode: 'Tunai', dicatat_oleh: '' })
+
+  useEffect(() => {
+    // Simulasi loading
+    setTimeout(() => setLoading(false), 500)
+  }, [])
+
+  async function tambah() {
+    if (!form.produk || !form.dicatat_oleh) {
+      toast.error('Produk dan nama kasir harus diisi')
+      return
+    }
+    const newTransaksi: KasirTransaksi = {
+      id: Date.now().toString(),
+      tanggal: new Date().toISOString(),
+      ...form,
+      total: form.qty * 75000,
+    }
+    setTransaksi(prev => [newTransaksi, ...prev])
+    toast.success('Transaksi disimpan')
+    setForm({ produk: '', qty: 1, metode: 'Tunai', dicatat_oleh: '' })
+    setShowForm(false)
+  }
+
+  if (loading) return <PageSkeleton />
+  if (error) return (
+    <div className="space-y-4">
+      <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Penjualan Hari H</h1>
+      <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
+        <p className="text-red-600">{error}</p>
+        <button onClick={() => window.location.reload()} className="mt-4 text-sm text-red-700 hover:underline">Coba Lagi</button>
+      </div>
+    </div>
+  )
+
+  const totalHariIni = transaksi.reduce((s, t) => s + t.total, 0)
+  const tunai = transaksi.filter(t => t.metode === 'Tunai').reduce((s, t) => s + t.total, 0)
+  const nonTunai = totalHariIni - tunai
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Penjualan Hari H</h1>
+        <button onClick={() => setShowForm(!showForm)} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium">+ Transaksi Baru</button>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
+          <p className="text-sm text-slate-500">Total Transaksi</p>
+          <p className="text-3xl font-bold text-indigo-600">{transaksi.length}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
+          <p className="text-sm text-slate-500">Pendapatan</p>
+          <p className="text-3xl font-bold text-green-600">{totalHariIni.toLocaleString('id-ID')}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
+          <p className="text-sm text-slate-500">Metode</p>
+          <p className="text-xl font-bold text-slate-900">Tunai: {tunai} | Non-Tunai: {nonTunai}</p>
+        </div>
+      </div>
+
+      {showForm && (
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
+          <h2 className="font-semibold mb-4">Transaksi Baru</h2>
+          <div className="grid md:grid-cols-4 gap-3">
+            <input placeholder="Nama Produk" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.produk} onChange={e => setForm({ ...form, produk: e.target.value })} />
+            <input type="number" min="1" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.qty} onChange={e => setForm({ ...form, qty: Number(e.target.value) })} />
+            <select className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.metode} onChange={e => setForm({ ...form, metode: e.target.value })}>
+              <option>Tunai</option><option>QRIS</option><option>Transfer</option>
+            </select>
+            <input placeholder="Nama Kasir" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.dicatat_oleh} onChange={e => setForm({ ...form, dicatat_oleh: e.target.value })} />
+          </div>
+          <div className="mt-4 flex justify-end gap-2">
+            <button onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl">Batal</button>
+            <button onClick={tambah} className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-xl">Simpan</button>
+          </div>
+        </div>
+      )}
+
+      <div className="overflow-x-auto rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50 text-left">
+            <tr>
+              <th className="px-3 py-2">Waktu</th>
+              <th className="px-3 py-2">Produk</th>
+              <th className="px-3 py-2">Qty</th>
+              <th className="px-3 py-2">Total</th>
+              <th className="px-3 py-2">Metode</th>
+              <th className="px-3 py-2">Kasir</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100/80">
+            {transaksi.length === 0 && <tr><td colSpan={6} className="px-3 py-6 text-center text-slate-400">Belum ada transaksi hari ini.</td></tr>}
+            {transaksi.map((t) => (
+              <tr key={t.id} className="hover:bg-slate-50">
+                <td className="px-3 py-2 text-slate-500">{new Date(t.tanggal).toLocaleString('id-ID')}</td>
+                <td className="px-3 py-2 font-medium">{t.produk}</td>
+                <td className="px-3 py-2">{t.qty}</td>
+                <td className="px-3 py-2 font-medium">{t.total.toLocaleString('id-ID')}</td>
+                <td className="px-3 py-2">
+                  <span className={`px-2 py-0.5 rounded text-xs ${t.metode === 'Tunai' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
+                    {t.metode}
+                  </span>
+                </td>
+                <td className="px-3 py-2 text-slate-500">{t.dicatat_oleh || '-'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
 }

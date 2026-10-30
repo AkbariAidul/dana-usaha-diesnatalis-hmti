@@ -1,0 +1,70 @@
+﻿node.exe : npm notice run dana-usaha-hmti@0.1.0 npx
+At line:1 char:1
++ & "D:\Node/node.exe" "C:\Users\Acer\AppData\Roaming\npm/node_modules/ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm notice run dana-usaha-hmti@0.1.0 npx:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+npm notice run next build --turbopack
+   Γû▓ Next.js 15.5.6 (Turbopack)
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ Γ£ô Finished writing to disk in 1266ms
+ Γ£ô Compiled successfully in 13.2s
+   Linting and checking validity of types ...
+
+Failed to compile.
+
+./src/app/beli-tiket/page.tsx
+20:41  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+20:61  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+20:192  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+20:224  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+30:25  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+101:21  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from 
+`next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from 
+your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./src/app/daftar-tenant/page.tsx
+27:33  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+27:57  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+27:77  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+30:41  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+31:45  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+32:37  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+55:29  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+130:92  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+159:21  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from 
+`next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from 
+your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./src/app/dankelola/(panel)/layout.tsx
+5:38  Warning: 'X' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/app/merchandise/page.tsx
+34:21  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from 
+`next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from 
+your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./src/app/page.tsx
+2:31  Warning: 'QrCode' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/lib/image.ts
+8:67  Warning: 'name' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/lib/menu.ts
+4:3  Warning: 'CreditCard' is defined but never used.  @typescript-eslint/no-unused-vars
+5:3  Warning: 'Package' is defined but never used.  @typescript-eslint/no-unused-vars
+7:3  Warning: 'FileText' is defined but never used.  @typescript-eslint/no-unused-vars
+8:3  Warning: 'Settings' is defined but never used.  @typescript-eslint/no-unused-vars
+9:3  Warning: 'ScrollText' is defined but never used.  @typescript-eslint/no-unused-vars
+11:3  Warning: 'Boxes' is defined but never used.  @typescript-eslint/no-unused-vars
+13:3  Warning: 'ClipboardList' is defined but never used.  @typescript-eslint/no-unused-vars
+14:3  Warning: 'UserCheck' is defined but never used.  @typescript-eslint/no-unused-vars
+15:3  Warning: 'Gift' is defined but never used.  @typescript-eslint/no-unused-vars
+16:3  Warning: 'Wallet' is defined but never used.  @typescript-eslint/no-unused-vars
+17:3  Warning: 'CheckSquare' is defined but never used.  @typescript-eslint/no-unused-vars
+
+info  - Need to disable some ESLint rules? Learn more here: 
+https://nextjs.org/docs/app/api-reference/config/eslint#disabling-rules

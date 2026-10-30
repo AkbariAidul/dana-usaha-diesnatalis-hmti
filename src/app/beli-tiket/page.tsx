@@ -1,0 +1,117 @@
+'use client'
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { toast } from 'sonner'
+import { getJSON, sendJSON } from '@/app/dankelola/api'
+import { formatRupiah } from '@/lib/utils'
+import QRCode from 'qrcode'
+
+export default function BeliTiketPublik() {
+  const [katalog, setKatalog] = useState<{ tiket: Array<{ id: string; nama: string; harga: number; deskripsi?: string; kuota: number; terjual: number }>; varian: Array<Record<string, unknown>> }>({ tiket: [], varian: [] })
+  const [qris, setQris] = useState<Record<string, string>>({})
+  const [form, setForm] = useState({ tiket_tipe_id: '', nama_pembeli: '', kontak: '', email: '', jumlah: 1 })
+  const [pesanan, setPesanan] = useState<{ id: string; no_pesanan?: string; nama_pembeli?: string; jumlah?: number; total?: number } | null>(null)
+  const [file, setFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [qr, setQr] = useState('')
+  const [step, setStep] = useState(1)
+
+  useEffect(() => {
+    Promise.all([getJSON<{ tiket: Array<{ id: string; nama: string; harga: number; deskripsi?: string; kuota: number; terjual: number }>; varian: Array<Record<string, unknown>> }>('/api/public/katalog'), getJSON<Record<string, string>>('/api/pengaturan/qris')]).then(([k,q])=>{setKatalog({ tiket: k.tiket || [], varian: k.varian || [] }); setQris(q)})
+  }, [])
+  useEffect(() => { if (qris.qris_payload) QRCode.toDataURL(qris.qris_payload,{width:320,margin:1}).then(setQr).catch(()=>{}) }, [qris])
+
+  const tipe = katalog.tiket.find((t)=>t.id===form.tiket_tipe_id)
+  const total = tipe ? Number(tipe.harga) * Number(form.jumlah) : 0
+
+  async function beli() {
+    try {
+      const res = await sendJSON('/api/public/tiket', 'POST', { ...form, jumlah: Number(form.jumlah) })
+      setPesanan(res as { id: string; no_pesanan?: string; nama_pembeli?: string; jumlah?: number; total?: number })
+      setStep(2)
+      toast.success('Pesanan dibuat, silakan bayar')
+    } catch(e: unknown){ toast.error((e as Error).message) }
+  }
+
+  async function upload() {
+    if (!file || !pesanan) return
+    setUploading(true)
+    try {
+      const fd = new FormData(); fd.append('file',file); fd.append('folder','bukti-tiket')
+      const up = await fetch('/api/upload',{method:'POST',body:fd}).then(r=>r.json())
+      await sendJSON(`/api/public/tiket/${pesanan.id}/bukti`,'POST',{bukti_url:up.url})
+      toast.success('Bukti terkirim, menunggu verifikasi')
+      setStep(3)
+    } catch(e: unknown){ toast.error((e as Error).message) } finally { setUploading(false) }
+  }
+
+  const input='w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/10'
+
+  return (
+    <div className="min-h-screen bg-[#f7f9fc]">
+      <header className="border-b border-slate-200/70 bg-white/90 backdrop-blur-xl">
+        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-3">
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-600 text-sm font-semibold text-white">DU</span>
+            <div><p className="text-sm font-semibold text-slate-900">Beli Tiket</p><p className="text-xs text-slate-500">Dies Natalis HMTI</p></div>
+          </Link>
+          <Link href="/" className="text-sm text-slate-500 hover:text-slate-900">Kembali</Link>
+        </div>
+      </header>
+      <main className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+        {step===1 && (
+          <div className="rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
+            <div className="p-6 border-b border-slate-100"><h1 className="text-xl font-semibold text-slate-900">Pilih Tiket</h1><p className="text-sm text-slate-500">Pilih tipe tiket yang tersedia</p></div>
+            <div className="p-6 grid md:grid-cols-2 gap-4">
+              {katalog.tiket.map((t)=>(
+                <button key={t.id} onClick={()=>setForm({...form,tiket_tipe_id:t.id})} className={`text-left rounded-2xl border p-5 transition-all ${form.tiket_tipe_id===t.id?'border-indigo-500 ring-2 ring-indigo-500/10':'border-slate-200/70 hover:border-indigo-200'}`}>
+                  <div className="flex items-center justify-between"><h3 className="font-semibold text-slate-900">{t.nama}</h3><p className="text-indigo-600 font-semibold">{formatRupiah(t.harga)}</p></div>
+                  <p className="mt-1 text-sm text-slate-500">{t.deskripsi||'-'}</p>
+                  <p className="mt-2 text-xs text-slate-400">Kuota: {t.kuota} | Terjual: {t.terjual}</p>
+                </button>
+              ))}
+              {katalog.tiket.length===0 && <p className="text-slate-400">Belum ada tiket yang aktif.</p>}
+            </div>
+            {form.tiket_tipe_id && (
+              <div className="p-6 border-t border-slate-100 grid md:grid-cols-2 gap-4">
+                <div><label className="mb-1 block text-sm font-medium">Nama Pembeli</label><input className={input} value={form.nama_pembeli} onChange={e=>setForm({...form,nama_pembeli:e.target.value})}/></div>
+                <div><label className="mb-1 block text-sm font-medium">Kontak WA</label><input className={input} value={form.kontak} onChange={e=>setForm({...form,kontak:e.target.value})}/></div>
+                <div><label className="mb-1 block text-sm font-medium">Email (opsional)</label><input className={input} value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></div>
+                <div><label className="mb-1 block text-sm font-medium">Jumlah</label><input type="number" min={1} className={input} value={form.jumlah} onChange={e=>setForm({...form,jumlah:Number(e.target.value)})}/></div>
+                <div className="md:col-span-2 flex items-center justify-between rounded-xl bg-slate-50 p-4">
+                  <p className="text-sm text-slate-500">Total Pembayaran</p>
+                  <p className="text-lg font-semibold text-indigo-600">{formatRupiah(total)}</p>
+                </div>
+                <div className="md:col-span-2 flex justify-end"><button onClick={beli} disabled={!form.nama_pembeli||!form.kontak} className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50">Buat Pesanan</button></div>
+              </div>
+            )}
+          </div>
+        )}
+        {step===2 && pesanan && (
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40 space-y-2">
+              <h2 className="text-lg font-semibold text-slate-900">Detail Pesanan</h2>
+              <p className="text-sm"><span className="text-slate-500">No. Pesanan</span> : {pesanan.no_pesanan}</p>
+              <p className="text-sm"><span className="text-slate-500">Nama</span> : {pesanan.nama_pembeli}</p>
+              <p className="text-sm"><span className="text-slate-500">Jumlah</span> : {pesanan.jumlah}</p>
+              <p className="text-sm"><span className="text-slate-500">Total</span> : {formatRupiah(pesanan.total || 0)}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40 text-center space-y-4">
+              <h2 className="text-lg font-semibold text-slate-900">Scan QRIS</h2>
+              {qr ? <img src={qr} alt="QRIS" className="mx-auto rounded-xl border border-slate-100" /> : <div className="mx-auto h-80 w-80 skeleton" />}
+              <input type="file" accept="image/*,application/pdf" onChange={e=>setFile(e.target.files?.[0]||null)} className="block w-full text-sm" />
+              <button onClick={upload} disabled={uploading||!file} className="w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">{uploading?'Mengupload...':'Upload Bukti Bayar'}</button>
+            </div>
+          </div>
+        )}
+        {step===3 && (
+          <div className="rounded-2xl border border-slate-200/70 bg-white p-10 text-center shadow-sm shadow-slate-200/40 space-y-2">
+            <h2 className="text-xl font-semibold text-slate-900">Menunggu Verifikasi</h2>
+            <p className="text-slate-500">Setelah diverifikasi, QR tiket akan muncul. Tunjukkan QR saat check-in di pintu masuk.</p>
+            <Link href="/" className="inline-flex mt-4 text-sm font-medium text-indigo-600">Kembali ke Beranda</Link>
+          </div>
+        )}
+      </main>
+    </div>
+  )
+}

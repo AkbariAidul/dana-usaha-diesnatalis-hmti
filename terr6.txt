@@ -1,0 +1,20 @@
+line:1 char:1
++ & "D:\Node/node.exe" "C:\Users\Acer\AppData\Roaming\npm/node_modules/ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm notice run dana-usaha-hmti@0.1.0 npx:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+npm notice run next build --turbopack
+   Γû▓ Next.js 15.5.6 (Turbopack)
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ Γ£ô Finished writing to disk in 1266ms
+ Γ£ô Compiled successfully in 13.2s
+   Linting and checking validity of types ...
+
+Failed to compile.
+
+./src/app/beli-tiket/page.tsx
+20:41  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+20:61  Error: Unexpected any. Specify a 
