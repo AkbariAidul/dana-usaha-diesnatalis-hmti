@@ -26,7 +26,7 @@ export async function GET() {
     
     const transformed = (data ?? []).map(item => ({
       ...item,
-      tiket_nama: (item as any).tiket_tipe?.nama || '-',
+      tiket_nama: ((item as Record<string, unknown>).tiket_tipe as { nama: string } | null | undefined)?.nama || '-',
     }))
 
     return NextResponse.json(transformed)
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
       if (tipeData) {
         await supabaseAdmin
           .from('tiket_tipe')
-          .update({ terjual: ((tipeData as any).terjual || 0) + data.jumlah })
+           .update({ terjual: (((tipeData as Record<string, unknown>).terjual as number) || 0) + data.jumlah })
           .eq('id', data.tiket_tipe_id)
       }
 

@@ -45,7 +45,7 @@ export async function GET() {
       status: item.status === 'menunggu_verifikasi' ? 'menunggu' : 
               item.status === 'dp_diterima' ? 'dikonfirmasi' :
               item.status === 'lunas' ? 'selesai' : item.status,
-      catatan: (item as any).catatan_admin || null,
+       catatan: (item as Record<string, unknown>).catatan_admin as string | null || null,
       created_at: item.created_at?.split('T')[0],
     }))
     
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
       .from('merch_po')
       .select('no_po')
     
-    const maxNum = ((existingData as any) ?? []).reduce((m: number, p: { no_po: string }) => {
+    const maxNum = ((existingData as Record<string, unknown>[] ?? []) as { no_po: string }[]).reduce((m: number, p: { no_po: string }) => {
       const n = Number(/(\d+)$/.exec(p.no_po)?.[1] ?? 0)
       return n > m ? n : m
     }, 0)

@@ -26,7 +26,7 @@ function findActiveGroup(pathname: string) {
 }
 
 function getBreadcrumbs(pathname: string) {
-  const parts = pathname.split('/').filter(Boolean)
+  const parts = pathname.split('/').filter((s): s is string => Boolean(s))
   const breadcrumbs = [{ label: 'Dashboard', href: '/dankelola' }]
   
   let currentPath = ''
