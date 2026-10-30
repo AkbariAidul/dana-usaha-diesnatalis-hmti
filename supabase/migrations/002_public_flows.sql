@@ -1,6 +1,22 @@
 -- 002_public_flows.sql
 -- Public flows: Tenant pendaftaran publik, PO Merchandise, Ticketing
 
+-- Drop existing policies if they exist (for idempotent migrations)
+DO $$
+BEGIN
+  -- Drop policies
+  BEGIN DROP POLICY "Admin full access pengaturan" ON pengaturan_umum; EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN DROP POLICY "Public read aktif tiket tipe" ON tiket_tipe; EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN DROP POLICY "Public read merch varian" ON merch_varian; EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN DROP POLICY "Admin full access semua publik flow" ON pendaftaran_tenant_pub; EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN DROP POLICY "Admin full access merch po" ON merch_po; EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN DROP POLICY "Admin full access merch po item" ON merch_po_item; EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN DROP POLICY "Admin full access tiket tipe" ON tiket_tipe; EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN DROP POLICY "Admin full access pesanan tiket" ON pesanan_tiket; EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN DROP POLICY "Admin full access tiket issued" ON tiket_issued; EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN DROP POLICY "Admin full access checkin log" ON checkin_log; EXCEPTION WHEN OTHERS THEN NULL; END;
+END $$;
+
 CREATE TABLE IF NOT EXISTS pengaturan_umum (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   key VARCHAR(100) UNIQUE NOT NULL,
