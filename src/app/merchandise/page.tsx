@@ -1,0 +1,60 @@
+import Link from "next/link";
+import { ArrowLeft, Image as ImageIcon } from "lucide-react";
+import { getMerchandise } from "@/lib/queries";
+import { formatRupiah } from "@/lib/utils";
+
+export const dynamic = "force-dynamic";
+
+export default async function MerchandisePage() {
+  const items = await getMerchandise(true); // only aktif
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white shadow-sm sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
+          <Link href="/" className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+          <h1 className="text-xl font-bold">Merchandise</h1>
+        </div>
+      </header>
+
+      <main className="max-w-4xl mx-auto px-4 py-8">
+        {items.length === 0 ? (
+          <div className="text-center py-16 text-gray-400">
+            <ImageIcon className="w-12 h-12 mx-auto mb-4 opacity-30" />
+            <p>Belum ada merchandise tersedia.</p>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 gap-6">
+            {items.map((item) => (
+              <div key={item.id} className="bg-white rounded-xl shadow overflow-hidden hover:shadow-md transition-shadow">
+                <div className="h-48 bg-gray-100 flex items-center justify-center overflow-hidden">
+                  {item.gambar_url ? (
+                    <img src={item.gambar_url} alt={item.nama} className="h-full w-full object-cover" />
+                  ) : (
+                    <ImageIcon className="w-16 h-16 text-gray-300" />
+                  )}
+                </div>
+                <div className="p-5">
+                  <h3 className="font-semibold text-lg">{item.nama}</h3>
+                  {item.deskripsi && (
+                    <p className="text-sm text-gray-500 mt-1">{item.deskripsi}</p>
+                  )}
+                  <div className="flex justify-between items-center mt-4">
+                    <span className="font-bold text-xl text-indigo-600">{formatRupiah(item.harga)}</span>
+                    <span className={`text-sm px-2 py-1 rounded-full ${
+                      item.stok > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
+                    }`}>
+                      {item.stok > 0 ? `Stok: ${item.stok}` : 'Habis'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}

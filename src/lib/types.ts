@@ -1,0 +1,172 @@
+export interface KategoriSewa {
+  id: string
+  kode: string
+  nama: string
+  keterangan: string
+  include_listrik: boolean
+  include_trashbag: boolean
+}
+
+export interface HargaDasar {
+  id: string
+  kategori_sewa_id: string
+  jenis_usaha: 'F&B' | 'Non-F&B'
+  periode: 'early_bird' | 'reguler' | 'last_minute'
+  harga: number
+}
+
+export interface FaktorHarga {
+  id: string
+  tipe: 'asal' | 'lokasi'
+  nilai: string
+  multiplier: number
+}
+
+export interface Tenant {
+  id: string
+  kode_stand: string
+  nama_usaha: string
+  kontak: string
+  email: string | null
+  kategori_sewa_id: string
+  jenis_usaha: 'F&B' | 'Non-F&B'
+  asal: 'Internal Kampus' | 'Eksternal'
+  lokasi: 'Reguler' | 'Strategis 1' | 'Strategis 2'
+  periode_daftar: 'early_bird' | 'reguler' | 'last_minute'
+  harga_akhir: number
+  dp_wajib: number
+  sudah_dibayar: number
+  tgl_daftar: string
+  tgl_dp: string | null
+  tgl_acara: string | null
+  status: 'daftar' | 'dp' | 'cicil' | 'lunas' | 'batal' | 'menunggak'
+  keterangan: string | null
+  kategori_sewa?: { kode: string; nama: string }
+}
+
+export interface Pembayaran {
+  id: string
+  tenant_id: string
+  no_transaksi: string
+  tanggal_bayar: string
+  jenis: 'DP' | 'Cicilan' | 'Pelunasan'
+  nominal: number
+  metode: string
+  no_ref: string | null
+  bukti_url: string | null
+  dicatat_oleh: string | null
+  keterangan: string | null
+  validated: boolean
+  tenants?: { kode_stand: string; nama_usaha: string }
+}
+
+export interface Acara {
+  id: string
+  nama: string
+  tanggal_acara: string
+  batas_pelunasan: string
+  rekening_qris: string
+}
+
+export interface Merchandise {
+  id: string
+  nama: string
+  deskripsi: string | null
+  harga: number
+  stok: number
+  gambar_url: string | null
+  aktif: boolean
+}
+
+export interface Ticket {
+  id: string
+  nama: string
+  harga: number
+  kuota: number
+  terjual: number
+  mulai: string | null
+  selesai: string | null
+  aktif: boolean
+}
+
+// ─── Business Logic ───────────────────────────────────────────────────────────
+
+export function hitungHarga(hargaDasar: number, faktorAsal: number, faktorLokasi: number): number {
+  return Math.round(hargaDasar * faktorAsal * faktorLokasi)
+}
+
+export function hitungHariTersisa(tglAcara: string, tglDp: string): number {
+  if (!tglAcara || !tglDp) return 0
+  const acara = new Date(tglAcara)
+  const dp = new Date(tglDp)
+  const diff = Math.floor((acara.getTime() - dp.getTime()) / (1000 * 60 * 60 * 24))
+  return Math.max(0, diff - 1)
+}
+
+export function hitungMinimalCicilan(hariTersisa: number, sisaTagihan: number): number {
+  if (hariTersisa <= 0 || sisaTagihan <= 0) return 0
+  return Math.ceil(sisaTagihan / hariTersisa)
+}
+
+export function hitungStatus(
+  sudahDibayar: number,
+  hargaAkhir: number,
+  dpWajib: number,
+  tglAcara: string | null
+): 'daftar' | 'dp' | 'cicil' | 'lunas' | 'menunggak' {
+  if (sudahDibayar >= hargaAkhir) return 'lunas'
+  if (sudahDibayar <= 0) return 'daftar'
+  if (tglAcara) {
+    const today = new Date()
+    const acara = new Date(tglAcara)
+    if (today > acara) return 'menunggak'
+  }
+  if (sudahDibayar >= dpWajib) return 'cicil'
+  return 'dp'
+}
+
+export type Periode = 'early_bird' | 'reguler' | 'last_minute'
+
+// Tanggal open tenant Dies Natalis (ubah di sini tiap tahun)
+export const PERIODE_WINDOW: Record<Periode, { start: string; end: string }> = {
+  early_bird: { start: '2026-11-16', end: '2026-11-28' },
+  reguler: { start: '2026-11-29', end: '2026-12-12' },
+  last_minute: { start: '2026-12-13', end: '2026-12-19' },
+}
+
+export function periodeDariTanggal(tgl: string): Periode | null {
+  for (const [k, w] of Object.entries(PERIODE_WINDOW) as [Periode, { start: string; end: string }][]) {
+    if (tgl >= w.start && tgl <= w.end) return k
+  }
+  return null
+}
+
+export function tambahHari(tgl: string, hari: number): string {
+  const d = new Date(tgl)
+  d.setDate(d.getDate() + hari)
+  return d.toISOString().slice(0, 10)
+}
+
+export const PERIODE_LABEL: Record<string, string> = {
+  early_bird: 'Early Bird',
+  reguler: 'Reguler',
+  last_minute: 'Last Minute',
+}
+
+export const STATUS_LABEL: Record<string, string> = {
+  daftar: 'Daftar',
+  dp: 'DP',
+  cicil: 'Cicil',
+  lunas: 'Lunas',
+  batal: 'Batal',
+  menunggak: 'Menunggak',
+}
+
+export const STATUS_COLOR: Record<string, string> = {
+  daftar: 'bg-gray-100 text-gray-700',
+  dp: 'bg-yellow-100 text-yellow-700',
+  cicil: 'bg-blue-100 text-blue-700',
+  lunas: 'bg-green-100 text-green-700',
+  batal: 'bg-red-100 text-red-700',
+  menunggak: 'bg-orange-100 text-orange-700',
+}
