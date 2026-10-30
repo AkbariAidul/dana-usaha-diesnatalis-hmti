@@ -31,6 +31,7 @@ export default function KeuanganPage() {
   const [pemasukan, setPemasukan] = useState<Pemasukan[]>([])
   const [pengeluaran, setPengeluaran] = useState<Pengeluaran[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   // error state available
 
   useEffect(() => {

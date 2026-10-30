@@ -27,6 +27,7 @@ const MOCK_PESANAN: PesananTiket[] = [
 export default function PenjualanPage() {
   const [pesanan, setPesanan] = useState<PesananTiket[]>(MOCK_PESANAN)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   // error state available
 
   useEffect(() => {

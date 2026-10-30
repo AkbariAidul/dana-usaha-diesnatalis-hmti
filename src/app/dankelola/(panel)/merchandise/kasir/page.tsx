@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { getJSON } from '../../../api'
+import { getJSON, sendJSON } from '../../../api'
 import { PageSkeleton } from '../../ui'
 
 type KasirTransaksi = {
@@ -15,23 +15,21 @@ type KasirTransaksi = {
   dicatat_oleh: string
 }
 
-// Mock data untuk demo
-const MOCK_TRANSASI: KasirTransaksi[] = [
-  { id: '1', tanggal: '2026-10-30T10:30:00Z', produk: 'Kaos Dies Natalis', qty: 2, total: 150000, metode: 'Tunai', dicatat_oleh: 'Admin 1' },
-  { id: '2', tanggal: '2026-10-30T11:00:00Z', produk: 'Hoodie Dies Natalis', qty: 1, total: 250000, metode: 'QRIS', dicatat_oleh: 'Admin 2' },
-  { id: '3', tanggal: '2026-10-30T11:30:00Z', produk: 'Kaos Dies Natalis', qty: 3, total: 225000, metode: 'Tunai', dicatat_oleh: 'Admin 1' },
-]
-
 export default function KasirPage() {
-  const [transaksi, setTransaksi] = useState<KasirTransaksi[]>(MOCK_TRANSASI)
+  const [transaksi, setTransaksi] = useState<KasirTransaksi[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ produk: '', qty: 1, metode: 'Tunai', dicatat_oleh: '' })
 
   useEffect(() => {
-    // Simulasi loading
-    setTimeout(() => setLoading(false), 500)
+    getJSON<KasirTransaksi[]>('/api/merchandise/kasir')
+      .then(setTransaksi)
+      .catch((e) => {
+        console.error('Failed to load kasir:', e)
+        setError('Gagal memuat data kasir')
+      })
+      .finally(() => setLoading(false))
   }, [])
 
   async function tambah() {
@@ -39,16 +37,14 @@ export default function KasirPage() {
       toast.error('Produk dan nama kasir harus diisi')
       return
     }
-    const newTransaksi: KasirTransaksi = {
-      id: Date.now().toString(),
-      tanggal: new Date().toISOString(),
-      ...form,
-      total: form.qty * 75000,
-    }
-    setTransaksi(prev => [newTransaksi, ...prev])
-    toast.success('Transaksi disimpan')
-    setForm({ produk: '', qty: 1, metode: 'Tunai', dicatat_oleh: '' })
-    setShowForm(false)
+    try {
+      await sendJSON('/api/merchandise/kasir', 'POST', { ...form, total: form.qty * 75000 })
+      toast.success('Transaksi disimpan')
+      setForm({ produk: '', qty: 1, metode: 'Tunai', dicatat_oleh: '' })
+      setShowForm(false)
+      const res = await getJSON<KasirTransaksi[]>('/api/merchandise/kasir')
+      setTransaksi(res)
+    } catch (e) { toast.error((e as Error).message) }
   }
 
   if (loading) return <PageSkeleton />

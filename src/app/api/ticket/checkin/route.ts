@@ -1,0 +1,71 @@
+import { NextResponse } from 'next/server'
+import { supabaseAdmin } from '@/lib/supabase'
+
+type TiketIssued = {
+  id: string
+  pesanan_id: string
+  kode_qr: string
+  kode_tampil: string
+  status: 'belum_divalidasi' | 'terpakai'
+  digunakan_oleh: string | null
+  digunakan_pada: string | null
+}
+
+export async function GET() {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('tiket_issued')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(100)
+    
+    if (error) throw error
+    
+    const transformed = (data ?? []).map(item => ({
+      id: item.id,
+      pesanan_id: item.pesanan_id,
+      kode_qr: item.kode_qr,
+      kode_tampil: item.kode_tampil,
+      status: item.status || 'belum_divalidasi',
+      digunakan_oleh: item.digunakan_oleh,
+      digunakan_pada: item.digunakan_pada,
+    }))
+    
+    return NextResponse.json(transformed)
+  } catch (err: unknown) {
+    console.error('Checkin error:', err)
+    return NextResponse.json([], { status: 200 })
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json()
+    const { id, dicatat_oleh } = body
+    
+    const { data, error } = await supabaseAdmin
+      .from('tiket_issued')
+      .update({
+        status: 'terpakai',
+        digunakan_oleh: dicatat_oleh || 'Admin',
+        digunakan_pada: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single()
+    
+    if (error) throw error
+    
+    // Log check-in
+    await supabaseAdmin.from('checkin_log').insert({
+      tiket_issued_id: id,
+      kode_qr: data?.kode_qr,
+      aksi: 'checkin',
+      dicatat_oleh: dicatat_oleh || 'Admin',
+    })
+    
+    return NextResponse.json(data)
+  } catch (err: unknown) {
+    return NextResponse.json({ error: String(err) }, { status: 500 })
+  }
+}

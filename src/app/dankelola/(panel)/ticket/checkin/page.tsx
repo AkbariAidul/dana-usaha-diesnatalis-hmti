@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { getJSON } from '../../../api'
+import { getJSON, sendJSON } from '../../../api'
 import { PageSkeleton } from '../../ui'
 
 type TiketIssued = {
@@ -15,22 +15,20 @@ type TiketIssued = {
   digunakan_pada: string | null
 }
 
-// Mock data untuk demo
-const MOCK_TIKET: TiketIssued[] = [
-  { id: '1', pesanan_id: '1', kode_qr: 'QR-A1B2C3D4', kode_tampil: 'DN2026-001', status: 'belum_divalidasi', digunakan_oleh: null, digunakan_pada: null },
-  { id: '2', pesanan_id: '2', kode_qr: 'QR-E5F6G7H8', kode_tampil: 'DN2026-002', status: 'terpakai', digunakan_oleh: 'Admin 1', digunakan_pada: '2026-10-30T14:30:00Z' },
-  { id: '3', pesanan_id: '3', kode_qr: 'QR-I9J0K1L2', kode_tampil: 'DN2026-003', status: 'belum_divalidasi', digunakan_oleh: null, digunakan_pada: null },
-]
-
 export default function CheckinPage() {
-  const [tikets, setTikets] = useState<TiketIssued[]>(MOCK_TIKET)
+  const [tikets, setTikets] = useState<TiketIssued[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [scanResult, setScanResult] = useState('')
 
   useEffect(() => {
-    // Simulasi loading
-    setTimeout(() => setLoading(false), 500)
+    getJSON<TiketIssued[]>('/api/ticket/checkin')
+      .then(setTikets)
+      .catch((e) => {
+        console.error('Failed to load checkin:', e)
+        setError('Gagal memuat data tiket')
+      })
+      .finally(() => setLoading(false))
   }, [])
 
   async function scanQr() {
@@ -45,9 +43,13 @@ export default function CheckinPage() {
       toast.error('QR sudah digunakan')
       return
     }
-    setTikets(prev => prev.map(t => t.id === found.id ? { ...t, status: 'terpakai', digunakan_oleh: 'Admin', digunakan_pada: new Date().toISOString() } : t))
-    toast.success('Check-in berhasil')
-    setScanResult('')
+    try {
+      await sendJSON(`/api/ticket/checkin/${found.id}`, 'POST', { dicatat_oleh: 'Admin' })
+      toast.success('Check-in berhasil')
+      const res = await getJSON<TiketIssued[]>('/api/ticket/checkin')
+      setTikets(res)
+      setScanResult('')
+    } catch (e) { toast.error((e as Error).message) }
   }
 
   if (loading) return <PageSkeleton />

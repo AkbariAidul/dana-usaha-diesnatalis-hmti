@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { getJSON } from '../../../api'
+import { getJSON, sendJSON } from '../../../api'
 import { PageSkeleton } from '../../ui'
 
 type PreOrder = {
@@ -18,26 +18,28 @@ type PreOrder = {
   created_at: string
 }
 
-// Mock data untuk demo
-const MOCK_PREORDER: PreOrder[] = [
-  { id: '1', nama_pemesan: 'Ahmad Fauzi', kontak: '081234567890', produk: 'Kaos Dies Natalis', qty: 2, size: 'L', total: 150000, status: 'menunggu', catatan: null, created_at: '2026-10-25' },
-  { id: '2', nama_pemesan: 'Siti Aminah', kontak: '081234567891', produk: 'Hoodie Dies Natalis', qty: 1, size: 'M', total: 250000, status: 'dikonfirmasi', catatan: null, created_at: '2026-10-24' },
-  { id: '3', nama_pemesan: 'Budi Santoso', kontak: '081234567892', produk: 'Kaos Dies Natalis', qty: 3, size: 'XL', total: 225000, status: 'diproduksi', catatan: null, created_at: '2026-10-23' },
-]
-
 export default function PreorderPage() {
-  const [items, setItems] = useState<PreOrder[]>(MOCK_PREORDER)
+  const [items, setItems] = useState<PreOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Simulasi loading
-    setTimeout(() => setLoading(false), 500)
+    getJSON<PreOrder[]>('/api/merchandise/preorder')
+      .then(setItems)
+      .catch((e) => {
+        console.error('Failed to load preorder:', e)
+        setError('Gagal memuat data pre-order')
+      })
+      .finally(() => setLoading(false))
   }, [])
 
   async function updateStatus(id: string, status: PreOrder['status']) {
-    setItems(prev => prev.map(i => i.id === id ? { ...i, status } : i))
-    toast.success(`Status diubah ke ${status}`)
+    try {
+      await sendJSON(`/api/merchandise/preorder/${id}`, 'PATCH', { status })
+      toast.success(`Status diubah ke ${status}`)
+      const res = await getJSON<PreOrder[]>('/api/merchandise/preorder')
+      setItems(res)
+    } catch (e) { toast.error((e as Error).message) }
   }
 
   if (loading) return <PageSkeleton />

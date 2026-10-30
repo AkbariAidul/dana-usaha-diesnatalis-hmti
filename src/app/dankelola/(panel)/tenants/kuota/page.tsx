@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { getJSON } from '../../../api'
+import { getJSON, sendJSON } from '../../../api'
 import { PageSkeleton } from '../../ui'
 
 type KuotaItem = {
@@ -14,24 +14,21 @@ type KuotaItem = {
   koordinat: string
 }
 
-// Mock data untuk demo
-const MOCK_KUOTA: KuotaItem[] = [
-  { id: '1', nama_lokasi: 'Area A - Reguler', total: 20, terisi: 15, sisa: 5, koordinat: 'A1-A20' },
-  { id: '2', nama_lokasi: 'Area B - Strategis 1', total: 10, terisi: 10, sisa: 0, koordinat: 'B1-B10' },
-  { id: '3', nama_lokasi: 'Area C - Strategis 2', total: 8, terisi: 3, sisa: 5, koordinat: 'C1-C8' },
-  { id: '4', nama_lokasi: 'Area D - Food Court', total: 15, terisi: 12, sisa: 3, koordinat: 'D1-D15' },
-]
-
 export default function KuotaPage() {
-  const [items, setItems] = useState<KuotaItem[]>(MOCK_KUOTA)
+  const [items, setItems] = useState<KuotaItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ nama_lokasi: '', total: 5, koordinat: '' })
 
   useEffect(() => {
-    // Simulasi loading
-    setTimeout(() => setLoading(false), 500)
+    getJSON<KuotaItem[]>('/api/kuota')
+      .then(setItems)
+      .catch((e) => {
+        console.error('Failed to load kuota:', e)
+        setError('Gagal memuat data kuota')
+      })
+      .finally(() => setLoading(false))
   }, [])
 
   async function tambah() {
@@ -39,16 +36,14 @@ export default function KuotaPage() {
       toast.error('Nama lokasi harus diisi')
       return
     }
-    const newItem: KuotaItem = {
-      id: Date.now().toString(),
-      ...form,
-      terisi: 0,
-      sisa: form.total,
-    }
-    setItems(prev => [...prev, newItem])
-    toast.success('Lokasi ditambahkan')
-    setForm({ nama_lokasi: '', total: 5, koordinat: '' })
-    setShowForm(false)
+    try {
+      await sendJSON('/api/kuota', 'POST', form)
+      toast.success('Lokasi ditambahkan')
+      setForm({ nama_lokasi: '', total: 5, koordinat: '' })
+      setShowForm(false)
+      const res = await getJSON<KuotaItem[]>('/api/kuota')
+      setItems(res)
+    } catch (e) { toast.error((e as Error).message) }
   }
 
   if (loading) return <PageSkeleton />

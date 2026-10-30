@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { getJSON } from '../../../api'
+import { getJSON, sendJSON } from '../../../api'
 import { PageSkeleton } from '../../ui'
 
 type Promo = {
@@ -15,23 +15,21 @@ type Promo = {
   aktif: boolean
 }
 
-// Mock data untuk demo
-const MOCK_PROMO: Promo[] = [
-  { id: '1', kode: 'DN2026EARLY', deskripsi: 'Early Bird Discount', diskon: 10, kuota: 50, terpakai: 12, aktif: true },
-  { id: '2', kode: 'HMTI2026', deskripsi: 'Himpunan Member', diskon: 15, kuota: 30, terpakai: 8, aktif: true },
-  { id: '3', kode: 'STUDENT', deskripsi: 'Student Discount', diskon: 20, kuota: 100, terpakai: 45, aktif: false },
-]
-
 export default function PromoPage() {
-  const [promos, setPromos] = useState<Promo[]>(MOCK_PROMO)
+  const [promos, setPromos] = useState<Promo[]>([])
   const [loading, setLoading] = useState(true)
-  // error state available
+  const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ kode: '', deskripsi: '', diskon: 0, kuota: 10 })
 
   useEffect(() => {
-    // Simulasi loading
-    setTimeout(() => setLoading(false), 500)
+    getJSON<Promo[]>('/api/ticket/promo')
+      .then(setPromos)
+      .catch((e) => {
+        console.error('Failed to load promo:', e)
+        setError('Gagal memuat data promo')
+      })
+      .finally(() => setLoading(false))
   }, [])
 
   async function tambah() {
@@ -39,16 +37,14 @@ export default function PromoPage() {
       toast.error('Kode dan deskripsi harus diisi')
       return
     }
-    const newPromo: Promo = {
-      id: Date.now().toString(),
-      ...form,
-      terpakai: 0,
-      aktif: true,
-    }
-    setPromos(prev => [...prev, newPromo])
-    toast.success('Promo ditambahkan')
-    setForm({ kode: '', deskripsi: '', diskon: 0, kuota: 10 })
-    setShowForm(false)
+    try {
+      await sendJSON('/api/ticket/promo', 'POST', form)
+      toast.success('Promo ditambahkan')
+      setForm({ kode: '', deskripsi: '', diskon: 0, kuota: 10 })
+      setShowForm(false)
+      const res = await getJSON<Promo[]>('/api/ticket/promo')
+      setPromos(res)
+    } catch (e) { toast.error((e as Error).message) }
   }
 
   if (loading) return <PageSkeleton />

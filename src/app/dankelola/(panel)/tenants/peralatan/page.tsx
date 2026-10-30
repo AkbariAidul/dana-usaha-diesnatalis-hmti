@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { getJSON } from '../../../api'
+import { getJSON, sendJSON } from '../../../api'
 import { PageSkeleton } from '../../ui'
 
 type Peralatan = {
@@ -13,25 +13,21 @@ type Peralatan = {
   status: 'tersedia' | 'dipinjam' | 'rusak'
 }
 
-// Mock data untuk demo - akan diganti dengan API real nanti
-const MOCK_PERALATAN: Peralatan[] = [
-  { id: '1', nama: 'Tenda 3x3', jenis: 'Tenda', jumlah: 10, status: 'tersedia' },
-  { id: '2', nama: 'Meja Plastik', jenis: 'Meja', jumlah: 25, status: 'tersedia' },
-  { id: '3', nama: 'Kursi Plastik', jenis: 'Kursi', jumlah: 50, status: 'dipinjam' },
-  { id: '4', nama: 'Lilin Uduk', jenis: 'Lilin', jumlah: 20, status: 'tersedia' },
-  { id: '5', nama: 'Generator', jenis: 'Generator', jumlah: 2, status: 'rusak' },
-]
-
 export default function PeralatanPage() {
-  const [items, setItems] = useState<Peralatan[]>(MOCK_PERALATAN)
+  const [items, setItems] = useState<Peralatan[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ nama: '', jenis: 'Tenda', jumlah: 1 })
 
   useEffect(() => {
-    // Simulasi loading
-    setTimeout(() => setLoading(false), 500)
+    getJSON<Peralatan[]>('/api/peralatan')
+      .then(setItems)
+      .catch((e) => {
+        console.error('Failed to load peralatan:', e)
+        setError('Gagal memuat data peralatan')
+      })
+      .finally(() => setLoading(false))
   }, [])
 
   async function tambah() {
@@ -39,15 +35,14 @@ export default function PeralatanPage() {
       toast.error('Nama peralatan harus diisi')
       return
     }
-    const newItem: Peralatan = {
-      id: Date.now().toString(),
-      ...form,
-      status: 'tersedia',
-    }
-    setItems(prev => [...prev, newItem])
-    toast.success('Peralatan ditambahkan')
-    setForm({ nama: '', jenis: 'Tenda', jumlah: 1 })
-    setShowForm(false)
+    try {
+      await sendJSON('/api/peralatan', 'POST', form)
+      toast.success('Peralatan ditambahkan')
+      setForm({ nama: '', jenis: 'Tenda', jumlah: 1 })
+      setShowForm(false)
+      const res = await getJSON<Peralatan[]>('/api/peralatan')
+      setItems(res)
+    } catch (e) { toast.error((e as Error).message) }
   }
 
   if (loading) return <PageSkeleton />
