@@ -159,7 +159,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             >
               <Menu className="h-5 w-5" />
             </button>
-            <Image src="/logo-hima-ti.png" alt="Logo HIMA TI" width={36} height={36} className="rounded-lg shrink-0" />
+            <Image src="/logo-dies.png" alt="Logo HIMA TI" width={36} height={36} className="rounded-lg shrink-0" />
             <div className="leading-tight">
               <p className="text-sm font-bold text-slate-900">Dana Usaha HMTI</p>
               <p className="text-[10px] text-slate-500">Sistem Pengelolaan Dana Usaha</p>
@@ -192,7 +192,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             {/* Mobile sidebar header */}
             <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
               <div className="flex items-center gap-2">
-                <Image src="/logo-hima-ti.png" alt="Logo" width={28} height={28} className="rounded-lg" />
+                <Image src="/logo-dies.png" alt="Logo" width={28} height={28} className="rounded-lg" />
                 <div className="leading-tight">
                   <p className="text-sm font-semibold text-slate-900">Dana Usaha</p>
                   <p className="text-[10px] text-slate-500">Dies Natalis</p>
