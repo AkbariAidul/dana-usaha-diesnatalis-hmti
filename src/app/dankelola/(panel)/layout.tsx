@@ -162,43 +162,34 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Top Header - Logo & Breadcrumb */}
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
+      {/* Header with Logo and Breadcrumb */}
+      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white">
         <div className="flex h-14 items-center justify-between px-4 md:px-6">
-          {/* Left: Mobile menu button */}
-          <button 
-            onClick={() => setOpen(true)} 
-            aria-label="Buka menu" 
-            className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 md:hidden"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
+          {/* Left: Logo + Name */}
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setOpen(true)} 
+              aria-label="Buka menu" 
+              className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 md:hidden mr-1"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <Image src="/logo-hima-ti.png" alt="Logo HIMA TI" width={36} height={36} className="rounded-lg shrink-0" />
+            <div className="leading-tight">
+              <p className="text-sm font-bold text-slate-900">Dana Usaha HMTI</p>
+              <p className="text-[10px] text-slate-500">Sistem Pengelolaan Dana Usaha</p>
+            </div>
+          </div>
           
-          {/* Right: Breadcrumb (desktop) */}
+          {/* Right: Breadcrumb */}
           <nav className="hidden md:flex items-center gap-2 text-sm" aria-label="Breadcrumb">
             {breadcrumbs.map((crumb, idx) => (
               <div key={crumb.href} className="flex items-center gap-2">
                 {idx > 0 && <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
                 {idx === breadcrumbs.length - 1 ? (
-                  <span className="text-slate-900 font-medium">{crumb.label}</span>
+                  <span className="text-slate-700 font-medium">{crumb.label}</span>
                 ) : (
                   <Link href={crumb.href} className="text-slate-500 hover:text-slate-700 transition-colors">
-                    {crumb.label}
-                  </Link>
-                )}
-              </div>
-            ))}
-          </nav>
-          
-          {/* Right: Breadcrumb (mobile) */}
-          <nav className="md:hidden flex items-center gap-2 text-xs text-slate-500" aria-label="Breadcrumb">
-            {breadcrumbs.slice(-2).map((crumb, idx, arr) => (
-              <div key={crumb.href} className="flex items-center gap-2">
-                {idx > 0 && <ChevronRight className="h-3 w-3 text-slate-400" />}
-                {idx === arr.length - 1 ? (
-                  <span className="text-slate-900 font-medium truncate max-w-[120px]">{crumb.label}</span>
-                ) : (
-                  <Link href={crumb.href} className="hover:text-slate-700">
                     {crumb.label}
                   </Link>
                 )}
@@ -213,7 +204,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setOpen(false)} />
           <aside className="absolute inset-y-0 left-0 flex w-64 flex-col border-r border-slate-200 bg-white shadow-xl">
-            {/* Mobile sidebar header with logo */}
+            {/* Mobile sidebar header */}
             <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
               <div className="flex items-center gap-2">
                 <Image src="/logo-hima-ti.png" alt="Logo" width={28} height={28} className="rounded-lg" />
@@ -231,29 +222,30 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         </div>
       )}
 
-      {/* Desktop Layout: Logo on left, sidebar below */}
-      <div className="flex">
-        {/* Left sidebar area with logo + navigation */}
-        <aside className="hidden md:flex md:fixed md:inset-y-0 md:left-0 md:w-56 md:flex-col md:border-r md:border-slate-200 md:bg-white md:shadow-sm">
-          {/* Logo section at top of sidebar */}
-          <div className="flex items-center gap-2.5 px-4 py-4 border-b border-slate-100">
-            <Image src="/logo-hima-ti.png" alt="Logo HIMA TI" width={32} height={32} className="rounded-lg shrink-0" />
-            <div className="leading-tight">
-              <p className="text-sm font-semibold text-slate-900">Dana Usaha</p>
-              <p className="text-[10px] text-slate-500">Dies Natalis</p>
-            </div>
-          </div>
-          {/* Navigation menu */}
-          {sidebarContent}
-        </aside>
+      {/* Desktop sidebar */}
+      <aside className="hidden md:fixed md:inset-y-0 md:left-0 md:w-56 md:border-r md:border-slate-200 md:bg-white md:shadow-sm">{sidebarContent}</aside>
 
-        {/* Main content area */}
-        <main className="flex-1 md:ml-56">
-          <div key={pathname} className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8 animate-fade-in">
-            {children}
+      {/* Main content */}
+      <main className="md:pl-56">
+        <div key={pathname} className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8 animate-fade-in">
+          {/* Mobile breadcrumb */}
+          <div className="mb-4 flex items-center gap-2 text-sm text-slate-500 md:hidden">
+            {breadcrumbs.map((crumb, idx) => (
+              <div key={crumb.href} className="flex items-center gap-2">
+                {idx > 0 && <ChevronRight className="h-3 w-3 text-slate-400" />}
+                {idx === breadcrumbs.length - 1 ? (
+                  <span className="text-slate-900 font-medium">{crumb.label}</span>
+                ) : (
+                  <Link href={crumb.href} className="hover:text-slate-700">
+                    {crumb.label}
+                  </Link>
+                )}
+              </div>
+            ))}
           </div>
-        </main>
-      </div>
+          {children}
+        </div>
+      </main>
     </div>
   )
 }
