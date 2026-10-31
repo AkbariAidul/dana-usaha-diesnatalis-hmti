@@ -4,6 +4,15 @@
   color-scheme: light;
 }
 
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}
+
 html,
 body {
   background: #f7f9fc;

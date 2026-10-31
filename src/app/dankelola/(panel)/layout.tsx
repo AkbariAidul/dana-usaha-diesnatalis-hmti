@@ -26,14 +26,18 @@ function findActiveGroup(pathname: string) {
 }
 
 function getBreadcrumbs(pathname: string) {
-  const parts = pathname.split('/').filter((s): s is string => Boolean(s))
+  const items = menuConfig.flatMap((group) =>
+    group.children ?? (group.href ? [{ label: group.label, href: group.href }] : [])
+  )
+  let active: { label: string; href: string } | undefined
+  for (const item of items) {
+    if (pathname === item.href || pathname.startsWith(`${item.href}/`)) {
+      if (!active || item.href.length > active.href.length) active = item
+    }
+  }
   const breadcrumbs = [{ label: 'Dashboard', href: '/dankelola' }]
-  
-  let currentPath = ''
-  for (const part of parts.slice(1)) {
-    currentPath += `/${part}`
-    const label = part.charAt(0).toUpperCase() + part.slice(1)
-    breadcrumbs.push({ label, href: currentPath })
+  if (active && active.href !== '/dankelola') {
+    breadcrumbs.push({ label: active.label, href: active.href })
   }
   return breadcrumbs
 }
@@ -151,7 +155,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       <header className="shrink-0 border-b border-slate-200 bg-white z-30">
         <div className="flex h-14 items-center justify-between px-4 md:px-6">
           {/* Left: Logo + Name */}
-          <div className="flex items-center gap-3">
+          <div className="-ml-4 flex items-center gap-3">
             <button 
               onClick={() => setOpen(true)} 
               aria-label="Buka menu" 
@@ -159,15 +163,13 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             >
               <Menu className="h-5 w-5" />
             </button>
-            <Image src="/logo-dies.png" alt="Logo HIMA TI" width={36} height={36} className="rounded-lg shrink-0" />
+            <Image src="/logo-dies.png" alt="Logo HIMA TI" width={120} height={40} className="h-auto w-24 sm:w-[120px] rounded-lg shrink-0" />
             <div className="leading-tight">
               <p className="text-sm font-bold text-slate-900">Dana Usaha HMTI</p>
               <p className="text-[10px] text-slate-500">Sistem Pengelolaan Dana Usaha</p>
             </div>
-          </div>
-          
-          {/* Right: Breadcrumb */}
-          <nav className="hidden md:flex items-center gap-2 text-sm" aria-label="Breadcrumb">
+            {/* Breadcrumb */}
+            <nav className="ml-2 hidden md:flex items-center gap-2 border-l border-slate-200 pl-4 text-sm" aria-label="Breadcrumb">
             {breadcrumbs.map((crumb, idx) => (
               <div key={crumb.href} className="flex items-center gap-2">
                 {idx > 0 && <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
@@ -180,7 +182,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                 )}
               </div>
             ))}
-          </nav>
+            </nav>
+          </div>
         </div>
       </header>
 
@@ -192,7 +195,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             {/* Mobile sidebar header */}
             <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
               <div className="flex items-center gap-2">
-                <Image src="/logo-dies.png" alt="Logo" width={28} height={28} className="rounded-lg" />
+                <Image src="/logo-dies.png" alt="Logo" width={100} height={33} className="h-auto w-24 rounded-lg" />
                 <div className="leading-tight">
                   <p className="text-sm font-semibold text-slate-900">Dana Usaha</p>
                   <p className="text-[10px] text-slate-500">Dies Natalis</p>
