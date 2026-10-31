@@ -161,7 +161,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   )
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Header with Logo and Breadcrumb */}
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white">
         <div className="flex h-14 items-center justify-between px-4 md:px-6">
@@ -222,30 +222,35 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         </div>
       )}
 
-      {/* Desktop sidebar */}
-      <aside className="hidden md:flex md:fixed md:inset-y-0 md:left-0 md:w-56 md:flex-col md:border-r md:border-slate-200 md:bg-white md:shadow-sm">{sidebarContent}</aside>
+      {/* Desktop Layout: Sidebar + Main Content */}
+      <div className="flex flex-1">
+        {/* Desktop sidebar - below header, not overlapping */}
+        <aside className="hidden md:flex md:w-56 md:flex-col md:border-r md:border-slate-200 md:bg-white md:shadow-sm md:overflow-y-auto">
+          {sidebarContent}
+        </aside>
 
-      {/* Main content */}
-      <main className="md:pl-56">
-        <div key={pathname} className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8 animate-fade-in">
-          {/* Mobile breadcrumb */}
-          <div className="mb-4 flex items-center gap-2 text-sm text-slate-500 md:hidden">
-            {breadcrumbs.map((crumb, idx) => (
-              <div key={crumb.href} className="flex items-center gap-2">
-                {idx > 0 && <ChevronRight className="h-3 w-3 text-slate-400" />}
-                {idx === breadcrumbs.length - 1 ? (
-                  <span className="text-slate-900 font-medium">{crumb.label}</span>
-                ) : (
-                  <Link href={crumb.href} className="hover:text-slate-700">
-                    {crumb.label}
-                  </Link>
-                )}
-              </div>
-            ))}
+        {/* Main content */}
+        <main className="flex-1">
+          <div key={pathname} className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8 animate-fade-in">
+            {/* Mobile breadcrumb */}
+            <div className="mb-4 flex items-center gap-2 text-sm text-slate-500 md:hidden">
+              {breadcrumbs.map((crumb, idx) => (
+                <div key={crumb.href} className="flex items-center gap-2">
+                  {idx > 0 && <ChevronRight className="h-3 w-3 text-slate-400" />}
+                  {idx === breadcrumbs.length - 1 ? (
+                    <span className="text-slate-900 font-medium">{crumb.label}</span>
+                  ) : (
+                    <Link href={crumb.href} className="hover:text-slate-700">
+                      {crumb.label}
+                    </Link>
+                  )}
+                </div>
+              ))}
+            </div>
+            {children}
           </div>
-          {children}
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   )
 }
