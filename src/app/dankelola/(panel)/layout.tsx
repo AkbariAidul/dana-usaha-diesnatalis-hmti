@@ -147,8 +147,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
   const sidebarContent = (
     <div className="flex h-full flex-col bg-white">
-      <div className="flex-1 overflow-y-auto pt-2 pb-4">{nav}</div>
-      <div className="border-t border-slate-100 px-3 py-3">
+      <div className="flex-1 overflow-y-auto">{nav}</div>
+      <div className="border-t border-slate-100 px-3 py-3 shrink-0">
         <button
           onClick={logout}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-all hover:bg-red-50 hover:text-red-600"
@@ -223,14 +223,14 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       )}
 
       {/* Desktop Layout: Sidebar + Main Content */}
-      <div className="flex flex-1">
-        {/* Desktop sidebar - below header, not overlapping */}
-        <aside className="hidden md:flex md:w-56 md:flex-col md:border-r md:border-slate-200 md:bg-white md:shadow-sm md:overflow-y-auto">
+      <div className="flex flex-1 overflow-hidden">
+        {/* Desktop sidebar */}
+        <aside className="hidden md:flex md:w-56 md:flex-col md:border-r md:border-slate-200 md:bg-white md:shadow-sm">
           {sidebarContent}
         </aside>
 
         {/* Main content */}
-        <main className="flex-1">
+        <main className="flex-1 overflow-y-auto">
           <div key={pathname} className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8 animate-fade-in">
             {/* Mobile breadcrumb */}
             <div className="mb-4 flex items-center gap-2 text-sm text-slate-500 md:hidden">
