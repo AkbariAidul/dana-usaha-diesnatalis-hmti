@@ -1,5 +1,6 @@
+import { randomUUID } from 'crypto'
 import { supabase, supabaseAdmin } from './supabase'
-import type { Tenant, Pembayaran, KategoriSewa, HargaDasar, FaktorHarga, Acara, Merchandise, Ticket } from './types'
+import type { Tenant, Pembayaran, KategoriSewa, HargaDasar, FaktorHarga, Acara, Merchandise, Ticket, PeriodeHarga } from './types'
 
 // ─── Acara ───────────────────────────────────────────────────────────────────
 
@@ -68,6 +69,68 @@ export async function upsertHargaDasar(payload: Partial<HargaDasar>) {
 export async function deleteHargaDasar(id: string) {
   const { error } = await supabaseAdmin.from('harga_dasar').delete().eq('id', id)
   if (error) throw error
+}
+
+// ─── Periode Harga ───────────────────────────────────────────────────────────
+
+const DEFAULT_PERIODE: PeriodeHarga[] = [
+  { id: 'early_bird', kode: 'early_bird', nama: 'Early Bird', tanggal_mulai: '2026-11-16', tanggal_selesai: '2026-11-28' },
+  { id: 'reguler', kode: 'reguler', nama: 'Reguler', tanggal_mulai: '2026-11-29', tanggal_selesai: '2026-12-12' },
+  { id: 'last_minute', kode: 'last_minute', nama: 'Last Minute', tanggal_mulai: '2026-12-13', tanggal_selesai: '2026-12-19' },
+]
+
+export async function getPeriodeHarga(): Promise<PeriodeHarga[]> {
+  const { data } = await supabase.from('pengaturan_umum').select('value').eq('key', 'periode_harga').maybeSingle()
+  if (data?.value) {
+    try {
+      const parsed = JSON.parse(data.value)
+      if (Array.isArray(parsed)) {
+        return (parsed as PeriodeHarga[]).sort((a, b) => a.tanggal_mulai.localeCompare(b.tanggal_mulai))
+      }
+    } catch {
+      // Data rusak, pakai default.
+    }
+  }
+  return DEFAULT_PERIODE
+}
+
+async function simpanPeriodeHarga(list: PeriodeHarga[]) {
+  const { error } = await supabaseAdmin
+    .from('pengaturan_umum')
+    .upsert({ key: 'periode_harga', value: JSON.stringify(list), updated_at: new Date().toISOString() }, { onConflict: 'key' })
+  if (error) throw error
+}
+
+export async function upsertPeriodeHarga(payload: Partial<PeriodeHarga>) {
+  const list = await getPeriodeHarga()
+  if (payload.id) {
+    const item = list.find((p) => p.id === payload.id)
+    if (!item) throw new Error('Periode tidak ditemukan')
+    Object.assign(item, payload)
+    await simpanPeriodeHarga(list)
+    return item
+  }
+  const item: PeriodeHarga = {
+    id: randomUUID(),
+    kode: payload.kode ?? randomUUID(),
+    nama: payload.nama ?? '',
+    tanggal_mulai: payload.tanggal_mulai ?? '',
+    tanggal_selesai: payload.tanggal_selesai ?? '',
+  }
+  list.push(item)
+  await simpanPeriodeHarga(list)
+  return item
+}
+
+export async function deletePeriodeHarga(id: string) {
+  const list = await getPeriodeHarga()
+  const item = list.find((p) => p.id === id)
+  if (!item) throw new Error('Periode tidak ditemukan')
+  if (item.kode) {
+    const { error } = await supabaseAdmin.from('harga_dasar').delete().eq('periode', item.kode)
+    if (error) throw error
+  }
+  await simpanPeriodeHarga(list.filter((p) => p.id !== id))
 }
 
 // ─── Faktor Harga ─────────────────────────────────────────────────────────────

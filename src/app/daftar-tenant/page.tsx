@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '@/app/dankelola/api'
-import { hitungHarga, periodeDariTanggal, PERIODE_LABEL, PERIODE_WINDOW, KategoriSewa, HargaDasar, FaktorHarga } from '@/lib/types'
+import { hitungHarga, periodeDariTanggal, periodeLabel, KategoriSewa, HargaDasar, FaktorHarga, PeriodeHarga } from '@/lib/types'
 import { formatRupiah } from '@/lib/utils'
 import QRCode from 'qrcode'
 
@@ -11,6 +11,7 @@ export default function DaftarTenantPublik() {
   const [kategori, setKategori] = useState<Array<{ id: string; kode: string; nama: string }>>([])
   const [hargaDasar, setHargaDasar] = useState<Array<{ kategori_sewa_id: string; jenis_usaha: string; periode: string; harga: number }>>([])
   const [faktor, setFaktor] = useState<Array<{ tipe: string; nilai: string; multiplier: number }>>([])
+  const [periods, setPeriods] = useState<PeriodeHarga[]>([])
   const [qris, setQris] = useState<Record<string, string>>({})
   const [step, setStep] = useState(1)
   const [form, setForm] = useState({
@@ -24,17 +25,18 @@ export default function DaftarTenantPublik() {
 
   useEffect(() => {
     Promise.all([
-      getJSON<{ kategori: KategoriSewa[]; hargaDasar: HargaDasar[]; faktor: FaktorHarga[] }>('/api/master'),
+      getJSON<{ kategori: KategoriSewa[]; hargaDasar: HargaDasar[]; faktor: FaktorHarga[]; periode: PeriodeHarga[] }>('/api/master'),
       getJSON<Record<string, string>>('/api/pengaturan/qris')
     ]).then(([m, q]) => {
       setKategori(m.kategori || [])
       setHargaDasar(m.hargaDasar || [])
       setFaktor(m.faktor || [])
+      setPeriods(m.periode || [])
       setQris(q)
     })
   }, [])
 
-  const periode = periodeDariTanggal(form.tgl_daftar)
+  const periode = periodeDariTanggal(form.tgl_daftar, periods)
   const harga = useMemo(() => {
     const hd = hargaDasar.find((h) => h.kategori_sewa_id === form.kategori_sewa_id && h.jenis_usaha === form.jenis_usaha && h.periode === periode)
     if (!hd) return 0
@@ -127,8 +129,8 @@ export default function DaftarTenantPublik() {
               <div><label className="mb-1 block text-sm font-medium">Tanggal Acara (opsional)</label><input type="date" className={input} value={form.tgl_acara} onChange={e=>setForm({...form,tgl_acara:e.target.value})}/></div>
               <div className="md:col-span-2 rounded-xl bg-slate-50 p-4 flex items-center justify-between">
                 <div className="text-sm">
-                  <p>Periode: <span className="font-medium">{periode ? PERIODE_LABEL[periode] : 'Di luar periode'}</span></p>
-                  <p className="text-slate-500">{Object.entries(PERIODE_WINDOW).map(([k,w])=>`${PERIODE_LABEL[k]} ${w.start}–${w.end}`).join(' • ')}</p>
+                  <p>Periode: <span className="font-medium">{periode ? periodeLabel(periode, periods) : 'Di luar periode'}</span></p>
+                  <p className="text-slate-500">{periods.map((p)=>`${p.nama} ${p.tanggal_mulai}–${p.tanggal_selesai}`).join(' • ')}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-slate-500">Estimasi Harga</p>

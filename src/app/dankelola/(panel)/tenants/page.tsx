@@ -2,9 +2,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import type { Tenant, KategoriSewa, HargaDasar, FaktorHarga } from '@/lib/types'
+import type { Tenant, KategoriSewa, HargaDasar, FaktorHarga, PeriodeHarga } from '@/lib/types'
 import { formatRupiah, formatDate } from '@/lib/utils'
-import { STATUS_LABEL, STATUS_COLOR, hitungHarga, periodeDariTanggal, PERIODE_LABEL, PERIODE_WINDOW } from '@/lib/types'
+import { STATUS_LABEL, STATUS_COLOR, hitungHarga, periodeDariTanggal, periodeLabel } from '@/lib/types'
 import { getJSON, sendJSON } from '../../api'
 import { TableSkeleton } from '../ui'
 
@@ -24,6 +24,7 @@ export default function TenantsPage() {
   const [kategori, setKategori] = useState<KategoriSewa[]>([])
   const [hargaDasar, setHargaDasar] = useState<HargaDasar[]>([])
   const [faktor, setFaktor] = useState<FaktorHarga[]>([])
+  const [periods, setPeriods] = useState<PeriodeHarga[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(emptyForm)
@@ -33,16 +34,16 @@ export default function TenantsPage() {
   async function load() {
     const [t, m] = await Promise.all([
       getJSON<Tenant[]>('/api/tenants'),
-      getJSON<{ kategori: KategoriSewa[]; hargaDasar: HargaDasar[]; faktor: FaktorHarga[] }>('/api/master'),
+      getJSON<{ kategori: KategoriSewa[]; hargaDasar: HargaDasar[]; faktor: FaktorHarga[]; periode: PeriodeHarga[] }>('/api/master'),
     ])
-    setTenants(t); setKategori(m.kategori); setHargaDasar(m.hargaDasar); setFaktor(m.faktor)
+    setTenants(t); setKategori(m.kategori); setHargaDasar(m.hargaDasar); setFaktor(m.faktor); setPeriods(m.periode || [])
   }
 
   useEffect(() => {
     load().catch((e) => toast.error(e.message)).finally(() => setLoading(false))
   }, [])
 
-  const periode = periodeDariTanggal(form.tgl_daftar)
+  const periode = periodeDariTanggal(form.tgl_daftar, periods)
 
   const harga = useMemo(() => {
     const hd = hargaDasar.find(
@@ -144,10 +145,10 @@ export default function TenantsPage() {
           <div>
             <label className={label}>Periode (otomatis)</label>
             <div className={`${input} bg-slate-50 ${periode ? 'text-slate-900' : 'text-red-600'}`}>
-              {periode ? PERIODE_LABEL[periode] : 'Di luar periode open tenant'}
+              {periode ? periodeLabel(periode, periods) : 'Di luar periode open tenant'}
             </div>
             <p className="mt-1 text-xs text-slate-400">
-              {Object.entries(PERIODE_WINDOW).map(([k, w]) => `${PERIODE_LABEL[k]} ${formatDate(w.start)}–${formatDate(w.end)}`).join(' · ')}
+              {periods.map((p) => `${p.nama} ${formatDate(p.tanggal_mulai)}–${formatDate(p.tanggal_selesai)}`).join(' · ')}
             </p>
           </div>
           <div><label className={label}>Tanggal Acara (opsional)</label><input type="date" className={input} value={form.tgl_acara} onChange={(e) => setForm({ ...form, tgl_acara: e.target.value })} /></div>

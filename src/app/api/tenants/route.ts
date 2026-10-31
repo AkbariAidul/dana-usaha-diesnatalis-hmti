@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getTenants, createTenant, createAuditLog } from '@/lib/queries'
+import { getTenants, createTenant, createAuditLog, getPeriodeHarga } from '@/lib/queries'
 import { periodeDariTanggal } from '@/lib/types'
 
 export async function GET() {
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
 
     // Periode ditentukan server dari tanggal daftar (tidak bisa diakali dari form)
     const tglDaftar = body.tgl_daftar || new Date().toISOString().slice(0, 10)
-    const periode = periodeDariTanggal(tglDaftar)
+    const periode = periodeDariTanggal(tglDaftar, await getPeriodeHarga())
     if (!periode) {
       return NextResponse.json({ error: 'Tanggal daftar di luar periode open tenant' }, { status: 400 })
     }

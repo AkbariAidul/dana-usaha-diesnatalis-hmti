@@ -1,26 +1,31 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import type { Tenant, Pembayaran } from '@/lib/types'
+import type { Tenant, Pembayaran, PeriodeHarga } from '@/lib/types'
 import { formatRupiah, formatDate } from '@/lib/utils'
-import { periodeDariTanggal, PERIODE_LABEL, PERIODE_WINDOW } from '@/lib/types'
+import { periodeDariTanggal } from '@/lib/types'
 import { getJSON } from '../api'
 import { CardsSkeleton } from './ui'
 
 export default function RingkasanPage() {
   const [tenants, setTenants] = useState<Tenant[]>([])
   const [pembayaran, setPembayaran] = useState<Pembayaran[]>([])
+  const [periods, setPeriods] = useState<PeriodeHarga[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    Promise.all([getJSON<Tenant[]>('/api/tenants'), getJSON<Pembayaran[]>('/api/pembayaran')])
-      .then(([t, p]) => { setTenants(t); setPembayaran(p) })
+    Promise.all([
+      getJSON<Tenant[]>('/api/tenants'),
+      getJSON<Pembayaran[]>('/api/pembayaran'),
+      getJSON<PeriodeHarga[]>('/api/master/periode'),
+    ])
+      .then(([t, p, pr]) => { setTenants(t); setPembayaran(p); setPeriods(pr) })
       .finally(() => setLoading(false))
   }, [])
 
   const today = new Date().toISOString().slice(0, 10)
-  const periodeAktif = periodeDariTanggal(today)
-  const windowAktif = periodeAktif ? PERIODE_WINDOW[periodeAktif] : null
+  const periodeAktif = periodeDariTanggal(today, periods)
+  const periodeAktifData = periods.find((p) => p.kode === periodeAktif)
 
   const aktif = tenants.filter((t) => t.status !== 'batal')
   const totalTagihan = aktif.reduce((s, t) => s + t.harga_akhir, 0)
@@ -44,10 +49,10 @@ export default function RingkasanPage() {
 
       <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-indigo-100 bg-indigo-50 px-6 py-3 text-sm">
         <span className="font-semibold text-indigo-700">
-          {periodeAktif ? `Periode berjalan: ${PERIODE_LABEL[periodeAktif]}` : 'Di luar periode open tenant'}
+          {periodeAktifData ? `Periode berjalan: ${periodeAktifData.nama}` : 'Di luar periode open tenant'}
         </span>
-        {windowAktif && (
-          <span className="text-indigo-600">{formatDate(windowAktif.start)} – {formatDate(windowAktif.end)}</span>
+        {periodeAktifData && (
+          <span className="text-indigo-600">{formatDate(periodeAktifData.tanggal_mulai)} – {formatDate(periodeAktifData.tanggal_selesai)}</span>
         )}
         <Link href="/dankelola/tenants" className="ml-auto text-indigo-700 font-medium hover:underline">+ Catat tenant</Link>
       </div>

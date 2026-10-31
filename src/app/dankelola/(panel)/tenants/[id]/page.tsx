@@ -3,9 +3,9 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import type { Tenant, Pembayaran } from '@/lib/types'
+import type { Tenant, Pembayaran, PeriodeHarga } from '@/lib/types'
 import { formatRupiah, formatDate } from '@/lib/utils'
-import { STATUS_LABEL, STATUS_COLOR, PERIODE_LABEL, hitungHariTersisa, hitungMinimalCicilan, tambahHari } from '@/lib/types'
+import { STATUS_LABEL, STATUS_COLOR, periodeLabel, hitungHariTersisa, hitungMinimalCicilan, tambahHari } from '@/lib/types'
 import { getJSON, sendJSON, bustCache } from '../../../api'
 import { PageSkeleton } from '../../ui'
 
@@ -13,6 +13,7 @@ export default function TenantDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [tenant, setTenant] = useState<Tenant | null>(null)
   const [pembayaran, setPembayaran] = useState<Pembayaran[]>([])
+  const [periods, setPeriods] = useState<PeriodeHarga[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
@@ -23,11 +24,12 @@ export default function TenantDetailPage() {
   const initialized = useRef(false)
 
   const load = useCallback(async () => {
-    const [t, p] = await Promise.all([
+    const [t, p, pr] = await Promise.all([
       getJSON<Tenant>(`/api/tenants/${id}`),
       getJSON<Pembayaran[]>(`/api/pembayaran?tenant_id=${id}`),
+      getJSON<PeriodeHarga[]>('/api/master/periode'),
     ])
-    setTenant(t); setPembayaran(p)
+    setTenant(t); setPembayaran(p); setPeriods(pr)
     if (!initialized.current) {
       initialized.current = true
       if (t.sudah_dibayar === 0) {
@@ -100,7 +102,7 @@ export default function TenantDetailPage() {
     ['Jenis Usaha', tenant.jenis_usaha],
     ['Asal', tenant.asal],
     ['Lokasi', tenant.lokasi],
-    ['Periode', PERIODE_LABEL[tenant.periode_daftar]],
+    ['Periode', periodeLabel(tenant.periode_daftar, periods)],
     ['Harga Akhir', formatRupiah(tenant.harga_akhir)],
     ['DP Wajib', formatRupiah(tenant.dp_wajib)],
     ['Sudah Dibayar', formatRupiah(tenant.sudah_dibayar)],

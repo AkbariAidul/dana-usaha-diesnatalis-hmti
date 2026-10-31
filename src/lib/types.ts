@@ -11,8 +11,16 @@ export interface HargaDasar {
   id: string
   kategori_sewa_id: string
   jenis_usaha: 'F&B' | 'Non-F&B'
-  periode: 'early_bird' | 'reguler' | 'last_minute'
+  periode: string
   harga: number
+}
+
+export interface PeriodeHarga {
+  id: string
+  kode: string
+  nama: string
+  tanggal_mulai: string
+  tanggal_selesai: string
 }
 
 export interface FaktorHarga {
@@ -125,20 +133,20 @@ export function hitungStatus(
   return 'dp'
 }
 
-export type Periode = 'early_bird' | 'reguler' | 'last_minute'
+export type Periode = string
 
-// Tanggal open tenant Dies Natalis (ubah di sini tiap tahun)
-export const PERIODE_WINDOW: Record<Periode, { start: string; end: string }> = {
-  early_bird: { start: '2026-11-16', end: '2026-11-28' },
-  reguler: { start: '2026-11-29', end: '2026-12-12' },
-  last_minute: { start: '2026-12-13', end: '2026-12-19' },
-}
-
-export function periodeDariTanggal(tgl: string): Periode | null {
-  for (const [k, w] of Object.entries(PERIODE_WINDOW) as [Periode, { start: string; end: string }][]) {
-    if (tgl >= w.start && tgl <= w.end) return k
+export function periodeDariTanggal(
+  tgl: string,
+  periods: Pick<PeriodeHarga, 'kode' | 'tanggal_mulai' | 'tanggal_selesai'>[]
+): Periode | null {
+  for (const p of periods) {
+    if (tgl >= p.tanggal_mulai && tgl <= p.tanggal_selesai) return p.kode
   }
   return null
+}
+
+export function periodeLabel(kode: string, periods?: Pick<PeriodeHarga, 'kode' | 'nama'>[]): string {
+  return periods?.find((p) => p.kode === kode)?.nama ?? PERIODE_LABEL[kode] ?? kode
 }
 
 export function tambahHari(tgl: string, hari: number): string {
