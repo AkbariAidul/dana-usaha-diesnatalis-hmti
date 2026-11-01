@@ -130,7 +130,7 @@ export default function TahapPage() {
       setFormOpen(false)
       resetForm()
       await load()
-    } catch (e) { toast.error((e as Error).message) }
+    } catch (e) { toast.error(String(e)) }
   }
 
   async function hapusTiket(t: TicketKatalogItem) {
@@ -139,14 +139,14 @@ export default function TahapPage() {
       await sendJSON('/api/ticket', 'DELETE', { id: t.id })
       toast.success('Tipe tiket dihapus')
       await load()
-    } catch (e) { toast.error((e as Error).message) }
+    } catch (e) { toast.error(String(e)) }
   }
 
   async function toggleTiket(t: TicketKatalogItem) {
     try {
       await sendJSON('/api/ticket', 'POST', { id: t.id, aktif: !t.aktif })
       await load()
-    } catch (e) { toast.error((e as Error).message) }
+    } catch (e) { toast.error(String(e)) }
   }
 
   // Period actions
@@ -175,7 +175,7 @@ export default function TahapPage() {
       toast.success(periodForm.id ? 'Periode diperbarui' : 'Periode ditambahkan')
       closePeriodForm()
       await load()
-    } catch (e) { toast.error((e as Error).message) }
+    } catch (e) { toast.error(String(e)) }
   }
 
   async function hapusPeriode(periodId: string) {
@@ -183,7 +183,7 @@ export default function TahapPage() {
     try {
       await sendJSON('/api/ticket/periode', 'DELETE', { id: periodId })
       await load()
-    } catch (e) { toast.error((e as Error).message) }
+    } catch (e) { toast.error(String(e)) }
   }
 
   // Bundle actions
@@ -207,7 +207,7 @@ export default function TahapPage() {
       toast.success(bundleForm.id ? 'Diskon bundle diperbarui' : 'Diskon bundle ditambahkan')
       closeBundleForm()
       await load()
-    } catch (e) { toast.error((e as Error).message) }
+    } catch (e) { toast.error(String(e)) }
   }
 
   async function hapusBundle(bundleId: string) {
@@ -215,7 +215,7 @@ export default function TahapPage() {
     try {
       await sendJSON('/api/ticket/bundle', 'DELETE', { id: bundleId })
       await load()
-    } catch (e) { toast.error((e as Error).message) }
+    } catch (e) { toast.error(String(e)) }
   }
 
   const input = 'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
