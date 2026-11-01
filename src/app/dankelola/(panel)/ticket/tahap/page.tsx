@@ -16,7 +16,6 @@ export default function TahapPage() {
   const [bundles, setBundles] = useState<TicketBundleDiscount[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [menuOpen, setMenuOpen] = useState<string | null>(null)
   const today = todayISO()
 
   const load = useCallback(async () => {
