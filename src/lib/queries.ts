@@ -271,13 +271,13 @@ export async function deletePembayaran(id: string, tenantId: string) {
 }
 
 export async function uploadBuktiBayar(file: File, tenantId: string): Promise<string> {
-  const ext = file.name.split('.').pop()
-  const path = `bukti/${tenantId}/${Date.now()}.${ext}`
+  const ext = file.name.split('.').pop()?.toLowerCase() || 'bin'
+  const path = `bukti-bayar/${tenantId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
   const { error } = await supabaseAdmin.storage
-    .from('pembayaran-bukti')
-    .upload(path, file, { contentType: file.type })
+    .from('bukti')
+    .upload(path, file, { contentType: file.type, cacheControl: '31536000' })
   if (error) throw error
-  const { data } = supabaseAdmin.storage.from('pembayaran-bukti').getPublicUrl(path)
+  const { data } = supabaseAdmin.storage.from('bukti').getPublicUrl(path)
   return data.publicUrl
 }
 
