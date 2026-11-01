@@ -129,6 +129,15 @@ export interface TicketKatalogItem extends Ticket {
   pending: number
   sisa: number | null
   buka: boolean
+  bundle_discounts: TicketBundleDiscount[]
+}
+
+export interface TicketBundleDiscount {
+  id: string
+  tiket_tipe_id: string
+  jumlah_min: number
+  diskon_persen: number
+  urutan: number
 }
 
 // ─── Business Logic ───────────────────────────────────────────────────────────

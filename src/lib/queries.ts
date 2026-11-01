@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto'
 import { supabase, supabaseAdmin } from './supabase'
 import { todayISO } from './utils'
-import type { Tenant, Pembayaran, KategoriSewa, HargaDasar, FaktorHarga, Acara, Merchandise, Ticket, TicketPeriode, TicketKatalogItem, PeriodeHarga } from './types'
+import type { Tenant, Pembayaran, KategoriSewa, HargaDasar, FaktorHarga, Acara, Merchandise, Ticket, TicketPeriode, TicketKatalogItem, TicketBundleDiscount, PeriodeHarga } from './types'
 
 // ─── Acara ───────────────────────────────────────────────────────────────────
 
@@ -313,6 +313,7 @@ export async function deleteMerchandise(id: string) {
 
 const TICKET_FIELDS = ['nama', 'deskripsi', 'harga', 'jumlah_orang', 'kuota', 'urutan', 'aktif', 'is_hari_h', 'mulai_jual', 'selesai_jual'] as const
 const TICKET_PERIODE_FIELDS = ['tiket_tipe_id', 'nama', 'tanggal_mulai', 'tanggal_selesai', 'harga', 'urutan'] as const
+const TICKET_BUNDLE_FIELDS = ['tiket_tipe_id', 'jumlah_min', 'diskon_persen', 'urutan'] as const
 
 function pickFields<T extends Record<string, unknown>>(obj: T, fields: readonly string[]) {
   const out: Record<string, unknown> = {}
@@ -374,17 +375,46 @@ export async function deleteTicketPeriode(id: string) {
   if (error) throw error
 }
 
+export async function getTicketBundleDiscount(tipeId?: string): Promise<TicketBundleDiscount[]> {
+  let query = supabaseAdmin.from('tiket_bundle_discount').select('*').order('urutan').order('jumlah_min')
+  if (tipeId) query = query.eq('tiket_tipe_id', tipeId)
+  const { data, error } = await query
+  if (error) throw error
+  return (data ?? []) as TicketBundleDiscount[]
+}
+
+export async function upsertTicketBundleDiscount(payload: Partial<TicketBundleDiscount>) {
+  const fields = pickFields(payload as Record<string, unknown>, TICKET_BUNDLE_FIELDS)
+  if (payload.id) {
+    const { data, error } = await supabaseAdmin
+      .from('tiket_bundle_discount').update(fields).eq('id', payload.id).select().single()
+    if (error) throw error
+    return data
+  }
+  const { data, error } = await supabaseAdmin.from('tiket_bundle_discount').insert(fields).select().single()
+  if (error) throw error
+  return data
+}
+
+export async function deleteTicketBundleDiscount(id: string) {
+  const { error } = await supabaseAdmin.from('tiket_bundle_discount').delete().eq('id', id)
+  if (error) throw error
+}
+
 export async function getTicketKatalog(): Promise<TicketKatalogItem[]> {
-  const [tipeRes, periodeRes, pendingRes] = await Promise.all([
+  const [tipeRes, periodeRes, pendingRes, bundleRes] = await Promise.all([
     supabaseAdmin.from('tiket_tipe').select('*').order('urutan').order('nama'),
     supabaseAdmin.from('tiket_periode').select('*').order('tanggal_mulai').order('urutan'),
     supabaseAdmin.from('pesanan_tiket').select('tiket_tipe_id,jumlah').eq('status', 'menunggu_verifikasi'),
+    supabaseAdmin.from('tiket_bundle_discount').select('*').order('urutan').order('jumlah_min'),
   ])
   if (tipeRes.error) throw tipeRes.error
   if (periodeRes.error) throw periodeRes.error
   if (pendingRes.error) throw pendingRes.error
+  if (bundleRes.error) throw bundleRes.error
 
   const periods = (periodeRes.data ?? []) as TicketPeriode[]
+  const bundles = (bundleRes.data ?? []) as TicketBundleDiscount[]
   const pending = new Map<string, number>()
   for (const row of (pendingRes.data ?? []) as { tiket_tipe_id: string | null; jumlah: number | null }[]) {
     if (!row.tiket_tipe_id) continue
@@ -412,6 +442,7 @@ export async function getTicketKatalog(): Promise<TicketKatalogItem[]> {
       pending: pendingQty,
       sisa,
       buka,
+      bundle_discounts: bundles.filter((b) => b.tiket_tipe_id === t.id),
     }
   })
 }

@@ -13,15 +13,30 @@ export async function POST(request: Request) {
     if (!tipe.buka) throw new Error('Tiket sedang ditutup atau sudah habis')
 
     const jumlah = Math.max(1, Math.floor(Number(body.jumlah || 1)))
-    // ponytail: check-then-insert race; use a DB function/constraint if event-day oversell matters
     if (tipe.sisa !== null && jumlah > tipe.sisa) throw new Error(`Sisa tiket ${tipe.sisa}`)
 
-    const harga = Number(tipe.harga_aktif)
-    const total = harga * jumlah
+    // Apply bundle discount if applicable
+    const hargaSatuan = Number(tipe.harga_aktif)
+    const bundle = [...tipe.bundle_discounts].sort((a, b) => b.jumlah_min - a.jumlah_min).find((b) => jumlah >= b.jumlah_min)
+    const diskon = bundle ? Number(bundle.diskon_persen) : 0
+    const subtotal = hargaSatuan * jumlah
+    const total = Math.round(subtotal * (1 - diskon / 100))
+
     const existing = await supabaseAdmin.from('pesanan_tiket').select('no_pesanan')
     const max = (existing.data||[]).reduce((m:number,p:{ no_pesanan: string })=>{const n=Number(/(\d+)$/.exec(p.no_pesanan)?.[1]??0);return n>m?n:m},0)
     const no = `TK-${String(max+1).padStart(4,'0')}`
-    const { data, error } = await supabaseAdmin.from('pesanan_tiket').insert({ no_pesanan:no, nama_pembeli:body.nama_pembeli, kontak:body.kontak, email:body.email||null, tiket_tipe_id:body.tiket_tipe_id, jumlah, harga_satuan:harga, total, status:'menunggu_verifikasi' }).select().single()
+    const { data, error } = await supabaseAdmin.from('pesanan_tiket').insert({
+      no_pesanan: no,
+      nama_pembeli: body.nama_pembeli,
+      kontak: body.kontak,
+      email: body.email || null,
+      tiket_tipe_id: body.tiket_tipe_id,
+      jumlah,
+      harga_satuan: hargaSatuan,
+      diskon_persen: diskon,
+      total,
+      status: 'menunggu_verifikasi',
+    }).select().single()
     if (error) throw error
     return NextResponse.json({ ...data, t: signRef('tiket', data.no_pesanan) }, { status: 201 })
   } catch(err:unknown){ return NextResponse.json({error:String(err)},{status:500}) }

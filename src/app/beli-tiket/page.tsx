@@ -23,7 +23,10 @@ export default function BeliTiketPublik() {
   useEffect(() => { if (qris.qris_payload) QRCode.toDataURL(qris.qris_payload,{width:320,margin:2,errorCorrectionLevel:'H'}).then(setQr).catch(()=>{}) }, [qris])
 
   const tipe = katalog.tiket.find((t)=>t.id===form.tiket_tipe_id)
-  const total = tipe ? Number(tipe.harga_aktif) * Number(form.jumlah) : 0
+  const bundle = tipe ? [...tipe.bundle_discounts].sort((a,b)=>b.jumlah_min-a.jumlah_min).find(b=>Number(form.jumlah)>=b.jumlah_min) : null
+  const diskon = bundle ? Number(bundle.diskon_persen) : 0
+  const subtotal = tipe ? Number(tipe.harga_aktif) * Number(form.jumlah) : 0
+  const total = Math.round(subtotal * (1 - diskon / 100))
 
   async function beli() {
     if (!tipe) { toast.error('Pilih tipe tiket'); return }
@@ -100,7 +103,16 @@ export default function BeliTiketPublik() {
                   <p className="mt-1 text-xs text-slate-500">Berlaku untuk {Number(form.jumlah) * Number(tipe.jumlah_orang)} orang</p>
                 </div>
                 <div className="md:col-span-2 flex items-center justify-between rounded-xl bg-slate-50 p-4">
-                  <p className="text-sm text-slate-500">Total Pembayaran</p>
+                  <div>
+                    <p className="text-sm text-slate-500">
+                      {diskon > 0
+                        ? `${formatRupiah(subtotal)} - ${diskon}% bundle discount`
+                        : 'Total Pembayaran'}
+                    </p>
+                    {diskon > 0 && (
+                      <p className="text-xs text-green-600">Hemat {formatRupiah(subtotal - total)}</p>
+                    )}
+                  </div>
                   <p className="text-lg font-semibold text-primary-600">{formatRupiah(total)}</p>
                 </div>
                 <div className="md:col-span-2 flex justify-end"><button onClick={beli} disabled={!form.nama_pembeli||!form.kontak||!tipe.buka} className="rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50">{tipe.buka ? 'Buat Pesanan' : 'Tiket Ditutup'}</button></div>
