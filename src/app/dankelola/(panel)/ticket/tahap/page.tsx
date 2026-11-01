@@ -9,44 +9,10 @@ import { PageSkeleton } from '../../ui'
 import type { TicketKatalogItem } from '@/lib/types'
 import { formatRupiah } from '@/lib/utils'
 
-type FormState = {
-  id?: string
-  nama: string
-  deskripsi: string
-  harga: number
-  jumlah_orang: number
-  is_hari_h: boolean
-  kuota: number
-  selesai_jual: string
-  aktif: boolean
-}
-
-function emptyForm(isHariH = false): FormState {
-  return {
-    nama: '',
-    deskripsi: '',
-    harga: 0,
-    jumlah_orang: 1,
-    is_hari_h: isHariH,
-    kuota: isHariH ? 10 : 0,
-    selesai_jual: '',
-    aktif: true,
-  }
-}
-
-function toLocalInput(iso: string | null) {
-  if (!iso) return ''
-  const d = new Date(iso)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-
 export default function TahapPage() {
   const [tiket, setTiket] = useState<TicketKatalogItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState<FormState>(emptyForm())
 
   const load = useCallback(async () => {
     const data = await getJSON<TicketKatalogItem[]>('/api/ticket')
@@ -63,51 +29,6 @@ export default function TahapPage() {
       .finally(() => setLoading(false))
   }, [load])
   useLiveRefresh(load)
-
-  function openCreate(isHariH = false) {
-    setForm(emptyForm(isHariH))
-    setShowForm(true)
-  }
-
-  function openEdit(t: TicketKatalogItem) {
-    setForm({
-      id: t.id,
-      nama: t.nama,
-      deskripsi: t.deskripsi ?? '',
-      harga: Number(t.harga),
-      jumlah_orang: Number(t.jumlah_orang ?? 1),
-      is_hari_h: Boolean(t.is_hari_h),
-      kuota: Number(t.kuota ?? 0) || 10,
-      selesai_jual: toLocalInput(t.selesai_jual),
-      aktif: t.aktif,
-    })
-    setShowForm(true)
-  }
-
-  async function simpan() {
-    if (!form.nama.trim() || !form.harga) {
-      toast.error('Nama dan harga harus diisi')
-      return
-    }
-    try {
-      await sendJSON('/api/ticket', 'POST', {
-        ...form,
-        nama: form.nama.trim(),
-        deskripsi: form.deskripsi.trim() || null,
-        harga: Number(form.harga),
-        jumlah_orang: Number(form.jumlah_orang) || 1,
-        kuota: form.is_hari_h ? Number(form.kuota) || 10 : 0,
-        selesai_jual:
-          form.is_hari_h && form.selesai_jual ? new Date(form.selesai_jual).toISOString() : null,
-      })
-      toast.success(form.id ? 'Tipe tiket diperbarui' : 'Tipe tiket ditambahkan')
-      setForm(emptyForm())
-      setShowForm(false)
-      await load()
-    } catch (e) {
-      toast.error((e as Error).message)
-    }
-  }
 
   async function toggle(t: TicketKatalogItem) {
     try {
@@ -161,12 +82,12 @@ export default function TahapPage() {
           >
             Periode Harga
           </Link>
-          <button
-            onClick={() => openCreate()}
+          <Link
+            href="/dankelola/ticket/tipe/new"
             className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white"
           >
             + Tambah Tipe
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -191,12 +112,12 @@ export default function TahapPage() {
             <h2 className="font-semibold text-slate-900">Tiket Hari H</h2>
             <p className="text-sm text-slate-500">Penjualan terbatas, otomatis berhenti saat kuota habis atau waktu tutup.</p>
           </div>
-          <button
-            onClick={() => openCreate(true)}
+          <Link
+            href="/dankelola/ticket/tipe/new"
             className="rounded-xl bg-orange-600 px-4 py-2 text-sm font-medium text-white"
           >
             + Buat Tiket Hari H
-          </button>
+          </Link>
         </div>
         {hariH.length === 0 ? (
           <p className="mt-4 text-sm text-slate-500">Belum ada tiket Hari H.</p>
@@ -226,130 +147,17 @@ export default function TahapPage() {
                 <p className="text-xs text-slate-500">
                   Tutup: {t.selesai_jual ? new Date(t.selesai_jual).toLocaleString('id-ID') : 'tanpa batas waktu'}
                 </p>
-                <button
-                  onClick={() => openEdit(t)}
-                  className="mt-3 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                <Link
+                  href={`/dankelola/ticket/tipe/${t.id}/edit`}
+                  className="mt-3 inline-block rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
                 >
                   Atur
-                </button>
+                </Link>
               </div>
             ))}
           </div>
         )}
       </div>
-
-      {showForm && (
-        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-          <h2 className="mb-4 font-semibold">{form.id ? 'Edit Tipe Tiket' : 'Tambah Tipe Tiket'}</h2>
-          <div className="grid gap-3 md:grid-cols-3">
-            <div>
-              <label className="mb-1 block text-sm font-medium">Nama Tiket</label>
-              <input
-                placeholder="Contoh: Reguler"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
-                value={form.nama}
-                onChange={(e) => setForm({ ...form, nama: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Harga Dasar</label>
-              <input
-                type="number"
-                min={0}
-                placeholder="Harga"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
-                value={form.harga || ''}
-                onChange={(e) => setForm({ ...form, harga: Number(e.target.value) })}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Berlaku untuk (orang)</label>
-              <input
-                type="number"
-                min={1}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
-                value={form.jumlah_orang}
-                onChange={(e) => setForm({ ...form, jumlah_orang: Number(e.target.value) })}
-              />
-            </div>
-          </div>
-
-          <div className="mt-3">
-            <label className="mb-1 block text-sm font-medium">Deskripsi (opsional)</label>
-            <textarea
-              placeholder="Contoh: Tiket masuk untuk 2 orang"
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
-              value={form.deskripsi}
-              onChange={(e) => setForm({ ...form, deskripsi: e.target.value })}
-              rows={2}
-            />
-          </div>
-
-          <div className="mt-4 flex flex-wrap items-center gap-4">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={form.is_hari_h}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    is_hari_h: e.target.checked,
-                    kuota: e.target.checked ? form.kuota || 10 : 0,
-                  })
-                }
-              />
-              Tiket Hari H (kuota terbatas)
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={form.aktif}
-                onChange={(e) => setForm({ ...form, aktif: e.target.checked })}
-              />
-              Buka order
-            </label>
-          </div>
-
-          {form.is_hari_h && (
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-sm font-medium">Kuota</label>
-                <input
-                  type="number"
-                  min={1}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
-                  value={form.kuota}
-                  onChange={(e) => setForm({ ...form, kuota: Number(e.target.value) })}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">Tutup Penjualan</label>
-                <input
-                  type="datetime-local"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
-                  value={form.selesai_jual}
-                  onChange={(e) => setForm({ ...form, selesai_jual: e.target.value })}
-                />
-              </div>
-            </div>
-          )}
-
-          <div className="mt-4 flex justify-end gap-2">
-            <button
-              onClick={() => {
-                setShowForm(false)
-                setForm(emptyForm())
-              }}
-              className="rounded-xl px-4 py-2 text-sm text-slate-600 hover:bg-slate-100"
-            >
-              Batal
-            </button>
-            <button onClick={simpan} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm text-white">
-              Simpan
-            </button>
-          </div>
-        </div>
-      )}
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
         <table className="w-full text-sm">
@@ -407,9 +215,9 @@ export default function TahapPage() {
                 </td>
                 <td className="px-3 py-2">
                   <div className="flex flex-wrap gap-2">
-                    <button onClick={() => openEdit(t)} className="text-indigo-600 hover:underline">
+                    <Link href={`/dankelola/ticket/tipe/${t.id}/edit`} className="text-indigo-600 hover:underline">
                       Edit
-                    </button>
+                    </Link>
                     <button onClick={() => toggle(t)} className="text-slate-600 hover:underline">
                       {t.aktif ? 'Tutup' : 'Buka'}
                     </button>

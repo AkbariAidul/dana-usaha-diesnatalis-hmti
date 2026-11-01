@@ -9,33 +9,12 @@ import { PageSkeleton } from '../../ui'
 import type { TicketKatalogItem, TicketPeriode } from '@/lib/types'
 import { formatRupiah, todayISO } from '@/lib/utils'
 
-type FormState = {
-  id?: string
-  tiket_tipe_id: string
-  nama: string
-  tanggal_mulai: string
-  tanggal_selesai: string
-  harga: number
-}
-
-function emptyForm(tiketTipeId = ''): FormState {
-  return {
-    tiket_tipe_id: tiketTipeId,
-    nama: '',
-    tanggal_mulai: '',
-    tanggal_selesai: '',
-    harga: 0,
-  }
-}
-
 export default function PeriodePage() {
   const [tiket, setTiket] = useState<TicketKatalogItem[]>([])
   const [periode, setPeriode] = useState<TicketPeriode[]>([])
   const [selectedTipe, setSelectedTipe] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState<FormState>(emptyForm())
 
   const load = useCallback(async () => {
     const [t, p] = await Promise.all([
@@ -57,59 +36,6 @@ export default function PeriodePage() {
       .finally(() => setLoading(false))
   }, [load])
   useLiveRefresh(load)
-
-  function openCreate() {
-    if (!selectedTipe) {
-      toast.error('Buat tipe tiket terlebih dahulu')
-      return
-    }
-    setForm(emptyForm(selectedTipe))
-    setShowForm(true)
-  }
-
-  function openEdit(p: TicketPeriode) {
-    setForm({
-      id: p.id,
-      tiket_tipe_id: p.tiket_tipe_id,
-      nama: p.nama ?? '',
-      tanggal_mulai: p.tanggal_mulai,
-      tanggal_selesai: p.tanggal_selesai,
-      harga: Number(p.harga),
-    })
-    setShowForm(true)
-  }
-
-  async function simpan() {
-    if (!form.tiket_tipe_id) {
-      toast.error('Pilih tipe tiket')
-      return
-    }
-    if (!form.tanggal_mulai || !form.tanggal_selesai) {
-      toast.error('Tanggal mulai dan selesai wajib diisi')
-      return
-    }
-    if (form.tanggal_selesai < form.tanggal_mulai) {
-      toast.error('Tanggal selesai harus setelah tanggal mulai')
-      return
-    }
-    if (!form.harga || form.harga < 0) {
-      toast.error('Harga harus diisi')
-      return
-    }
-    try {
-      await sendJSON('/api/ticket/periode', 'POST', {
-        ...form,
-        nama: form.nama.trim() || null,
-        harga: Number(form.harga),
-      })
-      toast.success(form.id ? 'Periode diperbarui' : 'Periode ditambahkan')
-      setForm(emptyForm(selectedTipe))
-      setShowForm(false)
-      await load()
-    } catch (e) {
-      toast.error((e as Error).message)
-    }
-  }
 
   async function hapus(p: TicketPeriode) {
     if (!window.confirm('Hapus periode harga ini?')) return
@@ -154,9 +80,12 @@ export default function PeriodePage() {
           >
             Tipe & Harga
           </Link>
-          <button onClick={openCreate} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white">
+          <Link
+            href="/dankelola/ticket/periode/new"
+            className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white"
+          >
             + Tambah Periode
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -165,11 +94,7 @@ export default function PeriodePage() {
         <select
           className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm md:w-80"
           value={selectedTipe}
-          onChange={(e) => {
-            setSelectedTipe(e.target.value)
-            setForm(emptyForm(e.target.value))
-            setShowForm(false)
-          }}
+          onChange={(e) => setSelectedTipe(e.target.value)}
         >
           {tiket.length === 0 && <option value="">Belum ada tipe tiket</option>}
           {tiket.map((t) => (
@@ -185,65 +110,6 @@ export default function PeriodePage() {
           </p>
         )}
       </div>
-
-      {showForm && (
-        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-          <h2 className="mb-4 font-semibold">{form.id ? 'Edit Periode' : 'Tambah Periode'}</h2>
-          <div className="grid gap-3 md:grid-cols-4">
-            <div>
-              <label className="mb-1 block text-sm font-medium">Nama (opsional)</label>
-              <input
-                placeholder="Contoh: Early Bird"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
-                value={form.nama}
-                onChange={(e) => setForm({ ...form, nama: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Mulai</label>
-              <input
-                type="date"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
-                value={form.tanggal_mulai}
-                onChange={(e) => setForm({ ...form, tanggal_mulai: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Selesai</label>
-              <input
-                type="date"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
-                value={form.tanggal_selesai}
-                onChange={(e) => setForm({ ...form, tanggal_selesai: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Harga</label>
-              <input
-                type="number"
-                min={0}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
-                value={form.harga || ''}
-                onChange={(e) => setForm({ ...form, harga: Number(e.target.value) })}
-              />
-            </div>
-          </div>
-          <div className="mt-4 flex justify-end gap-2">
-            <button
-              onClick={() => {
-                setShowForm(false)
-                setForm(emptyForm(selectedTipe))
-              }}
-              className="rounded-xl px-4 py-2 text-sm text-slate-600 hover:bg-slate-100"
-            >
-              Batal
-            </button>
-            <button onClick={simpan} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm text-white">
-              Simpan
-            </button>
-          </div>
-        </div>
-      )}
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
         <table className="w-full text-sm">
@@ -285,9 +151,12 @@ export default function PeriodePage() {
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex gap-2">
-                      <button onClick={() => openEdit(p)} className="text-indigo-600 hover:underline">
+                      <Link
+                        href={`/dankelola/ticket/periode/${p.id}/edit`}
+                        className="text-indigo-600 hover:underline"
+                      >
                         Edit
-                      </button>
+                      </Link>
                       <button onClick={() => hapus(p)} className="text-red-600 hover:underline">
                         Hapus
                       </button>

@@ -39,6 +39,16 @@ function getBreadcrumbs(pathname: string) {
   if (active && active.href !== '/dankelola') {
     breadcrumbs.push({ label: active.label, href: active.href })
   }
+
+  // Dynamic sub-routes that extend active menu items
+  if (pathname.startsWith('/dankelola/ticket/tipe/')) {
+    const action = pathname === '/dankelola/ticket/tipe/new' ? 'Tambah' : 'Edit'
+    breadcrumbs.push({ label: action, href: pathname })
+  } else if (pathname.startsWith('/dankelola/ticket/periode/')) {
+    const action = pathname === '/dankelola/ticket/periode/new' ? 'Tambah' : 'Edit'
+    breadcrumbs.push({ label: action, href: pathname })
+  }
+
   return breadcrumbs
 }
 
