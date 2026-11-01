@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { Tent, Shirt, Ticket, QrCode } from 'lucide-react'
+import { Tent, Shirt, Ticket } from 'lucide-react'
 
 export default function Home() {
   return (
@@ -12,6 +12,7 @@ export default function Home() {
             <h1 className="text-lg font-semibold text-slate-900">Dana Usaha HMTI</h1>
           </div>
           <nav className="hidden md:flex items-center gap-2 text-sm">
+            <Link href="/lacak" className="rounded-xl px-3 py-2 text-slate-600 hover:bg-slate-100">Lacak Pesanan</Link>
             <Link href="/tenant-info" className="rounded-xl px-3 py-2 text-slate-600 hover:bg-slate-100">Info Tenant</Link>
             <Link href="/merchandise" className="rounded-xl px-3 py-2 text-slate-600 hover:bg-slate-100">Merchandise</Link>
             <Link href="/ticket" className="rounded-xl px-3 py-2 text-slate-600 hover:bg-slate-100">Ticket</Link>

@@ -1,45 +1,81 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
 import { PageSkeleton } from '../../ui'
+import { formatDate, formatRupiah } from '@/lib/utils'
+
+type Item = {
+  id: string
+  ukuran: string | null
+  qty: number
+  subtotal: number
+  varian: { nama: string } | null
+}
 
 type PreOrder = {
   id: string
+  no_po: string
   nama_pemesan: string
   kontak: string
-  produk: string
-  qty: number
-  size: string
+  tipe_pemesan: string
   total: number
-  status: 'menunggu' | 'dikonfirmasi' | 'diproduksi' | 'selesai' | 'dibatalkan'
-  catatan: string | null
+  sudah_dibayar: number
+  status: string
+  bukti_url: string | null
+  catatan_admin: string | null
+  picked_up_at: string | null
   created_at: string
+  pengurus: { nama: string; divisi: string | null } | null
+  items: Item[]
 }
 
 export default function PreorderPage() {
   const [items, setItems] = useState<PreOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [harga, setHarga] = useState(75000)
+  const [savingHarga, setSavingHarga] = useState(false)
 
-  useEffect(() => {
-    getJSON<PreOrder[]>('/api/merchandise/preorder')
-      .then(setItems)
-      .catch((e) => {
-        console.error('Failed to load preorder:', e)
-        setError('Gagal memuat data pre-order')
-      })
-      .finally(() => setLoading(false))
-  }, [])
-
-  async function updateStatus(id: string, status: PreOrder['status']) {
+  async function load() {
     try {
-      await sendJSON(`/api/merchandise/preorder/${id}`, 'PATCH', { status })
-      toast.success(`Status diubah ke ${status}`)
-      const res = await getJSON<PreOrder[]>('/api/merchandise/preorder')
-      setItems(res)
+      const [list, setting] = await Promise.all([
+        getJSON<PreOrder[]>('/api/merchandise/preorder'),
+        getJSON<{ harga: number }>('/api/pengaturan/po'),
+      ])
+      setItems(list)
+      setHarga(setting.harga)
+      setError(null)
+    } catch (e) {
+      setError('Gagal memuat data pre-order')
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { load() }, [])
+
+  async function updateStatus(id: string, status: string) {
+    try {
+      await sendJSON('/api/merchandise/preorder', 'PATCH', { id, status })
+      toast.success(`Status diubah ke ${status.replace(/_/g, ' ')}`)
+      await load()
     } catch (e) { toast.error((e as Error).message) }
+  }
+
+  async function simpanHarga() {
+    setSavingHarga(true)
+    try {
+      await sendJSON('/api/pengaturan/po', 'PATCH', { harga })
+      toast.success('Harga PO disimpan')
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setSavingHarga(false)
+    }
   }
 
   if (loading) return <PageSkeleton />
@@ -53,43 +89,60 @@ export default function PreorderPage() {
     </div>
   )
 
-  const menunggu = items.filter(i => i.status === 'menunggu').length
-  const dikonfirmasi = items.filter(i => i.status === 'dikonfirmasi').length
-  const diproduksi = items.filter(i => i.status === 'diproduksi').length
-  const selesai = items.filter(i => i.status === 'selesai').length
+  const menunggu = items.filter((i) => i.status === 'menunggu_verifikasi').length
+  const dp = items.filter((i) => i.status === 'dp_diterima').length
+  const lunas = items.filter((i) => i.status === 'lunas').length
+  const diambil = items.filter((i) => i.picked_up_at).length
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Pre-Order</h1>
-
-      <div className="grid grid-cols-4 gap-4">
-        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-          <p className="text-sm text-slate-500">Menunggu</p>
-          <p className="text-3xl font-bold text-yellow-600">{menunggu}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-          <p className="text-sm text-slate-500">Dikonfirmasi</p>
-          <p className="text-3xl font-bold text-blue-600">{dikonfirmasi}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-          <p className="text-sm text-slate-500">Diproduksi</p>
-          <p className="text-3xl font-bold text-purple-600">{diproduksi}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-          <p className="text-sm text-slate-500">Selesai</p>
-          <p className="text-3xl font-bold text-green-600">{selesai}</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Pre-Order</h1>
+        <div className="flex gap-2">
+          <Link href="/dankelola/merchandise/pengurus" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">Data Pengurus</Link>
+          <Link href="/dankelola/scan" className="rounded-xl bg-indigo-600 px-3 py-2 text-sm font-medium text-white">Scan Pickup</Link>
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
+      <div className="flex flex-wrap items-end gap-2 rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-500">Harga PO per item</label>
+          <input type="number" min={1} value={harga} onChange={(e) => setHarga(Number(e.target.value))} className="w-40 rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+        </div>
+        <button onClick={simpanHarga} disabled={savingHarga} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+          {savingHarga ? 'Menyimpan...' : 'Simpan Harga'}
+        </button>
+        <p className="text-xs text-slate-400">Berlaku untuk pesanan PO publik berikutnya.</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+          <p className="text-sm text-slate-500">Menunggu</p>
+          <p className="text-3xl font-bold text-yellow-600">{menunggu}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+          <p className="text-sm text-slate-500">DP Diterima</p>
+          <p className="text-3xl font-bold text-blue-600">{dp}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+          <p className="text-sm text-slate-500">Lunas</p>
+          <p className="text-3xl font-bold text-green-600">{lunas}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+          <p className="text-sm text-slate-500">Sudah Diambil</p>
+          <p className="text-3xl font-bold text-violet-600">{diambil}</p>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto rounded-2xl border border-slate-200/70 bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left">
             <tr>
+              <th className="px-3 py-2">No. PO</th>
               <th className="px-3 py-2">Pemesan</th>
-              <th className="px-3 py-2">Produk</th>
-              <th className="px-3 py-2">Qty</th>
-              <th className="px-3 py-2">Ukuran</th>
+              <th className="px-3 py-2">Item</th>
               <th className="px-3 py-2">Total</th>
+              <th className="px-3 py-2">Bukti</th>
               <th className="px-3 py-2">Status</th>
               <th className="px-3 py-2">Aksi</th>
             </tr>
@@ -98,34 +151,44 @@ export default function PreorderPage() {
             {items.length === 0 && <tr><td colSpan={7} className="px-3 py-6 text-center text-slate-400">Belum ada pre-order.</td></tr>}
             {items.map((item) => (
               <tr key={item.id} className="hover:bg-slate-50">
+                <td className="px-3 py-2 font-mono text-xs">{item.no_po}</td>
                 <td className="px-3 py-2">
                   <div className="font-medium">{item.nama_pemesan}</div>
-                  <div className="text-xs text-slate-500">{item.kontak}</div>
+                  <div className="text-xs text-slate-500">{item.tipe_pemesan} · {item.kontak}</div>
+                  {item.pengurus && <div className="text-xs text-slate-400">{item.pengurus.divisi || '-'}</div>}
                 </td>
-                <td className="px-3 py-2">{item.produk}</td>
-                <td className="px-3 py-2">{item.qty}</td>
-                <td className="px-3 py-2">{item.size}</td>
-                <td className="px-3 py-2 font-medium">{item.total.toLocaleString('id-ID')}</td>
                 <td className="px-3 py-2">
-                  <span className={`px-2 py-0.5 rounded text-xs ${
-                    item.status === 'menunggu' ? 'bg-yellow-100 text-yellow-800' :
-                    item.status === 'dikonfirmasi' ? 'bg-blue-100 text-blue-800' :
-                    item.status === 'diproduksi' ? 'bg-purple-100 text-purple-800' :
-                    item.status === 'selesai' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  {item.items?.map((i) => (
+                    <div key={i.id} className="text-xs">{i.varian?.nama || i.ukuran || 'Item'} × {i.qty}</div>
+                  ))}
+                </td>
+                <td className="px-3 py-2 font-medium">{formatRupiah(Number(item.total))}</td>
+                <td className="px-3 py-2">
+                  {item.bukti_url ? <a href={item.bukti_url} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-600 hover:underline">Lihat</a> : '-'}
+                </td>
+                <td className="px-3 py-2">
+                  <span className={`rounded px-2 py-0.5 text-xs ${
+                    item.status === 'menunggu_verifikasi' ? 'bg-yellow-100 text-yellow-800' :
+                    item.status === 'dp_diterima' ? 'bg-blue-100 text-blue-800' :
+                    item.status === 'lunas' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                   }`}>
-                    {item.status}
+                    {item.status.replace(/_/g, ' ')}
                   </span>
+                  {item.picked_up_at && <div className="mt-1 text-xs text-green-700">Diambil {formatDate(item.picked_up_at)}</div>}
                 </td>
                 <td className="px-3 py-2">
-                  {item.status === 'menunggu' && (
-                    <button onClick={() => updateStatus(item.id, 'dikonfirmasi')} className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700">Konfirmasi</button>
-                  )}
-                  {item.status === 'dikonfirmasi' && (
-                    <button onClick={() => updateStatus(item.id, 'diproduksi')} className="text-xs bg-purple-600 text-white px-2 py-1 rounded hover:bg-purple-700">Proses</button>
-                  )}
-                  {item.status === 'diproduksi' && (
-                    <button onClick={() => updateStatus(item.id, 'selesai')} className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700">Selesai</button>
-                  )}
+                  <div className="flex flex-wrap gap-1">
+                    {item.status === 'menunggu_verifikasi' && (
+                      <>
+                        <button onClick={() => updateStatus(item.id, 'lunas')} className="rounded bg-green-600 px-2 py-1 text-xs text-white">Lunas</button>
+                        <button onClick={() => updateStatus(item.id, 'dp_diterima')} className="rounded bg-blue-600 px-2 py-1 text-xs text-white">DP 25%</button>
+                        <button onClick={() => updateStatus(item.id, 'ditolak')} className="rounded bg-red-600 px-2 py-1 text-xs text-white">Tolak</button>
+                      </>
+                    )}
+                    {item.status === 'dp_diterima' && (
+                      <button onClick={() => updateStatus(item.id, 'lunas')} className="rounded bg-green-600 px-2 py-1 text-xs text-white">Tandai Lunas</button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import Link from 'next/link'
 import type { Tenant, Pembayaran } from '@/lib/types'
 import { formatRupiah, formatDate } from '@/lib/utils'
-import { getJSON } from '../../../api'
+import { getJSON, sendJSON } from '../../../api'
 import { PageSkeleton } from '../../ui'
 
 export default function PembayaranPage() {
@@ -28,6 +28,19 @@ export default function PembayaranPage() {
   }, [])
 
   const tenantMap = Object.fromEntries(tenants.map(t => [t.id, t]))
+
+  async function verifikasi(id: string, action: 'approve' | 'reject') {
+    try {
+      await sendJSON(`/api/pembayaran/${id}`, 'PATCH', { action })
+      toast.success(action === 'approve' ? 'Pembayaran diverifikasi' : 'Pembayaran ditolak')
+      const [p, t] = await Promise.all([
+        getJSON<Pembayaran[]>('/api/pembayaran'),
+        getJSON<Tenant[]>('/api/tenants'),
+      ])
+      setPembayaran(p)
+      setTenants(t)
+    } catch (e) { toast.error((e as Error).message) }
+  }
 
   if (loading) return <PageSkeleton />
   if (error) return (
@@ -73,10 +86,11 @@ export default function PembayaranPage() {
               <th className="px-3 py-2">Nominal</th>
               <th className="px-3 py-2">Metode</th>
               <th className="px-3 py-2">Status</th>
+              <th className="px-3 py-2">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100/80">
-            {pembayaran.length === 0 && <tr><td colSpan={6} className="px-3 py-6 text-center text-slate-400">Belum ada pembayaran.</td></tr>}
+            {pembayaran.length === 0 && <tr><td colSpan={7} className="px-3 py-6 text-center text-slate-400">Belum ada pembayaran.</td></tr>}
             {pembayaran.map((p) => (
               <tr key={p.id} className="hover:bg-slate-50">
                 <td className="px-3 py-2 text-slate-500">{formatDate(p.tanggal_bayar)}</td>
@@ -92,6 +106,15 @@ export default function PembayaranPage() {
                   {p.validated
                     ? <span className="text-green-600 text-xs">Terverifikasi ✓</span>
                     : <span className="text-orange-600 text-xs">Menunggu</span>}
+                </td>
+                <td className="px-3 py-2">
+                  {!p.validated && (
+                    <div className="flex gap-1">
+                      <button onClick={() => verifikasi(p.id, 'approve')} className="rounded bg-green-600 px-2 py-1 text-xs text-white">Setujui</button>
+                      <button onClick={() => verifikasi(p.id, 'reject')} className="rounded bg-red-600 px-2 py-1 text-xs text-white">Tolak</button>
+                    </div>
+                  )}
+                  {p.bukti_url && <a href={p.bukti_url} target="_blank" rel="noopener noreferrer" className="ml-1 text-xs text-indigo-600 hover:underline">Bukti</a>}
                 </td>
               </tr>
             ))}

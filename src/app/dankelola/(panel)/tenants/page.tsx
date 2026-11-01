@@ -104,6 +104,7 @@ export default function TenantsPage() {
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Tenant</h1>
         <div className="flex gap-2">
+          <Link href="/dankelola/tenants/verifikasi" className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">Verifikasi</Link>
           <input placeholder="Cari nama / kode" value={q} onChange={(e) => setQ(e.target.value)} className="rounded-xl border border-slate-200 px-3 py-2.5 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 text-sm" />
           <button onClick={() => setShowForm(!showForm)} className="bg-indigo-600 text-white px-6 py-2.5.5 rounded-xl font-medium transition-all hover:bg-indigo-700 hover:shadow-sm hover:shadow-indigo-600/20 text-sm hover:bg-indigo-700">
             {showForm ? 'Tutup' : '+ Tambah'}

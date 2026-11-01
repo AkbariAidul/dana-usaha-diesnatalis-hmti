@@ -53,34 +53,42 @@ export async function POST(request: Request) {
 
     if (error) throw error
 
-    // If approved, create ticket issued
+    // If approved, create ticket issued (idempotent)
     if (status === 'lunas') {
-      // Get the ticket tipe to generate QR
-      const { data: tipeData } = await supabaseAdmin
-        .from('tiket_tipe')
-        .select('kuota')
-        .eq('id', data.tiket_tipe_id)
-        .single()
+      const { data: existing } = await supabaseAdmin
+        .from('tiket_issued')
+        .select('id')
+        .eq('pesanan_id', id)
+        .limit(1)
 
-      // Update kuota
-      if (tipeData) {
-        await supabaseAdmin
+      if (!existing?.length) {
+        // Get the ticket tipe to generate QR
+        const { data: tipeData } = await supabaseAdmin
           .from('tiket_tipe')
-           .update({ terjual: (((tipeData as Record<string, unknown>).terjual as number) || 0) + data.jumlah })
+          .select('kuota,terjual')
           .eq('id', data.tiket_tipe_id)
-      }
+          .single()
 
-      // Generate QR codes for each ticket
-      for (let i = 0; i < data.jumlah; i++) {
-        const kodeTampil = `DN2026-${String(Date.now()).slice(-6)}-${String(i + 1).padStart(3, '0')}`
-        const kodeQr = Buffer.from(`${id}-${i}-${Date.now()}`).toString('hex')
-        
-        await supabaseAdmin.from('tiket_issued').insert({
-          pesanan_id: id,
-          kode_qr: kodeQr,
-          kode_tampil: kodeTampil,
-          status: 'belum_divalidasi',
-        })
+        // Update kuota
+        if (tipeData) {
+          await supabaseAdmin
+            .from('tiket_tipe')
+            .update({ terjual: Number(tipeData.terjual ?? 0) + Number(data.jumlah) })
+            .eq('id', data.tiket_tipe_id)
+        }
+
+        // Generate QR codes for each ticket
+        for (let i = 0; i < data.jumlah; i++) {
+          const kodeTampil = `DN2026-${String(Date.now()).slice(-6)}-${String(i + 1).padStart(3, '0')}`
+          const kodeQr = crypto.randomUUID().replace(/-/g, '')
+          
+          await supabaseAdmin.from('tiket_issued').insert({
+            pesanan_id: id,
+            kode_qr: kodeQr,
+            kode_tampil: kodeTampil,
+            status: 'belum_divalidasi',
+          })
+        }
       }
     }
 

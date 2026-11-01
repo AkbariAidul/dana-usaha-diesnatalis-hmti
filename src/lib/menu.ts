@@ -15,6 +15,7 @@ import {
   Gift,
   Wallet,
   CheckSquare,
+  QrCode,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -39,11 +40,18 @@ export const menuConfig: MenuGroup[] = [
     href: '/dankelola',
   },
   {
+    key: 'scan',
+    label: 'Scan QR',
+    icon: QrCode,
+    href: '/dankelola/scan',
+  },
+  {
     key: 'tenant',
     label: 'TENANT',
     icon: Users,
     children: [
       { label: 'Data Tenant', href: '/dankelola/tenants' },
+      { label: 'Verifikasi Tenant', href: '/dankelola/tenants/verifikasi' },
       { label: 'Pembayaran', href: '/dankelola/tenants/pembayaran' },
       { label: 'Paket & Harga', href: '/dankelola/tenants/harga' },
       { label: 'Sewa Vendor', href: '/dankelola/tenants/peralatan' },
@@ -56,6 +64,7 @@ export const menuConfig: MenuGroup[] = [
     icon: ShoppingCart,
     children: [
       { label: 'Produk & Harga', href: '/dankelola/merchandise/produk' },
+      { label: 'Data Pengurus', href: '/dankelola/merchandise/pengurus' },
       { label: 'Pre-Order', href: '/dankelola/merchandise/preorder' },
       { label: 'Produksi & Stok', href: '/dankelola/merchandise/stok' },
       { label: 'Penjualan Hari H', href: '/dankelola/merchandise/kasir' },

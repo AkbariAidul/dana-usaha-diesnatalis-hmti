@@ -3,6 +3,20 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { getPeriodeHarga, getHargaDasar, getFaktorHarga, getAcara } from '@/lib/queries'
 import { hitungHarga, periodeDariTanggal } from '@/lib/types'
 import { todayISO } from '@/lib/utils'
+import { signRef } from '@/lib/link-token'
+
+export async function GET() {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('pendaftaran_tenant_pub')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    return NextResponse.json(data ?? [])
+  } catch (err: unknown) {
+    return NextResponse.json({ error: String(err) }, { status: 500 })
+  }
+}
 
 export async function POST(request: Request) {
   try {
@@ -47,7 +61,7 @@ export async function POST(request: Request) {
     }
     const { data, error } = await supabaseAdmin.from('pendaftaran_tenant_pub').insert(payload).select().single()
     if (error) throw error
-    return NextResponse.json(data, { status: 201 })
+    return NextResponse.json({ ...data, t: signRef('tenant', data.kode_pendaftaran) }, { status: 201 })
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })
   }

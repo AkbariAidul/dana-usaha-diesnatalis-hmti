@@ -44,7 +44,7 @@ export default function CheckinPage() {
       return
     }
     try {
-      await sendJSON(`/api/ticket/checkin/${found.id}`, 'POST', { dicatat_oleh: 'Admin' })
+      await sendJSON('/api/ticket/checkin', 'POST', { id: found.id, dicatat_oleh: 'Admin' })
       toast.success('Check-in berhasil')
       const res = await getJSON<TiketIssued[]>('/api/ticket/checkin')
       setTikets(res)
@@ -68,7 +68,10 @@ export default function CheckinPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Check-in</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Check-in</h1>
+        <a href="/dankelola/scan" className="rounded-xl bg-indigo-600 px-3 py-2 text-sm font-medium text-white">Buka Scanner Kamera</a>
+      </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">

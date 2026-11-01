@@ -207,9 +207,11 @@ export async function deleteTenant(id: string) {
 
 export async function syncTenantPaymentStatus(tenantId: string) {
   const { data: payments } = await supabaseAdmin
-    .from('pembayaran').select('nominal').eq('tenant_id', tenantId)
+    .from('pembayaran').select('nominal,validated').eq('tenant_id', tenantId)
 
-  const total = (payments ?? []).reduce((s: number, p: { nominal: number }) => s + p.nominal, 0)
+  const total = (payments ?? [])
+    .filter((p: { validated: boolean }) => p.validated)
+    .reduce((s: number, p: { nominal: number }) => s + Number(p.nominal), 0)
 
   const { data: tenant } = await supabaseAdmin
     .from('tenants').select('harga_akhir, dp_wajib, tgl_acara, status')
@@ -218,11 +220,11 @@ export async function syncTenantPaymentStatus(tenantId: string) {
   if (!tenant) return
 
   let newStatus: string
-  if (total >= tenant.harga_akhir) {
+  if (total >= Number(tenant.harga_akhir)) {
     newStatus = 'lunas'
-  } else if (tenant.tgl_acara && new Date() > new Date(tenant.tgl_acara) && total < tenant.harga_akhir) {
+  } else if (tenant.tgl_acara && new Date() > new Date(tenant.tgl_acara) && total < Number(tenant.harga_akhir)) {
     newStatus = 'menunggak'
-  } else if (total >= tenant.dp_wajib) {
+  } else if (total > Number(tenant.dp_wajib)) {
     newStatus = 'cicil'
   } else if (total > 0) {
     newStatus = 'dp'
@@ -258,7 +260,7 @@ export async function createPembayaran(payload: Omit<Pembayaran, 'id' | 'no_tran
     .from('pembayaran').insert({ ...payload, no_transaksi: no }).select().single()
   if (error) throw error
 
-  await syncTenantPaymentStatus(payload.tenant_id)
+  if (payload.validated) await syncTenantPaymentStatus(payload.tenant_id)
   return data
 }
 

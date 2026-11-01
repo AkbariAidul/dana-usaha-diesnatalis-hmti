@@ -20,7 +20,7 @@ export default function DaftarTenantPublik() {
     nama_usaha: '', kontak: '', email: '', alamat: '', deskripsi_usaha: '',
     kategori_sewa_id: '', jenis_usaha: 'F&B', asal: 'Internal Kampus', lokasi: 'Reguler',
   })
-  const [pendaftaran, setPendaftaran] = useState<{ id: string; kode_pendaftaran: string; nama_usaha: string; kontak: string; harga_akhir: number; dp_wajib: number } | null>(null)
+  const [pendaftaran, setPendaftaran] = useState<{ id: string; kode_pendaftaran: string; nama_usaha: string; kontak: string; harga_akhir: number; dp_wajib: number; t?: string } | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [qr, setQr] = useState('')
@@ -189,10 +189,16 @@ export default function DaftarTenantPublik() {
         )}
 
         {step===3 && (
-          <div className="rounded-2xl border border-slate-200/70 bg-white p-10 text-center shadow-sm shadow-slate-200/40 space-y-2">
+          <div className="rounded-2xl border border-slate-200/70 bg-white p-10 text-center shadow-sm shadow-slate-200/40 space-y-3">
             <h2 className="text-xl font-semibold text-slate-900">Bukti Terkirim</h2>
-            <p className="text-slate-500">Pendaftaran kamu sedang menunggu verifikasi oleh panitia Dana Usaha.</p>
-            <Link href="/" className="inline-flex mt-4 text-sm font-medium text-indigo-600">Kembali ke Beranda</Link>
+            <p className="text-slate-500">Pendaftaran kamu sedang menunggu verifikasi oleh panitia Dana Usaha. Simpan link berikut untuk melihat riwayat pembayaran dan QR masuk venue.</p>
+            {pendaftaran?.t && (
+              <Link href={`/lacak/${pendaftaran.kode_pendaftaran}?t=${encodeURIComponent(pendaftaran.t)}`} className="inline-flex rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white">
+                Buka Riwayat Tenant
+              </Link>
+            )}
+            <p className="text-xs text-slate-400">Kode: {pendaftaran?.kode_pendaftaran}</p>
+            <Link href="/" className="inline-flex text-sm font-medium text-indigo-600">Kembali ke Beranda</Link>
           </div>
         )}
       </main>

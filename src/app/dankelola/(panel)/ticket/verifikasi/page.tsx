@@ -42,7 +42,8 @@ export default function VerifikasiTiketPage() {
   async function handleVerifikasi(id: string, status: 'lunas' | 'ditolak') {
     if (!id) return
     try {
-      await sendJSON(`/api/ticket/verification/${id}`, 'POST', {
+      await sendJSON('/api/ticket/verification', 'POST', {
+        id,
         status,
         catatan_admin: catatan || null,
       })

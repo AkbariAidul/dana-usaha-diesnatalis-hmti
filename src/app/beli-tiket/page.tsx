@@ -10,7 +10,7 @@ export default function BeliTiketPublik() {
   const [katalog, setKatalog] = useState<{ tiket: Array<{ id: string; nama: string; harga: number; deskripsi?: string; kuota: number; terjual: number }>; varian: Array<Record<string, unknown>> }>({ tiket: [], varian: [] })
   const [qris, setQris] = useState<Record<string, string>>({})
   const [form, setForm] = useState({ tiket_tipe_id: '', nama_pembeli: '', kontak: '', email: '', jumlah: 1 })
-  const [pesanan, setPesanan] = useState<{ id: string; no_pesanan?: string; nama_pembeli?: string; jumlah?: number; total?: number } | null>(null)
+  const [pesanan, setPesanan] = useState<{ id: string; no_pesanan?: string; nama_pembeli?: string; jumlah?: number; total?: number; t?: string } | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [qr, setQr] = useState('')
@@ -27,7 +27,7 @@ export default function BeliTiketPublik() {
   async function beli() {
     try {
       const res = await sendJSON('/api/public/tiket', 'POST', { ...form, jumlah: Number(form.jumlah) })
-      setPesanan(res as { id: string; no_pesanan?: string; nama_pembeli?: string; jumlah?: number; total?: number })
+      setPesanan(res as { id: string; no_pesanan?: string; nama_pembeli?: string; jumlah?: number; total?: number; t?: string })
       setStep(2)
       toast.success('Pesanan dibuat, silakan bayar')
     } catch(e: unknown){ toast.error((e as Error).message) }
@@ -116,10 +116,16 @@ export default function BeliTiketPublik() {
           </div>
         )}
         {step===3 && (
-          <div className="rounded-2xl border border-slate-200/70 bg-white p-10 text-center shadow-sm shadow-slate-200/40 space-y-2">
+          <div className="rounded-2xl border border-slate-200/70 bg-white p-10 text-center shadow-sm shadow-slate-200/40 space-y-3">
             <h2 className="text-xl font-semibold text-slate-900">Menunggu Verifikasi</h2>
-            <p className="text-slate-500">Setelah diverifikasi, QR tiket akan muncul. Tunjukkan QR saat check-in di pintu masuk.</p>
-            <Link href="/" className="inline-flex mt-4 text-sm font-medium text-indigo-600">Kembali ke Beranda</Link>
+            <p className="text-slate-500">Setelah diverifikasi, QR tiket akan muncul. Simpan link berikut untuk melihat status dan QR.</p>
+            {pesanan?.no_pesanan && pesanan.t && (
+              <Link href={`/lacak/${pesanan.no_pesanan}?t=${encodeURIComponent(pesanan.t)}`} className="inline-flex rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white">
+                Buka Riwayat Tiket
+              </Link>
+            )}
+            <p className="text-xs text-slate-400">No. Pesanan: {pesanan?.no_pesanan}</p>
+            <Link href="/" className="inline-flex text-sm font-medium text-indigo-600">Kembali ke Beranda</Link>
           </div>
         )}
       </main>

@@ -17,6 +17,9 @@
 /.next/
 /out/
 
+# local uploads (production uses Supabase Storage)
+/public/uploads/
+
 # production
 /build
 

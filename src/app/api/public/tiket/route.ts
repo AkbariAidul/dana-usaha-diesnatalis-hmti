@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { signRef } from '@/lib/link-token'
 
 export async function POST(request: Request) {
   try {
@@ -14,6 +15,6 @@ export async function POST(request: Request) {
     const no = `TK-${String(max+1).padStart(4,'0')}`
     const { data, error } = await supabaseAdmin.from('pesanan_tiket').insert({ no_pesanan:no, nama_pembeli:body.nama_pembeli, kontak:body.kontak, email:body.email||null, tiket_tipe_id:body.tiket_tipe_id, jumlah, harga_satuan:harga, total, status:'menunggu_verifikasi' }).select().single()
     if (error) throw error
-    return NextResponse.json(data,{status:201})
+    return NextResponse.json({ ...data, t: signRef('tiket', data.no_pesanan) }, { status: 201 })
   } catch(err:unknown){ return NextResponse.json({error:String(err)},{status:500}) }
 }

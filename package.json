@@ -6,7 +6,9 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed:demo": "node --env-file=.env.local scripts/seed-demo.mjs",
+    "seed:demo:clean": "node --env-file=.env.local scripts/seed-demo.mjs --cleanup"
   },
   "dependencies": {
     "@hookform/resolvers": "^6.0.2",
