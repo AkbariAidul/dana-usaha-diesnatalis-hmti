@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { sendJSON } from '../../../../api'
 import { getJSON } from '../../../../api'
 import { ChevronLeft } from 'lucide-react'
-import type { TicketKatalogItem, TicketPeriode } from '@/lib/types'
+import type { TicketKatalogItem } from '@/lib/types'
 import { formatRupiah } from '@/lib/utils'
 
 export default function PeriodeCreatePage() {
