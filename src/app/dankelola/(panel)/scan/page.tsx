@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 import { QrCode } from 'lucide-react'
 import { QrScanner } from '@/components/qr-scanner'
+import { beep } from '@/lib/beep'
 import { formatRupiah } from '@/lib/utils'
 
 type TenantResult = {
@@ -58,6 +59,7 @@ export default function ScanPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'QR tidak valid')
       setResult(data)
+      beep()
       if (action === 'confirm') toast.success('Berhasil dikonfirmasi')
     } catch (e) {
       toast.error((e as Error).message)

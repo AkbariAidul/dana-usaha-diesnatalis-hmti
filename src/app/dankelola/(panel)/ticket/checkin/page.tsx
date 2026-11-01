@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
+import { beep } from '@/lib/beep'
 import { PageSkeleton } from '../../ui'
 
 type TiketIssued = {
@@ -45,6 +46,7 @@ export default function CheckinPage() {
     }
     try {
       await sendJSON('/api/ticket/checkin', 'POST', { id: found.id, dicatat_oleh: 'Admin' })
+      beep()
       toast.success('Check-in berhasil')
       const res = await getJSON<TiketIssued[]>('/api/ticket/checkin')
       setTikets(res)
