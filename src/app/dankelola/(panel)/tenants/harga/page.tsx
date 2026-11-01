@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
+import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
 import type { KategoriSewa, HargaDasar, FaktorHarga, PeriodeHarga, Peralatan, KomposisiPeralatan } from '@/lib/types'
 import { periodeDariTanggal } from '@/lib/types'
@@ -32,12 +33,25 @@ export default function HargaPage() {
   const [savingKomposisi, setSavingKomposisi] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function load() {
+  const dirty =
+    Object.keys(edits).length > 0 ||
+    Object.keys(komposisiEdits).length > 0 ||
+    showPeriodForm ||
+    saving ||
+    savingKomposisi
+  const dirtyRef = useRef(false)
+
+  useEffect(() => {
+    dirtyRef.current = dirty
+  }, [dirty])
+
+  const load = useCallback(async (force = false) => {
     const [m, items, komp] = await Promise.all([
       getJSON<Master>('/api/master'),
       getJSON<Peralatan[]>('/api/peralatan'),
       getJSON<KomposisiPeralatan>('/api/peralatan/komposisi'),
     ])
+    if (!force && dirtyRef.current) return
     const list = m.periode || []
     setKategori(m.kategori || [])
     setHargaDasar(m.hargaDasar || [])
@@ -47,7 +61,7 @@ export default function HargaPage() {
     setKomposisi(komp || {})
     setKomposisiEdits({})
     setSelectedId((prev) => (prev && list.some((p) => p.id === prev) ? prev : list[0]?.id ?? ''))
-  }
+  }, [])
 
   useEffect(() => {
     load()
@@ -56,7 +70,8 @@ export default function HargaPage() {
         setError('Gagal memuat data master')
       })
       .finally(() => setLoading(false))
-  }, [])
+  }, [load])
+  useLiveRefresh(load, 5000, !dirty)
 
   useEffect(() => { setEdits({}) }, [selectedId, hargaDasar])
 
@@ -128,7 +143,7 @@ export default function HargaPage() {
       toast.success(periodForm.id ? 'Periode diperbarui' : 'Periode ditambahkan')
       setShowPeriodForm(false)
       setPeriodForm(emptyPeriode)
-      await load()
+      await load(true)
       setSelectedId(saved.id)
     } catch (e) {
       toast.error((e as Error).message)
@@ -143,7 +158,7 @@ export default function HargaPage() {
       await sendJSON('/api/master/periode', 'DELETE', { id: p.id })
       toast.success('Periode dihapus')
       setSelectedId('')
-      await load()
+      await load(true)
     } catch (e) {
       toast.error((e as Error).message)
     }
@@ -174,7 +189,7 @@ export default function HargaPage() {
     try {
       await Promise.all(rows.map((r) => sendJSON('/api/master/harga', 'POST', r)))
       toast.success('Harga disimpan')
-      await load()
+      await load(true)
     } catch (e) {
       toast.error((e as Error).message)
     } finally {

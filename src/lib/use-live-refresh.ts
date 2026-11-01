@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 
-export function useLiveRefresh(refresh: () => void | Promise<void>, ms = 5000) {
+export function useLiveRefresh(refresh: () => void | Promise<void>, ms = 5000, enabled = true) {
   const ref = useRef(refresh)
 
   useEffect(() => {
@@ -10,6 +10,7 @@ export function useLiveRefresh(refresh: () => void | Promise<void>, ms = 5000) {
   })
 
   useEffect(() => {
+    if (!enabled) return
     let busy = false
     const tick = async () => {
       if (busy || document.visibilityState !== 'visible') return
@@ -33,5 +34,5 @@ export function useLiveRefresh(refresh: () => void | Promise<void>, ms = 5000) {
       window.removeEventListener('focus', onVisible)
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [ms])
+  }, [ms, enabled])
 }
