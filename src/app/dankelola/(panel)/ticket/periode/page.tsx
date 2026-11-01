@@ -8,8 +8,10 @@ import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
 import type { TicketKatalogItem, TicketPeriode } from '@/lib/types'
 import { formatRupiah, todayISO } from '@/lib/utils'
+import { useConfirm } from '@/components/confirm-dialog'
 
 export default function PeriodePage() {
+  const confirm = useConfirm()
   const [tiket, setTiket] = useState<TicketKatalogItem[]>([])
   const [periode, setPeriode] = useState<TicketPeriode[]>([])
   const [selectedTipe, setSelectedTipe] = useState('')
@@ -38,7 +40,12 @@ export default function PeriodePage() {
   useLiveRefresh(load)
 
   async function hapus(p: TicketPeriode) {
-    if (!window.confirm('Hapus periode harga ini?')) return
+    const ok = await confirm({
+      title: 'Hapus periode harga?',
+      description: 'Periode harga ini akan dihapus permanen.',
+      confirmText: 'Hapus',
+    })
+    if (!ok) return
     try {
       await sendJSON('/api/ticket/periode', 'DELETE', { id: p.id })
       toast.success('Periode dihapus')

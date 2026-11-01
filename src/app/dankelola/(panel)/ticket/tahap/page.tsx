@@ -9,6 +9,7 @@ import { PageSkeleton } from '../../ui'
 import type { TicketKatalogItem, TicketPeriode, TicketBundleDiscount } from '@/lib/types'
 import { formatRupiah, todayISO } from '@/lib/utils'
 import { Pencil, Trash2, Eye } from 'lucide-react'
+import { useConfirm } from '@/components/confirm-dialog'
 
 function formatTanggal(iso: string) {
   const d = new Date(iso.includes('T') ? iso : `${iso}T00:00:00`)
@@ -16,6 +17,7 @@ function formatTanggal(iso: string) {
 }
 
 export default function TahapPage() {
+  const confirm = useConfirm()
   const [tiket, setTiket] = useState<TicketKatalogItem[]>([])
   const [periods, setPeriods] = useState<TicketPeriode[]>([])
   const [bundles, setBundles] = useState<TicketBundleDiscount[]>([])
@@ -43,7 +45,12 @@ export default function TahapPage() {
   useLiveRefresh(load)
 
   async function hapusTiket(id: string, nama: string) {
-    if (!window.confirm(`Hapus tipe "${nama}"? Semua data terkait akan dihapus.`)) return
+    const ok = await confirm({
+      title: 'Hapus tipe tiket?',
+      description: `Tipe "${nama}" dan semua data terkait akan dihapus permanen.`,
+      confirmText: 'Hapus',
+    })
+    if (!ok) return
     try {
       await sendJSON('/api/ticket', 'DELETE', { id })
       toast.success('Tipe tiket dihapus')

@@ -8,12 +8,14 @@ import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
 import type { Peralatan } from '@/lib/types'
 import { formatRupiah } from '@/lib/utils'
+import { useConfirm } from '@/components/confirm-dialog'
 
 const JENIS = ['Tenda', 'Meja', 'Kursi', 'Lilin', 'Generator', 'Sound', 'Lainnya']
 const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
 const emptyForm = { id: '', nama: '', jenis: 'Tenda', jumlah: 1, harga_satuan: 0, vendor: '' }
 
 export default function PeralatanPage() {
+  const confirm = useConfirm()
   const [items, setItems] = useState<Peralatan[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -62,7 +64,12 @@ export default function PeralatanPage() {
   }
 
   async function hapus(item: Peralatan) {
-    if (!confirm(`Hapus ${item.nama} dari daftar sewa vendor?`)) return
+    const ok = await confirm({
+      title: 'Hapus barang sewa?',
+      description: `${item.nama} akan dihapus dari daftar sewa vendor.`,
+      confirmText: 'Hapus',
+    })
+    if (!ok) return
     try {
       await sendJSON('/api/peralatan', 'DELETE', { id: item.id })
       toast.success('Barang dihapus')

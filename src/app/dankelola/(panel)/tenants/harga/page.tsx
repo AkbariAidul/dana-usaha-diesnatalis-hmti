@@ -9,6 +9,7 @@ import { PageSkeleton } from '../../ui'
 import type { KategoriSewa, HargaDasar, FaktorHarga, PeriodeHarga, Peralatan, KomposisiPeralatan } from '@/lib/types'
 import { periodeDariTanggal } from '@/lib/types'
 import { formatRupiah, formatDate } from '@/lib/utils'
+import { useConfirm } from '@/components/confirm-dialog'
 
 type Master = { kategori: KategoriSewa[]; hargaDasar: HargaDasar[]; faktor: FaktorHarga[]; periode: PeriodeHarga[] }
 
@@ -17,6 +18,7 @@ const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm foc
 const emptyPeriode = { id: '', nama: '', tanggal_mulai: '', tanggal_selesai: '' }
 
 export default function HargaPage() {
+  const confirm = useConfirm()
   const [kategori, setKategori] = useState<KategoriSewa[]>([])
   const [hargaDasar, setHargaDasar] = useState<HargaDasar[]>([])
   const [faktor, setFaktor] = useState<FaktorHarga[]>([])
@@ -153,7 +155,12 @@ export default function HargaPage() {
   }
 
   async function hapusPeriode(p: PeriodeHarga) {
-    if (!confirm(`Hapus periode ${p.nama}? Semua harga pada periode ini ikut terhapus.`)) return
+    const ok = await confirm({
+      title: 'Hapus periode harga?',
+      description: `Periode ${p.nama} dan semua harga pada periode ini ikut terhapus.`,
+      confirmText: 'Hapus',
+    })
+    if (!ok) return
     try {
       await sendJSON('/api/master/periode', 'DELETE', { id: p.id })
       toast.success('Periode dihapus')

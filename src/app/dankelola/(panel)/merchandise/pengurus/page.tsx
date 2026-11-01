@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
+import { useConfirm } from '@/components/confirm-dialog'
 
 type Pengurus = {
   id: string
@@ -17,6 +18,7 @@ type Pengurus = {
 const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
 
 export default function PengurusPage() {
+  const confirm = useConfirm()
   const [items, setItems] = useState<Pengurus[]>([])
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState({ nama: '', divisi: '', kontak: '' })
@@ -60,7 +62,12 @@ export default function PengurusPage() {
   }
 
   async function hapus(item: Pengurus) {
-    if (!confirm(`Hapus ${item.nama}?`)) return
+    const ok = await confirm({
+      title: 'Hapus pengurus?',
+      description: `${item.nama} akan dihapus permanen.`,
+      confirmText: 'Hapus',
+    })
+    if (!ok) return
     try {
       await sendJSON(`/api/pengurus/${item.id}`, 'DELETE')
       toast.success('Pengurus dihapus')

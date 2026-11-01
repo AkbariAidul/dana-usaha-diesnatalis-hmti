@@ -9,9 +9,11 @@ import { STATUS_LABEL, STATUS_COLOR, periodeLabel, hitungHariTersisa, hitungMini
 import { getJSON, sendJSON, bustCache } from '../../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
+import { useConfirm } from '@/components/confirm-dialog'
 
 export default function TenantDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const confirm = useConfirm()
   const [tenant, setTenant] = useState<Tenant | null>(null)
   const [pembayaran, setPembayaran] = useState<Pembayaran[]>([])
   const [periods, setPeriods] = useState<PeriodeHarga[]>([])
@@ -79,7 +81,12 @@ export default function TenantDetailPage() {
   }
 
   async function hapusBayar(pid: string) {
-    if (!confirm('Hapus pembayaran ini?')) return
+    const ok = await confirm({
+      title: 'Hapus pembayaran?',
+      description: 'Data pembayaran ini akan dihapus permanen.',
+      confirmText: 'Hapus',
+    })
+    if (!ok) return
     try {
       await sendJSON(`/api/pembayaran/${pid}`, 'DELETE')
       toast.success('Pembayaran dihapus')

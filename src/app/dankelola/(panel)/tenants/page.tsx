@@ -8,6 +8,7 @@ import { STATUS_LABEL, STATUS_COLOR, hitungHarga, periodeDariTanggal, periodeLab
 import { getJSON, sendJSON } from '../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { TableSkeleton } from '../ui'
+import { useConfirm } from '@/components/confirm-dialog'
 
 const today = new Date().toISOString().slice(0, 10)
 
@@ -21,6 +22,7 @@ const emptyForm = {
 }
 
 export default function TenantsPage() {
+  const confirm = useConfirm()
   const [tenants, setTenants] = useState<Tenant[]>([])
   const [kategori, setKategori] = useState<KategoriSewa[]>([])
   const [hargaDasar, setHargaDasar] = useState<HargaDasar[]>([])
@@ -84,7 +86,12 @@ export default function TenantsPage() {
   }
 
   async function hapus(id: string) {
-    if (!confirm('Hapus tenant ini? Semua data terkait bisa ikut terhapus.')) return
+    const ok = await confirm({
+      title: 'Hapus tenant?',
+      description: 'Tenant ini dan semua data terkait bisa ikut terhapus permanen.',
+      confirmText: 'Hapus',
+    })
+    if (!ok) return
     try {
       await sendJSON(`/api/tenants/${id}`, 'DELETE')
       toast.success('Tenant dihapus')

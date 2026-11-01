@@ -8,6 +8,7 @@ import { getJSON, sendJSON } from '../../../../api'
 import type { TicketKatalogItem, TicketPeriode, TicketBundleDiscount } from '@/lib/types'
 import { formatRupiah } from '@/lib/utils'
 import { Pencil, Trash2 } from 'lucide-react'
+import { useConfirm } from '@/components/confirm-dialog'
 
 type FormState = {
   nama: string
@@ -35,6 +36,7 @@ export default function TipeDetail({
   readOnly?: boolean
 }) {
   const router = useRouter()
+  const confirm = useConfirm()
   const [ticket, setTicket] = useState<TicketKatalogItem | null>(null)
   const [periods, setPeriods] = useState<TicketPeriode[]>([])
   const [bundles, setBundles] = useState<TicketBundleDiscount[]>([])
@@ -101,7 +103,13 @@ export default function TipeDetail({
   }
 
   async function hapus() {
-    if (!ticket || !window.confirm(`Hapus tipe ${ticket.nama}? Semua data terkait akan dihapus.`)) return
+    if (!ticket) return
+    const ok = await confirm({
+      title: 'Hapus tipe tiket?',
+      description: `Tipe "${ticket.nama}" dan semua data terkait akan dihapus permanen.`,
+      confirmText: 'Hapus',
+    })
+    if (!ok) return
     try {
       await sendJSON('/api/ticket', 'DELETE', { id: ticket.id })
       toast.success('Tipe tiket dihapus')
@@ -145,7 +153,12 @@ export default function TipeDetail({
   }
 
   async function hapusBundle(id: string) {
-    if (!window.confirm('Hapus diskon bundle ini?')) return
+    const ok = await confirm({
+      title: 'Hapus diskon bundle?',
+      description: 'Diskon bundle ini akan dihapus permanen.',
+      confirmText: 'Hapus',
+    })
+    if (!ok) return
     try {
       await sendJSON('/api/ticket/bundle', 'DELETE', { id })
       toast.success('Diskon bundle dihapus')
@@ -196,7 +209,12 @@ export default function TipeDetail({
   }
 
   async function hapusPeriode(id: string) {
-    if (!window.confirm('Hapus periode ini?')) return
+    const ok = await confirm({
+      title: 'Hapus periode harga?',
+      description: 'Periode harga ini akan dihapus permanen.',
+      confirmText: 'Hapus',
+    })
+    if (!ok) return
     try {
       await sendJSON('/api/ticket/periode', 'DELETE', { id })
       toast.success('Periode dihapus')

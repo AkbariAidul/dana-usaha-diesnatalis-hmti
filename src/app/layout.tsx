@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Toaster } from "sonner";
+import { ConfirmProvider } from "@/components/confirm-dialog";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,8 +23,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="shortcut icon" href="/favicon.png" type="image/png" />
       </head>
       <body className="font-sans antialiased">
-        {children}
-        <Toaster position="top-right" richColors />
+        <ConfirmProvider>
+          {children}
+          <Toaster
+            position="top-right"
+            richColors
+            closeButton
+            expand
+            visibleToasts={4}
+            toastOptions={{
+              duration: 4000,
+              className: "rounded-xl border border-slate-200/70 shadow-lg shadow-slate-200/50 backdrop-blur-md",
+            }}
+          />
+        </ConfirmProvider>
       </body>
     </html>
   );

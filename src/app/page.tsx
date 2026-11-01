@@ -1,22 +1,34 @@
 ﻿import Link from 'next/link'
 import Image from 'next/image'
-import { Tent, Shirt, Ticket } from 'lucide-react'
+import { cookies } from 'next/headers'
+import { Tent, Shirt, Ticket, LayoutDashboard } from 'lucide-react'
 
-export default function Home() {
+export default async function Home() {
+  const token = process.env.DASHBOARD_SESSION_SECRET || (process.env.NODE_ENV !== 'production' ? 'authenticated' : '')
+  const authed = !!token && (await cookies()).get('dashboard_session')?.value === token
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-primary-50/40">
       <header className="border-b border-slate-200/70 bg-white/90 backdrop-blur-xl">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center gap-3">
           <div className="flex items-center gap-3">
             <Image src="/logo-dies.png" alt="Logo HIMA TI" width={112} height={37} className="h-auto w-20 sm:w-28 rounded-lg" />
             <h1 className="text-lg font-semibold text-slate-900">Dana Usaha HMTI</h1>
           </div>
-          <nav className="hidden md:flex items-center gap-2 text-sm">
-            <Link href="/lacak" className="rounded-xl px-3 py-2 text-slate-600 hover:bg-slate-100">Lacak Pesanan</Link>
-            <Link href="/tenant-info" className="rounded-xl px-3 py-2 text-slate-600 hover:bg-slate-100">Info Tenant</Link>
-            <Link href="/merchandise" className="rounded-xl px-3 py-2 text-slate-600 hover:bg-slate-100">Merchandise</Link>
-            <Link href="/ticket" className="rounded-xl px-3 py-2 text-slate-600 hover:bg-slate-100">Ticket</Link>
-          </nav>
+          <div className="flex items-center gap-2">
+            <nav className="hidden md:flex items-center gap-2 text-sm">
+              <Link href="/lacak" className="rounded-xl px-3 py-2 text-slate-600 hover:bg-slate-100">Lacak Pesanan</Link>
+              <Link href="/tenant-info" className="rounded-xl px-3 py-2 text-slate-600 hover:bg-slate-100">Info Tenant</Link>
+              <Link href="/merchandise" className="rounded-xl px-3 py-2 text-slate-600 hover:bg-slate-100">Merchandise</Link>
+              <Link href="/ticket" className="rounded-xl px-3 py-2 text-slate-600 hover:bg-slate-100">Ticket</Link>
+            </nav>
+            {authed && (
+              <Link href="/dankelola" className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700">
+                <LayoutDashboard className="h-4 w-4" />
+                <span className="hidden sm:inline">Dashboard</span>
+              </Link>
+            )}
+          </div>
         </div>
       </header>
 
