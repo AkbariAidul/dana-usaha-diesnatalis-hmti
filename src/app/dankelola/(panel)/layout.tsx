@@ -30,8 +30,9 @@ function getBreadcrumbs(pathname: string) {
     group.children ?? (group.href ? [{ label: group.label, href: group.href }] : [])
   )
   let active: { label: string; href: string } | undefined
-  // Exact match or direct child
+  // Exact match or direct child (skip root, it prefixes every path)
   for (const item of items) {
+    if (item.href === '/dankelola') continue
     if (pathname === item.href || pathname.startsWith(`${item.href}/`)) {
       if (!active || item.href.length > active.href.length) active = item
     }
