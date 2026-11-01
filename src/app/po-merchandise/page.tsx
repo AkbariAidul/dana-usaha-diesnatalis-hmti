@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -12,7 +12,7 @@ type Pengurus = { id: string; nama: string; divisi: string | null; kontak: strin
 type Varian = { id: string; nama: string }
 type Katalog = { pengurus: Pengurus[]; varian: Varian[]; harga: number }
 
-const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/10'
+const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
 
 export default function PoMerchandisePage() {
   const [katalog, setKatalog] = useState<Katalog>({ pengurus: [], varian: [], harga: 75000 })

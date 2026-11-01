@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
@@ -61,7 +61,7 @@ export default function PembayaranPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
           <p className="text-sm text-slate-500">Total Transaksi</p>
-          <p className="text-2xl font-bold text-indigo-600">{pembayaran.length}</p>
+          <p className="text-2xl font-bold text-primary-600">{pembayaran.length}</p>
         </div>
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
           <p className="text-sm text-slate-500">Total Nominal</p>
@@ -115,7 +115,7 @@ export default function PembayaranPage() {
                       <button onClick={() => verifikasi(p.id, 'reject')} className="rounded bg-red-600 px-2 py-1 text-xs text-white">Tolak</button>
                     </div>
                   )}
-                  {p.bukti_url && <a href={p.bukti_url} target="_blank" rel="noopener noreferrer" className="ml-1 text-xs text-indigo-600 hover:underline">Bukti</a>}
+                  {p.bukti_url && <a href={p.bukti_url} target="_blank" rel="noopener noreferrer" className="ml-1 text-xs text-primary-600 hover:underline">Bukti</a>}
                 </td>
               </tr>
             ))}
@@ -123,7 +123,7 @@ export default function PembayaranPage() {
         </table>
       </div>
 
-      <Link href="/dankelola/tenants" className="text-sm text-indigo-600 hover:underline">← Kembali ke Data Tenant</Link>
+      <Link href="/dankelola/tenants" className="text-sm text-primary-600 hover:underline">← Kembali ke Data Tenant</Link>
     </div>
   )
 }

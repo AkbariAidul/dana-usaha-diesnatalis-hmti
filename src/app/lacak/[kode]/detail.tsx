@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import Link from 'next/link'
@@ -100,7 +100,7 @@ type StatusResponse =
   | { tipe: 'tiket'; kode: string; pesanan: PesananTiket; tiket: TiketIssued[] }
   | { tipe: 'po'; kode: string; po: MerchPo; items: MerchItem[]; qr: string | null }
 
-const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/10'
+const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
 
 function statusLabel(status: string) {
   const map: Record<string, string> = {
@@ -173,8 +173,8 @@ function BuktiUpload({ kode, token, nominal, onDone }: { kode: string; token: st
   }
 
   return (
-    <form onSubmit={kirim} className="space-y-3 rounded-2xl border border-indigo-200 bg-indigo-50/60 p-4">
-      <div className="flex items-center gap-2 text-sm font-medium text-indigo-900">
+    <form onSubmit={kirim} className="space-y-3 rounded-2xl border border-primary-200 bg-primary-50/60 p-4">
+      <div className="flex items-center gap-2 text-sm font-medium text-primary-900">
         <Upload className="h-4 w-4" /> Upload Bukti Pembayaran
       </div>
       {nominal !== undefined && (
@@ -184,7 +184,7 @@ function BuktiUpload({ kode, token, nominal, onDone }: { kode: string; token: st
         </div>
       )}
       <input type="file" accept="image/*,application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="block w-full text-sm" />
-      <button type="submit" disabled={loading || !file} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+      <button type="submit" disabled={loading || !file} className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
         {loading ? 'Mengirim...' : 'Kirim Bukti'}
       </button>
     </form>
@@ -219,7 +219,7 @@ export function LacakDetail({ kode, token }: { kode: string; token: string }) {
       <header className="border-b border-slate-200/70 bg-white/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
           <Link href="/" className="flex items-center gap-3">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-600 text-sm font-semibold text-white">DU</span>
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary-600 text-sm font-semibold text-white">DU</span>
             <div>
               <p className="text-sm font-semibold text-slate-900">Riwayat {kode}</p>
               <p className="text-xs text-slate-500">Dies Natalis HMTI</p>
@@ -267,7 +267,7 @@ function TenantView({ data, token, reload }: { data: Extract<StatusResponse, { t
           </div>
           {daftar?.catatan_admin && <p className="mt-3 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">{daftar.catatan_admin}</p>}
           {daftar?.bukti_url && (
-            <a href={daftar.bukti_url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-sm text-indigo-600 hover:underline">
+            <a href={daftar.bukti_url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-sm text-primary-600 hover:underline">
               Lihat bukti pembayaran
             </a>
           )}
@@ -312,15 +312,15 @@ function TenantView({ data, token, reload }: { data: Extract<StatusResponse, { t
             <span>{progress}%</span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-            <div className="h-full rounded-full bg-indigo-600" style={{ width: `${progress}%` }} />
+            <div className="h-full rounded-full bg-primary-600" style={{ width: `${progress}%` }} />
           </div>
           <p className="mt-1 text-xs text-slate-500">QR masuk venue aktif setelah pembayaran tervalidasi mencapai 80%.</p>
         </div>
       </div>
 
       {qr && (
-        <div className="rounded-2xl border border-indigo-200 bg-white p-6 text-center shadow-sm">
-          <div className="mb-2 flex items-center justify-center gap-2 text-sm font-medium text-indigo-900">
+        <div className="rounded-2xl border border-primary-200 bg-white p-6 text-center shadow-sm">
+          <div className="mb-2 flex items-center justify-center gap-2 text-sm font-medium text-primary-900">
             <QrCode className="h-4 w-4" /> QR Masuk Venue
           </div>
           <div className="mx-auto w-fit rounded-2xl border border-slate-200 bg-white p-3">
@@ -363,7 +363,7 @@ function TenantView({ data, token, reload }: { data: Extract<StatusResponse, { t
                       </span>
                     </td>
                     <td className="py-2">
-                      {p.bukti_url ? <a href={p.bukti_url} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-600 hover:underline">Lihat</a> : '-'}
+                      {p.bukti_url ? <a href={p.bukti_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline">Lihat</a> : '-'}
                     </td>
                   </tr>
                 ))}
@@ -410,7 +410,7 @@ function TiketView({ data, token, reload }: { data: Extract<StatusResponse, { ti
         </div>
         {pesanan.catatan_admin && <p className="mt-3 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">{pesanan.catatan_admin}</p>}
         {pesanan.bukti_url && (
-          <a href={pesanan.bukti_url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-sm text-indigo-600 hover:underline">
+          <a href={pesanan.bukti_url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-sm text-primary-600 hover:underline">
             Lihat bukti pembayaran
           </a>
         )}
@@ -494,7 +494,7 @@ function PoView({ data, token, reload }: { data: Extract<StatusResponse, { tipe:
         </div>
         {po.catatan_admin && <p className="mt-3 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">{po.catatan_admin}</p>}
         {po.bukti_url && (
-          <a href={po.bukti_url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-sm text-indigo-600 hover:underline">
+          <a href={po.bukti_url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-sm text-primary-600 hover:underline">
             Lihat bukti pembayaran
           </a>
         )}

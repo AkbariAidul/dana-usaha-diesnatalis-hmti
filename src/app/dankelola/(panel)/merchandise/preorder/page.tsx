@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -102,7 +102,7 @@ export default function PreorderPage() {
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Pre-Order</h1>
         <div className="flex gap-2">
           <Link href="/dankelola/merchandise/pengurus" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">Data Pengurus</Link>
-          <Link href="/dankelola/scan" className="rounded-xl bg-indigo-600 px-3 py-2 text-sm font-medium text-white">Scan Pickup</Link>
+          <Link href="/dankelola/scan" className="rounded-xl bg-primary-600 px-3 py-2 text-sm font-medium text-white">Scan Pickup</Link>
         </div>
       </div>
 
@@ -166,7 +166,7 @@ export default function PreorderPage() {
                 </td>
                 <td className="px-3 py-2 font-medium">{formatRupiah(Number(item.total))}</td>
                 <td className="px-3 py-2">
-                  {item.bukti_url ? <a href={item.bukti_url} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-600 hover:underline">Lihat</a> : '-'}
+                  {item.bukti_url ? <a href={item.bukti_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline">Lihat</a> : '-'}
                 </td>
                 <td className="px-3 py-2">
                   <span className={`rounded px-2 py-0.5 text-xs ${

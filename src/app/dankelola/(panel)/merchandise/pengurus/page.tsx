@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
@@ -14,7 +14,7 @@ type Pengurus = {
   aktif: boolean
 }
 
-const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/10'
+const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
 
 export default function PengurusPage() {
   const [items, setItems] = useState<Pengurus[]>([])
@@ -86,7 +86,7 @@ export default function PengurusPage() {
           <input className={input} placeholder="Divisi (opsional)" value={form.divisi} onChange={(e) => setForm({ ...form, divisi: e.target.value })} />
           <input className={input} placeholder="Kontak (opsional)" value={form.kontak} onChange={(e) => setForm({ ...form, kontak: e.target.value })} />
         </div>
-        <button onClick={tambah} disabled={saving || !form.nama.trim()} className="mt-3 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+        <button onClick={tambah} disabled={saving || !form.nama.trim()} className="mt-3 rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
           {saving ? 'Menyimpan...' : 'Tambah'}
         </button>
       </div>

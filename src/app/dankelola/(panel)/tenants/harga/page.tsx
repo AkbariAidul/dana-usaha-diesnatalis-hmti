@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
@@ -13,7 +13,7 @@ import { formatRupiah, formatDate } from '@/lib/utils'
 type Master = { kategori: KategoriSewa[]; hargaDasar: HargaDasar[]; faktor: FaktorHarga[]; periode: PeriodeHarga[] }
 
 const TIPE = ['F&B', 'Non-F&B'] as const
-const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/10'
+const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
 const emptyPeriode = { id: '', nama: '', tanggal_mulai: '', tanggal_selesai: '' }
 
 export default function HargaPage() {
@@ -214,7 +214,7 @@ export default function HargaPage() {
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Paket & Harga</h1>
         <button
           onClick={() => { setPeriodForm(emptyPeriode); setShowPeriodForm(true) }}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-indigo-700"
+          className="bg-primary-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-primary-700"
         >
           + Tambah Periode
         </button>
@@ -239,7 +239,7 @@ export default function HargaPage() {
           </div>
           <div className="mt-4 flex justify-end gap-2">
             <button onClick={() => setShowPeriodForm(false)} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl">Batal</button>
-            <button disabled={saving} onClick={simpanPeriode} className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-xl disabled:opacity-50">
+            <button disabled={saving} onClick={simpanPeriode} className="px-4 py-2 bg-primary-600 text-white text-sm rounded-xl disabled:opacity-50">
               {saving ? 'Menyimpan...' : 'Simpan'}
             </button>
           </div>
@@ -275,7 +275,7 @@ export default function HargaPage() {
                     <div className="flex justify-end gap-2">
                       <button
                         onClick={() => { setPeriodForm({ id: p.id, nama: p.nama, tanggal_mulai: p.tanggal_mulai, tanggal_selesai: p.tanggal_selesai }); setShowPeriodForm(true) }}
-                        className="text-indigo-600 hover:underline"
+                        className="text-primary-600 hover:underline"
                       >
                         Edit
                       </button>
@@ -299,7 +299,7 @@ export default function HargaPage() {
             <select className={`${input} w-auto`} value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
               {periods.map((p) => <option key={p.id} value={p.id}>{p.nama}</option>)}
             </select>
-            <button disabled={!selected || saving} onClick={simpanHarga} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50">
+            <button disabled={!selected || saving} onClick={simpanHarga} className="bg-primary-600 text-white px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50">
               Simpan Harga
             </button>
           </div>
@@ -351,7 +351,7 @@ export default function HargaPage() {
         </div>
         {peralatan.length === 0 ? (
           <p className="rounded-xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-            Belum ada barang sewa. Tambahkan dulu di <Link href="/dankelola/tenants/peralatan" className="text-indigo-600 hover:underline">Sewa Vendor</Link>.
+            Belum ada barang sewa. Tambahkan dulu di <Link href="/dankelola/tenants/peralatan" className="text-primary-600 hover:underline">Sewa Vendor</Link>.
           </p>
         ) : (
           <>
@@ -399,7 +399,7 @@ export default function HargaPage() {
               </table>
             </div>
             <div className="mt-4 flex justify-end">
-              <button disabled={savingKomposisi} onClick={simpanKomposisi} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50">
+              <button disabled={savingKomposisi} onClick={simpanKomposisi} className="bg-primary-600 text-white px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50">
                 {savingKomposisi ? 'Menyimpan...' : 'Simpan Komposisi'}
               </button>
             </div>

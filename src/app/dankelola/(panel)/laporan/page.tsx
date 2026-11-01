@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import type { Tenant } from '@/lib/types'
@@ -46,12 +46,12 @@ export default function LaporanPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Laporan</h1>
-        <button onClick={exportCSV} className="bg-indigo-600 text-white px-6 py-2.5.5 rounded-xl font-medium transition-all hover:bg-indigo-700 hover:shadow-sm hover:shadow-indigo-600/20 text-sm hover:bg-indigo-700">Export CSV</button>
+        <button onClick={exportCSV} className="bg-primary-600 text-white px-6 py-2.5.5 rounded-xl font-medium transition-all hover:bg-primary-700 hover:shadow-sm hover:shadow-primary-600/20 text-sm hover:bg-primary-700">Export CSV</button>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          ['Tenant Aktif', String(aktif.length), 'text-indigo-600'],
+          ['Tenant Aktif', String(aktif.length), 'text-primary-600'],
           ['Total Tagihan', formatRupiah(totalTagihan), 'text-slate-900'],
           ['Total Masuk', formatRupiah(totalMasuk), 'text-green-600'],
           ['Piutang', formatRupiah(totalTagihan - totalMasuk), 'text-orange-600'],

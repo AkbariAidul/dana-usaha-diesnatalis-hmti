@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { ArrowLeft, Image as ImageIcon } from "lucide-react";
 import { getMerchandise } from "@/lib/queries";
 import { formatRupiah } from "@/lib/utils";
@@ -44,7 +44,7 @@ export default async function MerchandisePage() {
                     <p className="text-sm text-gray-500 mt-1">{item.deskripsi}</p>
                   )}
                   <div className="flex justify-between items-center mt-4">
-                    <span className="font-bold text-xl text-indigo-600">{formatRupiah(item.harga)}</span>
+                    <span className="font-bold text-xl text-primary-600">{formatRupiah(item.harga)}</span>
                     <span className={`text-sm px-2 py-1 rounded-full ${
                       item.stok > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
                     }`}>

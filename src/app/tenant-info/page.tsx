@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 const kategori = [
@@ -37,7 +37,7 @@ export default function TenantInfo() {
               <div key={k.kode} className="border rounded-lg p-4">
                 <div className="flex justify-between">
                   <div>
-                    <span className="font-mono text-sm text-indigo-600">{k.kode}</span>
+                    <span className="font-mono text-sm text-primary-600">{k.kode}</span>
                     <p className="font-medium">{k.nama}</p>
                   </div>
                   <span className="font-semibold">{k.harga}</span>
@@ -84,7 +84,7 @@ export default function TenantInfo() {
           </div>
         </section>
 
-        <section className="bg-indigo-50 rounded-xl p-6">
+        <section className="bg-primary-50 rounded-xl p-6">
           <h2 className="text-lg font-semibold mb-3">Syarat & Ketentuan</h2>
           <ul className="space-y-2 text-sm text-gray-700 list-disc pl-5">
             <li>DP 50% wajib dibayar untuk mengunci slot</li>

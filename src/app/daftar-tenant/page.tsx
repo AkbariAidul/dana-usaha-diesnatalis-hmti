@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -86,14 +86,14 @@ export default function DaftarTenantPublik() {
     finally { setUploading(false) }
   }
 
-  const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/10'
+  const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
 
   return (
     <div className="min-h-screen bg-[#f7f9fc]">
       <header className="border-b border-slate-200/70 bg-white/90 backdrop-blur-xl">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-600 text-sm font-semibold text-white">DU</span>
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary-600 text-sm font-semibold text-white">DU</span>
             <div>
               <p className="text-sm font-semibold text-slate-900">Pendaftaran Tenant</p>
               <p className="text-xs text-slate-500">Dana Usaha HMTI</p>
@@ -143,12 +143,12 @@ export default function DaftarTenantPublik() {
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-slate-500">Estimasi Harga</p>
-                  <p className="text-lg font-semibold text-indigo-600">{formatRupiah(harga)}</p>
+                  <p className="text-lg font-semibold text-primary-600">{formatRupiah(harga)}</p>
                   <p className="text-xs text-slate-500">DP 50% {formatRupiah(dp)}</p>
                 </div>
               </div>
               <div className="md:col-span-2 flex justify-end">
-                <button onClick={daftar} disabled={!periode || !form.nama_usaha || !form.kontak || !form.kategori_sewa_id} className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50">Lanjut ke Pembayaran</button>
+                <button onClick={daftar} disabled={!periode || !form.nama_usaha || !form.kontak || !form.kategori_sewa_id} className="rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50">Lanjut ke Pembayaran</button>
               </div>
             </div>
           </div>
@@ -183,7 +183,7 @@ export default function DaftarTenantPublik() {
               <p className="text-sm text-slate-500">{qris.qris_nama_merchant || 'Merchant Himpunan'}</p>
               <p className="text-xs text-slate-400">Transfer sesuai nominal DP lalu upload bukti dibawah ini.</p>
               <input type="file" accept="image/*,application/pdf" onChange={e=>setFile(e.target.files?.[0]||null)} className="block w-full text-sm" />
-              <button onClick={upload} disabled={uploading || !file} className="w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">{uploading ? 'Mengupload...' : 'Upload Bukti Bayar'}</button>
+              <button onClick={upload} disabled={uploading || !file} className="w-full rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">{uploading ? 'Mengupload...' : 'Upload Bukti Bayar'}</button>
             </div>
           </div>
         )}
@@ -193,12 +193,12 @@ export default function DaftarTenantPublik() {
             <h2 className="text-xl font-semibold text-slate-900">Bukti Terkirim</h2>
             <p className="text-slate-500">Pendaftaran kamu sedang menunggu verifikasi oleh panitia Dana Usaha. Simpan link berikut untuk melihat riwayat pembayaran dan QR masuk venue.</p>
             {pendaftaran?.t && (
-              <Link href={`/lacak/${pendaftaran.kode_pendaftaran}?t=${encodeURIComponent(pendaftaran.t)}`} className="inline-flex rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white">
+              <Link href={`/lacak/${pendaftaran.kode_pendaftaran}?t=${encodeURIComponent(pendaftaran.t)}`} className="inline-flex rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-medium text-white">
                 Buka Riwayat Tenant
               </Link>
             )}
             <p className="text-xs text-slate-400">Kode: {pendaftaran?.kode_pendaftaran}</p>
-            <Link href="/" className="inline-flex text-sm font-medium text-indigo-600">Kembali ke Beranda</Link>
+            <Link href="/" className="inline-flex text-sm font-medium text-primary-600">Kembali ke Beranda</Link>
           </div>
         )}
       </main>

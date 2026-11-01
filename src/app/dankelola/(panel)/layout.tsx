@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
@@ -101,11 +101,11 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               aria-current={active ? 'page' : undefined}
               className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-150 ${
                 active
-                  ? 'bg-indigo-50 text-indigo-700 font-medium'
+                  ? 'bg-primary-50 text-primary-700 font-medium'
                   : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
-              <Icon className={`h-4 w-4 shrink-0 transition-colors ${active ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-600'}`} />
+              <Icon className={`h-4 w-4 shrink-0 transition-colors ${active ? 'text-primary-600' : 'text-slate-400 group-hover:text-slate-600'}`} />
               <span className="flex-1">{group.label}</span>
             </Link>
           )
@@ -123,13 +123,13 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               aria-expanded={isOpen}
               className={`group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-all duration-150 ${
                 groupActive
-                  ? 'text-indigo-700 bg-indigo-50/50'
+                  ? 'text-primary-700 bg-primary-50/50'
                   : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
-              <Icon className={`h-4 w-4 shrink-0 transition-colors ${groupActive ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-600'}`} />
+              <Icon className={`h-4 w-4 shrink-0 transition-colors ${groupActive ? 'text-primary-600' : 'text-slate-400 group-hover:text-slate-600'}`} />
               <span className="flex-1 text-xs font-semibold uppercase tracking-wider text-slate-500 group-hover:text-slate-700">{group.label}</span>
-              <ChevronRight className={`h-3.5 w-3.5 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''} ${groupActive ? 'text-indigo-500' : 'text-slate-400'}`} />
+              <ChevronRight className={`h-3.5 w-3.5 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''} ${groupActive ? 'text-primary-500' : 'text-slate-400'}`} />
             </button>
             {isOpen && group.children && (
               <div className="ml-6 flex flex-col gap-0.5 border-l-2 border-slate-100 pl-3 mt-0.5 pb-1">
@@ -143,7 +143,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                       aria-current={childActive ? 'page' : undefined}
                       className={`rounded-md px-2.5 py-1.5 text-sm transition-all duration-150 ${
                         childActive
-                          ? 'bg-indigo-50 text-indigo-700 font-medium'
+                          ? 'bg-primary-50 text-primary-700 font-medium'
                           : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
                       }`}
                     >

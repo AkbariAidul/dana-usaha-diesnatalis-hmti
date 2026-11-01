@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -31,7 +31,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-purple-50 px-4">
       <div className="w-full max-w-md bg-white rounded-lg shadow-lg p-6">
         <div className="mb-6 text-center">
           <h1 className="text-2xl font-bold">Login Dashboard</h1>
@@ -47,7 +47,7 @@ export default function LoginPage() {
             className="w-full text-center text-2xl tracking-widest px-3 py-2 border rounded-md"
             required
           />
-          <button type="submit" disabled={loading} className="w-full bg-indigo-600 text-white py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50">
+          <button type="submit" disabled={loading} className="w-full bg-primary-600 text-white py-2 rounded-md hover:bg-primary-700 disabled:opacity-50">
             {loading ? 'Memverifikasi...' : 'Masuk'}
           </button>
         </form>

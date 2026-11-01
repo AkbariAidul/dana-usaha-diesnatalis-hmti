@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -10,7 +10,7 @@ import type { Peralatan } from '@/lib/types'
 import { formatRupiah } from '@/lib/utils'
 
 const JENIS = ['Tenda', 'Meja', 'Kursi', 'Lilin', 'Generator', 'Sound', 'Lainnya']
-const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/10'
+const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
 const emptyForm = { id: '', nama: '', jenis: 'Tenda', jumlah: 1, harga_satuan: 0, vendor: '' }
 
 export default function PeralatanPage() {
@@ -93,7 +93,7 @@ export default function PeralatanPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Sewa Vendor</h1>
           <p className="text-sm text-slate-500">Barang yang disewa beserta jumlah dan harga sewanya.</p>
         </div>
-        <button onClick={() => bukaForm()} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-indigo-700">+ Tambah Barang</button>
+        <button onClick={() => bukaForm()} className="bg-primary-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-primary-700">+ Tambah Barang</button>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -103,7 +103,7 @@ export default function PeralatanPage() {
         </div>
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
           <p className="text-sm text-slate-500">Total Unit</p>
-          <p className="text-3xl font-bold text-indigo-600">{totalUnit}</p>
+          <p className="text-3xl font-bold text-primary-600">{totalUnit}</p>
         </div>
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
           <p className="text-sm text-slate-500">Total Modal Sewa</p>
@@ -140,7 +140,7 @@ export default function PeralatanPage() {
           </div>
           <div className="mt-4 flex justify-end gap-2">
             <button onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl">Batal</button>
-            <button disabled={saving} onClick={simpan} className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-xl disabled:opacity-50">
+            <button disabled={saving} onClick={simpan} className="px-4 py-2 bg-primary-600 text-white text-sm rounded-xl disabled:opacity-50">
               {saving ? 'Menyimpan...' : 'Simpan'}
             </button>
           </div>
@@ -173,7 +173,7 @@ export default function PeralatanPage() {
                 <td className="px-3 py-2 text-right font-medium">{formatRupiah(item.jumlah * item.harga_satuan)}</td>
                 <td className="px-3 py-2">
                   <div className="flex justify-end gap-2">
-                    <button onClick={() => bukaForm(item)} className="text-indigo-600 hover:underline">Edit</button>
+                    <button onClick={() => bukaForm(item)} className="text-primary-600 hover:underline">Edit</button>
                     <button onClick={() => hapus(item)} className="text-red-600 hover:underline">Hapus</button>
                   </div>
                 </td>
@@ -193,7 +193,7 @@ export default function PeralatanPage() {
       </div>
 
       <p className="text-sm text-slate-500">
-        Atur pemakaian barang per paket di <Link href="/dankelola/tenants/harga" className="text-indigo-600 hover:underline">Paket &amp; Harga</Link> untuk melihat keuntungan.
+        Atur pemakaian barang per paket di <Link href="/dankelola/tenants/harga" className="text-primary-600 hover:underline">Paket &amp; Harga</Link> untuk melihat keuntungan.
       </p>
     </div>
   )

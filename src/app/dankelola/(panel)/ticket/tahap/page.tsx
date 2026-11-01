@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -84,7 +84,7 @@ export default function TahapPage() {
           </Link>
           <Link
             href="/dankelola/ticket/tipe/new"
-            className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white"
+            className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white"
           >
             + Tambah Tipe
           </Link>
@@ -94,7 +94,7 @@ export default function TahapPage() {
       <div className="grid grid-cols-3 gap-4">
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
           <p className="text-sm text-slate-500">Tipe Tiket</p>
-          <p className="text-3xl font-bold text-indigo-600">{tiket.length}</p>
+          <p className="text-3xl font-bold text-primary-600">{tiket.length}</p>
         </div>
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
           <p className="text-sm text-slate-500">Order Dibuka</p>
@@ -215,7 +215,7 @@ export default function TahapPage() {
                 </td>
                 <td className="px-3 py-2">
                   <div className="flex flex-wrap gap-2">
-                    <Link href={`/dankelola/ticket/tipe/${t.id}/edit`} className="text-indigo-600 hover:underline">
+                    <Link href={`/dankelola/ticket/tipe/${t.id}/edit`} className="text-primary-600 hover:underline">
                       Edit
                     </Link>
                     <button onClick={() => toggle(t)} className="text-slate-600 hover:underline">

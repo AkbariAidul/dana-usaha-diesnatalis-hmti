@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
@@ -78,7 +78,7 @@ export default function CheckinPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Check-in</h1>
-        <a href="/dankelola/scan" className="rounded-xl bg-indigo-600 px-3 py-2 text-sm font-medium text-white">Buka Scanner Kamera</a>
+        <a href="/dankelola/scan" className="rounded-xl bg-primary-600 px-3 py-2 text-sm font-medium text-white">Buka Scanner Kamera</a>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -102,7 +102,7 @@ export default function CheckinPage() {
             onChange={e => setScanResult(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && scanQr()}
           />
-          <button onClick={scanQr} className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl text-sm font-medium">Scan</button>
+          <button onClick={scanQr} className="bg-primary-600 text-white px-6 py-2.5 rounded-xl text-sm font-medium">Scan</button>
         </div>
       </div>
 

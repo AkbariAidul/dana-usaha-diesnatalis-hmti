@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
@@ -48,7 +48,7 @@ export default function PengaturanQRISPage() {
     }
   }
 
-  const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/10'
+  const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
 
   if (loading) return <p className="text-slate-500">Memuat...</p>
 
@@ -73,7 +73,7 @@ export default function PengaturanQRISPage() {
           <p className="mt-1 text-xs text-slate-400">Kopi paste payload QRIS statis/merchant kamu. Untuk MVP ini cukup disimpan & ditampilkan ke pembeli.</p>
         </div>
         <div className="flex justify-end">
-          <button disabled={saving} className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-indigo-700 disabled:opacity-50">{saving ? 'Menyimpan...' : 'Simpan Pengaturan'}</button>
+          <button disabled={saving} className="rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-primary-700 disabled:opacity-50">{saving ? 'Menyimpan...' : 'Simpan Pengaturan'}</button>
         </div>
       </form>
     </div>

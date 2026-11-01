@@ -1,4 +1,17 @@
 @import "tailwindcss";
+@theme {
+  --color-primary-50: #F5F0FF;
+  --color-primary-100: #DDD6FE;
+  --color-primary-200: #C4B5FD;
+  --color-primary-300: #A78BFA;
+  --color-primary-400: #8B5CF6;
+  --color-primary-500: #7C3AED;
+  --color-primary-600: #6D28D9;
+  --color-primary-700: #5B21B6;
+  --color-primary-800: #4C1D95;
+  --color-primary-900: #2E1065;
+  --color-primary-950: #1E0A4C;
+}
 
 :root {
   color-scheme: light;
@@ -15,8 +28,8 @@
 
 html,
 body {
-  background: #f7f9fc;
-  color: #1f2937;
+  background: #F8FAFC;
+  color: #17152B;
   font-family: "Poppins", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;

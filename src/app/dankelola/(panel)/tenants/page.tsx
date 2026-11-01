@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -98,7 +98,7 @@ export default function TenantsPage() {
     (t) => !q || t.nama_usaha.toLowerCase().includes(q.toLowerCase()) || t.kode_stand.toLowerCase().includes(q.toLowerCase())
   )
 
-  const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 text-sm'
+  const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10 text-sm'
   const label = 'block text-sm font-medium mb-1'
 
   return (
@@ -107,8 +107,8 @@ export default function TenantsPage() {
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Tenant</h1>
         <div className="flex gap-2">
           <Link href="/dankelola/tenants/verifikasi" className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">Verifikasi</Link>
-          <input placeholder="Cari nama / kode" value={q} onChange={(e) => setQ(e.target.value)} className="rounded-xl border border-slate-200 px-3 py-2.5 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 text-sm" />
-          <button onClick={() => setShowForm(!showForm)} className="bg-indigo-600 text-white px-6 py-2.5.5 rounded-xl font-medium transition-all hover:bg-indigo-700 hover:shadow-sm hover:shadow-indigo-600/20 text-sm hover:bg-indigo-700">
+          <input placeholder="Cari nama / kode" value={q} onChange={(e) => setQ(e.target.value)} className="rounded-xl border border-slate-200 px-3 py-2.5 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10 text-sm" />
+          <button onClick={() => setShowForm(!showForm)} className="bg-primary-600 text-white px-6 py-2.5.5 rounded-xl font-medium transition-all hover:bg-primary-700 hover:shadow-sm hover:shadow-primary-600/20 text-sm hover:bg-primary-700">
             {showForm ? 'Tutup' : '+ Tambah'}
           </button>
         </div>
@@ -158,10 +158,10 @@ export default function TenantsPage() {
           <div><label className={label}>Keterangan</label><input className={input} value={form.keterangan} onChange={(e) => setForm({ ...form, keterangan: e.target.value })} /></div>
           <div className="md:col-span-2 flex items-center justify-between border-t pt-3">
             <div className="text-sm">
-              Harga: <span className="font-semibold text-indigo-600">{formatRupiah(harga)}</span>
+              Harga: <span className="font-semibold text-primary-600">{formatRupiah(harga)}</span>
               <span className="text-slate-500"> · DP 50%: {formatRupiah(Math.ceil(harga / 2))}</span>
             </div>
-            <button disabled={saving} className="bg-indigo-600 text-white px-6 py-2.5.5 rounded-xl font-medium transition-all hover:bg-indigo-700 hover:shadow-sm hover:shadow-indigo-600/20 text-sm disabled:opacity-50">
+            <button disabled={saving} className="bg-primary-600 text-white px-6 py-2.5.5 rounded-xl font-medium transition-all hover:bg-primary-700 hover:shadow-sm hover:shadow-primary-600/20 text-sm disabled:opacity-50">
               {saving ? 'Menyimpan...' : 'Simpan'}
             </button>
           </div>
@@ -183,7 +183,7 @@ export default function TenantsPage() {
             {filtered.map((t) => (
               <tr key={t.id} className="hover:bg-slate-50">
                 <td className="px-6 py-3 font-mono text-xs">{t.kode_stand}</td>
-                <td className="px-6 py-3"><Link href={`/dankelola/tenants/${t.id}`} className="text-indigo-600 hover:underline">{t.nama_usaha}</Link></td>
+                <td className="px-6 py-3"><Link href={`/dankelola/tenants/${t.id}`} className="text-primary-600 hover:underline">{t.nama_usaha}</Link></td>
                 <td className="px-6 py-3">{t.kategori_sewa?.nama ?? '-'}</td>
                 <td className="px-6 py-3">{formatRupiah(t.harga_akhir)}</td>
                 <td className="px-6 py-3">{formatRupiah(t.sudah_dibayar)}</td>

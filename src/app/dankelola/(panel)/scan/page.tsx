@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
@@ -38,7 +38,7 @@ type TiketResult = {
 
 type Result = TenantResult | PoResult | TiketResult
 
-const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/10'
+const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
 
 export default function ScanPage() {
   const [manual, setManual] = useState('')
@@ -100,7 +100,7 @@ export default function ScanPage() {
             <h2 className="mb-3 font-semibold text-slate-900">Input Manual</h2>
             <div className="flex gap-2">
               <input className={input} placeholder="Kode QR / kode tampil / isi QR" value={manual} onChange={(e) => setManual(e.target.value)} />
-              <button type="submit" disabled={loading || !manual.trim()} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+              <button type="submit" disabled={loading || !manual.trim()} className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
                 Cek
               </button>
             </div>

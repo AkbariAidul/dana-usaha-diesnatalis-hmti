@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { ArrowLeft, TicketIcon } from "lucide-react";
 import { getTicketKatalog } from "@/lib/queries";
 import { formatRupiah } from "@/lib/utils";
@@ -81,7 +81,7 @@ export default async function TicketPage() {
                       )}
                     </div>
                     <div className="text-right">
-                      <span className="font-bold text-xl text-indigo-600">{formatRupiah(t.harga_aktif)}</span>
+                      <span className="font-bold text-xl text-primary-600">{formatRupiah(t.harga_aktif)}</span>
                       {t.periode_aktif && Number(t.periode_aktif.harga) !== Number(t.harga) && (
                         <p className="text-xs text-gray-400 line-through">{formatRupiah(t.harga)}</p>
                       )}
@@ -107,7 +107,7 @@ export default async function TicketPage() {
                     {t.buka ? (
                       <Link
                         href="/beli-tiket"
-                        className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                        className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
                       >
                         Beli Tiket
                       </Link>

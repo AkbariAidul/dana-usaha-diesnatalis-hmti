@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -52,14 +52,14 @@ export default function BeliTiketPublik() {
     } catch(e: unknown){ toast.error((e as Error).message) } finally { setUploading(false) }
   }
 
-  const input='w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/10'
+  const input='w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
 
   return (
     <div className="min-h-screen bg-[#f7f9fc]">
       <header className="border-b border-slate-200/70 bg-white/90 backdrop-blur-xl">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-600 text-sm font-semibold text-white">DU</span>
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary-600 text-sm font-semibold text-white">DU</span>
             <div><p className="text-sm font-semibold text-slate-900">Beli Tiket</p><p className="text-xs text-slate-500">Dies Natalis HMTI</p></div>
           </Link>
           <Link href="/" className="text-sm text-slate-500 hover:text-slate-900">Kembali</Link>
@@ -71,7 +71,7 @@ export default function BeliTiketPublik() {
             <div className="p-6 border-b border-slate-100"><h1 className="text-xl font-semibold text-slate-900">Pilih Tiket</h1><p className="text-sm text-slate-500">Pilih tipe tiket yang tersedia</p></div>
             <div className="p-6 grid md:grid-cols-2 gap-4">
               {katalog.tiket.map((t)=>(
-                <button key={t.id} disabled={!t.buka} onClick={()=>setForm({...form,tiket_tipe_id:t.id})} className={`text-left rounded-2xl border p-5 transition-all disabled:cursor-not-allowed disabled:opacity-60 ${form.tiket_tipe_id===t.id?'border-indigo-500 ring-2 ring-indigo-500/10':'border-slate-200/70 hover:border-indigo-200'}`}>
+                <button key={t.id} disabled={!t.buka} onClick={()=>setForm({...form,tiket_tipe_id:t.id})} className={`text-left rounded-2xl border p-5 transition-all disabled:cursor-not-allowed disabled:opacity-60 ${form.tiket_tipe_id===t.id?'border-primary-500 ring-2 ring-primary-500/10':'border-slate-200/70 hover:border-primary-200'}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
@@ -83,7 +83,7 @@ export default function BeliTiketPublik() {
                       {t.periode_aktif && <p className="mt-1 text-xs text-slate-400">Periode {t.periode_aktif.nama || 'aktif'}</p>}
                       {t.is_hari_h && t.sisa !== null && <p className="mt-1 text-xs text-orange-600">Sisa {t.sisa} tiket</p>}
                     </div>
-                    <p className="font-semibold text-indigo-600">{formatRupiah(t.harga_aktif)}</p>
+                    <p className="font-semibold text-primary-600">{formatRupiah(t.harga_aktif)}</p>
                   </div>
                 </button>
               ))}
@@ -101,9 +101,9 @@ export default function BeliTiketPublik() {
                 </div>
                 <div className="md:col-span-2 flex items-center justify-between rounded-xl bg-slate-50 p-4">
                   <p className="text-sm text-slate-500">Total Pembayaran</p>
-                  <p className="text-lg font-semibold text-indigo-600">{formatRupiah(total)}</p>
+                  <p className="text-lg font-semibold text-primary-600">{formatRupiah(total)}</p>
                 </div>
-                <div className="md:col-span-2 flex justify-end"><button onClick={beli} disabled={!form.nama_pembeli||!form.kontak||!tipe.buka} className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50">{tipe.buka ? 'Buat Pesanan' : 'Tiket Ditutup'}</button></div>
+                <div className="md:col-span-2 flex justify-end"><button onClick={beli} disabled={!form.nama_pembeli||!form.kontak||!tipe.buka} className="rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50">{tipe.buka ? 'Buat Pesanan' : 'Tiket Ditutup'}</button></div>
               </div>
             )}
           </div>
@@ -132,7 +132,7 @@ export default function BeliTiketPublik() {
                 ) : <div className="h-80 w-80 skeleton" />}
               </div>
               <input type="file" accept="image/*,application/pdf" onChange={e=>setFile(e.target.files?.[0]||null)} className="block w-full text-sm" />
-              <button onClick={upload} disabled={uploading||!file} className="w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">{uploading?'Mengupload...':'Upload Bukti Bayar'}</button>
+              <button onClick={upload} disabled={uploading||!file} className="w-full rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">{uploading?'Mengupload...':'Upload Bukti Bayar'}</button>
             </div>
           </div>
         )}
@@ -141,12 +141,12 @@ export default function BeliTiketPublik() {
             <h2 className="text-xl font-semibold text-slate-900">Menunggu Verifikasi</h2>
             <p className="text-slate-500">Setelah diverifikasi, QR tiket akan muncul. Simpan link berikut untuk melihat status dan QR.</p>
             {pesanan?.no_pesanan && pesanan.t && (
-              <Link href={`/lacak/${pesanan.no_pesanan}?t=${encodeURIComponent(pesanan.t)}`} className="inline-flex rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white">
+              <Link href={`/lacak/${pesanan.no_pesanan}?t=${encodeURIComponent(pesanan.t)}`} className="inline-flex rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-medium text-white">
                 Buka Riwayat Tiket
               </Link>
             )}
             <p className="text-xs text-slate-400">No. Pesanan: {pesanan?.no_pesanan}</p>
-            <Link href="/" className="inline-flex text-sm font-medium text-indigo-600">Kembali ke Beranda</Link>
+            <Link href="/" className="inline-flex text-sm font-medium text-primary-600">Kembali ke Beranda</Link>
           </div>
         )}
       </main>

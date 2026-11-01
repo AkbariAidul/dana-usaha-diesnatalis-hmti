@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import type { Acara } from '@/lib/types'
@@ -46,7 +46,7 @@ export default function AcaraPage() {
     } catch (err) { toast.error((err as Error).message) } finally { setSaving(false) }
   }
 
-  const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 text-sm'
+  const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10 text-sm'
   const label = 'block text-sm font-medium mb-1'
 
   if (loading) return <PageSkeleton />
@@ -60,7 +60,7 @@ export default function AcaraPage() {
         <div><label className={label}>Batas Pelunasan</label><input type="date" required className={input} value={form.batas_pelunasan} onChange={(e) => update({ batas_pelunasan: e.target.value })} /></div>
         <div className="md:col-span-2"><label className={label}>Rekening / QRIS</label><input className={input} value={form.rekening_qris} onChange={(e) => update({ rekening_qris: e.target.value })} /></div>
         <div className="md:col-span-2 flex justify-end">
-          <button disabled={saving} className="bg-indigo-600 text-white px-6 py-2.5.5 rounded-xl font-medium transition-all hover:bg-indigo-700 hover:shadow-sm hover:shadow-indigo-600/20 text-sm disabled:opacity-50">{saving ? 'Menyimpan...' : 'Simpan'}</button>
+          <button disabled={saving} className="bg-primary-600 text-white px-6 py-2.5.5 rounded-xl font-medium transition-all hover:bg-primary-700 hover:shadow-sm hover:shadow-primary-600/20 text-sm disabled:opacity-50">{saving ? 'Menyimpan...' : 'Simpan'}</button>
         </div>
       </form>
     </div>

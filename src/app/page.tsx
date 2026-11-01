@@ -1,10 +1,10 @@
-import Link from 'next/link'
+﻿import Link from 'next/link'
 import Image from 'next/image'
 import { Tent, Shirt, Ticket } from 'lucide-react'
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/40">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-primary-50/40">
       <header className="border-b border-slate-200/70 bg-white/90 backdrop-blur-xl">
         <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
@@ -22,7 +22,7 @@ export default function Home() {
 
       <main className="max-w-6xl mx-auto px-4 py-12 md:py-16">
         <div className="text-center mb-10 md:mb-12">
-          <span className="inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-600">Dies Natalis HMTI</span>
+          <span className="inline-flex items-center rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-medium text-primary-600">Dies Natalis HMTI</span>
           <h2 className="mt-4 text-3xl md:text-5xl font-semibold tracking-tight text-slate-900">
             Pendaftaran Publik Dana Usaha
           </h2>
@@ -32,19 +32,19 @@ export default function Home() {
         </div>
 
         <div className="grid md:grid-cols-3 gap-4 md:gap-6">
-          <Link href="/daftar-tenant" className="group relative overflow-hidden rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-indigo-100/60">
-            <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-indigo-50" />
+          <Link href="/daftar-tenant" className="group relative overflow-hidden rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary-100/60">
+            <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-primary-50" />
             <div className="relative">
-              <div className="mb-4 grid h-11 w-11 place-items-center rounded-2xl bg-indigo-600/10 text-indigo-600">
+              <div className="mb-4 grid h-11 w-11 place-items-center rounded-2xl bg-primary-600/10 text-primary-600">
                 <Tent className="w-5 h-5" />
               </div>
               <h3 className="text-lg font-semibold text-slate-900">Daftar Tenant</h3>
               <p className="mt-1 text-sm text-slate-500">Pilih kategori, hitung harga otomatis, bayar via QRIS & upload bukti.</p>
-              <span className="mt-4 inline-flex text-sm font-medium text-indigo-600">Mulai Daftar →</span>
+              <span className="mt-4 inline-flex text-sm font-medium text-primary-600">Mulai Daftar →</span>
             </div>
           </Link>
 
-          <Link href="/po-merchandise" className="group relative overflow-hidden rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-indigo-100/60">
+          <Link href="/po-merchandise" className="group relative overflow-hidden rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary-100/60">
             <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-violet-50" />
             <div className="relative">
               <div className="mb-4 grid h-11 w-11 place-items-center rounded-2xl bg-violet-600/10 text-violet-600">
@@ -56,7 +56,7 @@ export default function Home() {
             </div>
           </Link>
 
-          <Link href="/beli-tiket" className="group relative overflow-hidden rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-indigo-100/60">
+          <Link href="/beli-tiket" className="group relative overflow-hidden rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary-100/60">
             <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-emerald-50" />
             <div className="relative">
               <div className="mb-4 grid h-11 w-11 place-items-center rounded-2xl bg-emerald-600/10 text-emerald-600">

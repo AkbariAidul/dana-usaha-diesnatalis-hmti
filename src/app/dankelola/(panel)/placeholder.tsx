@@ -1,4 +1,4 @@
-import Link from 'next/link'
+﻿import Link from 'next/link'
 
 export default function PlaceholderPage({ title, desc }: { title: string; desc: string }) {
   return (
@@ -13,7 +13,7 @@ export default function PlaceholderPage({ title, desc }: { title: string; desc: 
         </div>
         <p className="text-sm font-medium text-slate-600">Halaman ini sedang disiapkan</p>
         <p className="mt-1 text-sm text-slate-400">Fitur akan tersedia pada pengembangan selanjutnya.</p>
-        <Link href="/dankelola" className="mt-4 inline-flex text-sm font-medium text-indigo-600 hover:text-indigo-700">
+        <Link href="/dankelola" className="mt-4 inline-flex text-sm font-medium text-primary-600 hover:text-primary-700">
           Kembali ke Ringkasan
         </Link>
       </div>

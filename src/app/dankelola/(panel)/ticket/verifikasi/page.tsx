@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
@@ -80,7 +80,7 @@ export default function VerifikasiTiketPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Verifikasi Tiket</h1>
-        <Link href="/dankelola/ticket/penjualan" className="text-sm text-indigo-600 hover:underline">← Kembali</Link>
+        <Link href="/dankelola/ticket/penjualan" className="text-sm text-primary-600 hover:underline">← Kembali</Link>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
@@ -125,7 +125,7 @@ export default function VerifikasiTiketPage() {
                 <td className="px-3 py-2 font-medium">{item.total.toLocaleString('id-ID')}</td>
                 <td className="px-3 py-2">
                   {item.bukti_url ? (
-                    <a href={item.bukti_url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline text-xs">Lihat</a>
+                    <a href={item.bukti_url} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline text-xs">Lihat</a>
                   ) : '-'}
                 </td>
                 <td className="px-3 py-2">
@@ -141,7 +141,7 @@ export default function VerifikasiTiketPage() {
                   {item.status === 'menunggu_verifikasi' && (
                     <button 
                       onClick={() => setSelectedId(selectedId === item.id ? null : item.id)}
-                      className="text-xs bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700"
+                      className="text-xs bg-primary-600 text-white px-2 py-1 rounded hover:bg-primary-700"
                     >
                       Verifikasi
                     </button>
@@ -154,7 +154,7 @@ export default function VerifikasiTiketPage() {
       </div>
 
       {selectedId && (
-        <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-6">
+        <div className="rounded-2xl border border-primary-200 bg-primary-50 p-6">
           <h2 className="font-semibold mb-4">Verifikasi Pesanan Tiket</h2>
           <textarea
             placeholder="Catatan admin (opsional)"

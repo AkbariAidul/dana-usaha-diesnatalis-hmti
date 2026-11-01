@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
@@ -72,7 +72,7 @@ export default function KeuanganPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
           <p className="text-sm text-slate-500">Total Masuk</p>
-          <p className="text-3xl font-bold text-indigo-600">{formatRupiah(totalMasuk)}</p>
+          <p className="text-3xl font-bold text-primary-600">{formatRupiah(totalMasuk)}</p>
         </div>
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
           <p className="text-sm text-slate-500">Total Keluar</p>
@@ -116,7 +116,7 @@ export default function KeuanganPage() {
                 <td className="px-3 py-2 text-slate-500">{new Date(p.tgl_transaksi).toLocaleDateString('id-ID')}</td>
                 <td className="px-3 py-2">{p.nama_usaha}</td>
                 <td className="px-3 py-2">Pemasukan</td>
-                <td className="px-3 py-2 font-medium text-indigo-600">{formatRupiah(p.nominal)}</td>
+                <td className="px-3 py-2 font-medium text-primary-600">{formatRupiah(p.nominal)}</td>
                 <td className="px-3 py-2">{p.metode || '-'}</td>
               </tr>
             ))}

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
@@ -113,13 +113,13 @@ export default function TenantDetailPage() {
     ['Tgl Acara', tenant.tgl_acara ? formatDate(tenant.tgl_acara) : '-'],
   ]
 
-  const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 text-sm'
+  const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10 text-sm'
   const label = 'block text-sm font-medium mb-1'
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <Link href="/dankelola/tenants" className="text-sm text-indigo-600">← Kembali</Link>
+        <Link href="/dankelola/tenants" className="text-sm text-primary-600">← Kembali</Link>
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{tenant.nama_usaha}</h1>
         <span className={`px-2 py-0.5 rounded-full text-xs ${STATUS_COLOR[tenant.status]}`}>{STATUS_LABEL[tenant.status]}</span>
       </div>
@@ -140,14 +140,14 @@ export default function TenantDetailPage() {
           <h2 className="font-semibold mb-1">Cicilan</h2>
           <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
             <div
-              className="h-full rounded-full bg-indigo-600 transition-all"
+              className="h-full rounded-full bg-primary-600 transition-all"
               style={{ width: `${Math.min(100, Math.round((tenant.sudah_dibayar / tenant.harga_akhir) * 100))}%` }}
             />
           </div>
           <div className="flex justify-between pt-1"><span className="text-slate-500">Terbayar</span><span className="font-semibold">{Math.min(100, Math.round((tenant.sudah_dibayar / tenant.harga_akhir) * 100))}%</span></div>
           <div className="flex justify-between"><span className="text-slate-500">Sisa</span><span className="font-semibold text-orange-600">{formatRupiah(sisa)}</span></div>
           <div className="flex justify-between"><span className="text-slate-500">Hari Tersisa</span><span className="font-bold">{hariTersisa} hari</span></div>
-          <div className="flex justify-between"><span className="text-slate-500">Minimal/Hari</span><span className="font-bold text-indigo-600">{formatRupiah(minimal)}</span></div>
+          <div className="flex justify-between"><span className="text-slate-500">Minimal/Hari</span><span className="font-bold text-primary-600">{formatRupiah(minimal)}</span></div>
           {tenant.tgl_dp && (
             <div className="flex justify-between"><span className="text-slate-500">Cicilan Mulai</span><span className="font-medium">{formatDate(tambahHari(tenant.tgl_dp, 1))}</span></div>
           )}
@@ -174,7 +174,7 @@ export default function TenantDetailPage() {
         <div><label className={label}>Bukti (jpg/png/webp/pdf)</label><input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className={input} onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></div>
         <div className="md:col-span-3"><label className={label}>Keterangan</label><input className={input} value={form.keterangan} onChange={(e) => setForm({ ...form, keterangan: e.target.value })} /></div>
         <div className="md:col-span-3 flex justify-end">
-          <button disabled={saving} className="bg-indigo-600 text-white px-6 py-2.5.5 rounded-xl font-medium transition-all hover:bg-indigo-700 hover:shadow-sm hover:shadow-indigo-600/20 text-sm disabled:opacity-50">{saving ? 'Menyimpan...' : 'Catat Pembayaran'}</button>
+          <button disabled={saving} className="bg-primary-600 text-white px-6 py-2.5.5 rounded-xl font-medium transition-all hover:bg-primary-700 hover:shadow-sm hover:shadow-primary-600/20 text-sm disabled:opacity-50">{saving ? 'Menyimpan...' : 'Catat Pembayaran'}</button>
         </div>
       </form>
 
@@ -192,7 +192,7 @@ export default function TenantDetailPage() {
                 <td className="px-6 py-3">{p.jenis}</td>
                 <td className="px-6 py-3">{formatRupiah(p.nominal)}</td>
                 <td className="px-6 py-3">{p.metode}</td>
-                <td className="px-6 py-3">{p.bukti_url ? <a href={p.bukti_url} target="_blank" className="text-indigo-600 text-xs">Lihat</a> : '-'}</td>
+                <td className="px-6 py-3">{p.bukti_url ? <a href={p.bukti_url} target="_blank" className="text-primary-600 text-xs">Lihat</a> : '-'}</td>
                 <td className="px-6 py-3 text-right"><button onClick={() => hapusBayar(p.id)} className="text-red-600 text-xs hover:underline">Hapus</button></td>
               </tr>
             ))}

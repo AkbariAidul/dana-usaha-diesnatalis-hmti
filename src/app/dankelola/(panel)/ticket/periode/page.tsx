@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -82,7 +82,7 @@ export default function PeriodePage() {
           </Link>
           <Link
             href="/dankelola/ticket/periode/new"
-            className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white"
+            className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white"
           >
             + Tambah Periode
           </Link>
@@ -153,7 +153,7 @@ export default function PeriodePage() {
                     <div className="flex gap-2">
                       <Link
                         href={`/dankelola/ticket/periode/${p.id}/edit`}
-                        className="text-indigo-600 hover:underline"
+                        className="text-primary-600 hover:underline"
                       >
                         Edit
                       </Link>
