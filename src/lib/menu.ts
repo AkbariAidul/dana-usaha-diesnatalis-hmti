@@ -77,6 +77,7 @@ export const menuConfig: MenuGroup[] = [
     children: [
       { label: 'Tahap & Harga', href: '/dankelola/ticket/tahap' },
       { label: 'Penjualan', href: '/dankelola/ticket/penjualan' },
+      { label: 'Verifikasi Tiket', href: '/dankelola/ticket/verifikasi' },
       { label: 'Check-in', href: '/dankelola/ticket/checkin' },
       { label: 'Promo & Penjual', href: '/dankelola/ticket/promo' },
     ],
