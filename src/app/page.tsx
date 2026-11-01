@@ -76,9 +76,9 @@ export default async function Home() {
         </nav>
       </header>
 
-      <main className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:h-[calc(100dvh-72px)] lg:px-8">
-        <section className="relative grid w-full gap-8 py-8 sm:py-10 lg:h-full lg:grid-cols-[55fr_45fr] lg:items-center lg:gap-12 lg:py-6">
-          <div className="relative order-1 aspect-video w-full lg:absolute lg:inset-0 lg:z-0 lg:aspect-auto lg:h-full">
+      <main className="relative w-full lg:h-[calc(100dvh-72px)]">
+        <section className="relative w-full overflow-hidden lg:h-full">
+          <div className="relative aspect-video w-full lg:absolute lg:inset-0 lg:z-0 lg:aspect-auto lg:h-full">
             <div className="hero-photo absolute inset-0">
               <Image
                 src="/hero.png"
@@ -86,36 +86,39 @@ export default async function Home() {
                 fill
                 priority
                 className="object-contain object-left"
-                sizes="(min-width: 1280px) 1216px, 100vw"
+                sizes="100vw"
               />
             </div>
-            <div className="hero-photo-fade pointer-events-none absolute inset-0 hidden lg:block" />
           </div>
 
-          <div className="relative z-10 order-2 min-w-0 lg:col-start-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary-600">In4Days XI · Dies Natalis HMTI</p>
-            <h1 className="mt-3 text-balance text-[clamp(2rem,3.4vw,3.25rem)] font-semibold leading-[1.05] tracking-tight text-[#111827]">
-              Jadilah Bagian dari In4Days XI
-            </h1>
-            <p className="mt-4 max-w-md text-[clamp(0.95rem,1.05vw,1.05rem)] leading-relaxed text-[#64748B]">
-              Rayakan kebersamaan, dukung kreativitas, dan temukan pengalamanmu di Dies Natalis HMTI ke-11.
-            </p>
+          <div className="hero-content-fade relative z-10 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:h-full lg:px-8">
+            <div className="grid w-full items-center gap-8 py-8 sm:py-10 lg:h-full lg:grid-cols-[55fr_45fr] lg:gap-12 lg:py-6">
+              <div className="relative order-2 min-w-0 lg:col-start-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary-600">In4Days XI · Dies Natalis HMTI</p>
+                <h1 className="mt-3 text-balance text-[clamp(2rem,3.4vw,3.25rem)] font-semibold leading-[1.05] tracking-tight text-[#111827]">
+                  Jadilah Bagian dari In4Days XI
+                </h1>
+                <p className="mt-4 max-w-md text-[clamp(0.95rem,1.05vw,1.05rem)] leading-relaxed text-[#64748B]">
+                  Rayakan kebersamaan, dukung kreativitas, dan temukan pengalamanmu di Dies Natalis HMTI ke-11.
+                </p>
 
-            <div className="mt-6 space-y-3">
-              {services.map((service) => (
-                <Link
-                  key={service.href}
-                  href={service.href}
-                  className="group flex min-h-[76px] items-center gap-4 rounded-2xl border border-[#E9D5FF] bg-white px-4 py-3 transition-all duration-200 hover:border-primary-600 hover:bg-[#F5F0FF]/70"
-                >
-                  <span className="w-7 shrink-0 text-xs font-semibold tabular-nums text-primary-600">{service.no}</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-[#111827]">{service.title}</p>
-                    <p className="mt-0.5 text-xs leading-snug text-[#64748B] sm:text-sm">{service.desc}</p>
-                  </div>
-                  <ArrowRight className="h-4 w-4 shrink-0 text-primary-600 transition-transform duration-200 group-hover:translate-x-1" />
-                </Link>
-              ))}
+                <div className="mt-6 space-y-3">
+                  {services.map((service) => (
+                    <Link
+                      key={service.href}
+                      href={service.href}
+                      className="group flex min-h-[76px] items-center gap-4 rounded-2xl border border-[#E9D5FF] bg-white px-4 py-3 transition-all duration-200 hover:border-primary-600 hover:bg-[#F5F0FF]/70"
+                    >
+                      <span className="w-7 shrink-0 text-xs font-semibold tabular-nums text-primary-600">{service.no}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-[#111827]">{service.title}</p>
+                        <p className="mt-0.5 text-xs leading-snug text-[#64748B] sm:text-sm">{service.desc}</p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 shrink-0 text-primary-600 transition-transform duration-200 group-hover:translate-x-1" />
+                    </Link>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </section>
