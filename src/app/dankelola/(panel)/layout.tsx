@@ -37,14 +37,6 @@ function getBreadcrumbs(pathname: string) {
   }
   const breadcrumbs: { label: string; href: string }[] = [{ label: 'Dashboard', href: '/dankelola' }]
 
-  // Group label (e.g. TICKET, MERCHANDISE)
-  const activeGroup = menuConfig.find((g) =>
-    g.children?.some((c) => pathname === c.href || pathname.startsWith(`${c.href}/`))
-  )
-  if (activeGroup) {
-    breadcrumbs.push({ label: activeGroup.label, href: activeGroup.href ?? '#' })
-  }
-
   // Active child / page
   if (active && active.href !== '/dankelola') {
     breadcrumbs.push({ label: active.label, href: active.href })
