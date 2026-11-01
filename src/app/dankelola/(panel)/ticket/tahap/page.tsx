@@ -10,6 +10,11 @@ import type { TicketKatalogItem, TicketPeriode, TicketBundleDiscount } from '@/l
 import { formatRupiah, todayISO } from '@/lib/utils'
 import { Pencil, Trash2, Eye } from 'lucide-react'
 
+function formatTanggal(iso: string) {
+  const d = new Date(iso.includes('T') ? iso : `${iso}T00:00:00`)
+  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
 export default function TahapPage() {
   const [tiket, setTiket] = useState<TicketKatalogItem[]>([])
   const [periods, setPeriods] = useState<TicketPeriode[]>([])
@@ -115,11 +120,6 @@ export default function TahapPage() {
                   {/* Harga */}
                   <td className="px-4 py-3">
                     <span className="font-bold text-primary-600">{formatRupiah(Number(t.harga_aktif))}</span>
-                    {activePeriod && (
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        {activePeriod.nama || 'Periode'} · {activePeriod.tanggal_mulai}—{activePeriod.tanggal_selesai}
-                      </p>
-                    )}
                   </td>
 
                   {/* Status */}
@@ -136,19 +136,17 @@ export default function TahapPage() {
 
                   {/* Periode */}
                   <td className="px-4 py-3">
-                    {(() => {
-                      const tPeriods = periods.filter((p) => p.tiket_tipe_id === t.id)
-                      if (tPeriods.length === 0) return <span className="text-xs text-slate-400">Harga dasar {formatRupiah(Number(t.harga))}</span>
-                      return (
-                        <div className="space-y-0.5">
-                          {tPeriods.map((p) => (
-                            <p key={p.id} className="text-xs text-slate-600">
-                              {p.nama || 'Periode'} · {p.tanggal_mulai}—{p.tanggal_selesai} · <span className="font-medium text-primary-600">{formatRupiah(Number(p.harga))}</span>
-                            </p>
-                          ))}
-                        </div>
-                      )
-                    })()}
+                    {activePeriod ? (
+                      <div className="text-xs">
+                        <p className="font-medium text-slate-700">{activePeriod.nama || 'Periode'}</p>
+                        <p className="text-slate-500">{formatTanggal(activePeriod.tanggal_mulai)} – {formatTanggal(activePeriod.tanggal_selesai)}</p>
+                        <p className="font-medium text-primary-600">{formatRupiah(Number(activePeriod.harga))}</p>
+                      </div>
+                    ) : periods.some((p) => p.tiket_tipe_id === t.id) ? (
+                      <span className="text-xs text-slate-400">Tidak ada periode aktif</span>
+                    ) : (
+                      <span className="text-xs text-slate-400">Harga dasar {formatRupiah(Number(t.harga))}</span>
+                    )}
                   </td>
 
                   {/* Bundle */}
