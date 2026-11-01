@@ -34,7 +34,7 @@ export default function PeriodeCreatePage() {
     if (!harga) { toast.error('Harga wajib diisi'); return }
     setSubmitting(true)
     try {
-      await sendJSON<TicketPeriode>('/api/ticket/periode', 'POST', {
+      await sendJSON('/api/ticket/periode', 'POST', {
         tiket_tipe_id: tipeId,
         nama: nama.trim() || null,
         tanggal_mulai: mulai,
