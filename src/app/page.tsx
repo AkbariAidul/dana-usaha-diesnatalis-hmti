@@ -10,7 +10,6 @@ const services = [
 ]
 
 const navLinks = [
-  { label: 'Lacak Pesanan', href: '/lacak' },
   { label: 'Info Tenant', href: '/tenant-info' },
   { label: 'Merchandise', href: '/merchandise' },
   { label: 'Ticket', href: '/ticket' },
@@ -24,7 +23,7 @@ export default async function Home() {
     <div className="relative min-h-screen bg-white text-[#111827]">
       <header className="absolute inset-x-0 top-0 z-30">
         <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-          <Link href="/" className="flex min-w-0 items-center gap-3">
+          <Link href="/" className="flex min-w-0 items-center gap-3 lg:-ml-4">
             <Image
               src="/logo-dies.png"
               alt="Logo In4Days XI"
@@ -39,7 +38,7 @@ export default async function Home() {
             </div>
           </Link>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <nav className="hidden items-center gap-1 text-sm md:flex">
               {navLinks.map((link) => (
                 <Link
@@ -51,20 +50,14 @@ export default async function Home() {
                 </Link>
               ))}
             </nav>
+            <Link
+              href="/lacak"
+              className="shrink-0 whitespace-nowrap rounded-xl border border-primary-600 px-3 py-2 text-sm font-medium text-primary-700 transition-colors hover:bg-primary-600 hover:text-white"
+            >
+              Lacak Pesanan
+            </Link>
           </div>
         </div>
-
-        <nav className="flex gap-1 overflow-x-auto px-4 py-2 text-sm md:hidden">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="shrink-0 rounded-lg px-3 py-1.5 text-[#64748B] hover:bg-[#F5F0FF] hover:text-[#6D28D9]"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
       </header>
 
       <main className="relative w-full lg:h-[100dvh]">
