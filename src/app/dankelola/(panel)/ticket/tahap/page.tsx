@@ -8,7 +8,7 @@ import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
 import type { TicketKatalogItem, TicketPeriode, TicketBundleDiscount } from '@/lib/types'
 import { formatRupiah, todayISO } from '@/lib/utils'
-import { Pencil, Trash2, Eye, MoreVertical } from 'lucide-react'
+import { Pencil, Trash2, Eye } from 'lucide-react'
 
 export default function TahapPage() {
   const [tiket, setTiket] = useState<TicketKatalogItem[]>([])
@@ -189,48 +189,39 @@ export default function TahapPage() {
 
                   {/* Aksi */}
                   <td className="px-4 py-3">
-                    <div className="relative">
-                      <button
-                        onClick={() => setMenuOpen(menuOpen === t.id ? null : t.id)}
-                        className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                    <div className="flex items-center gap-1">
+                      <Link
+                        href={`/dankelola/ticket/tipe/${t.id}`}
+                        className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-primary-600 transition-colors"
+                        title="Detail"
                       >
-                        <MoreVertical className="h-4 w-4" />
+                        <Eye className="h-3.5 w-3.5" />
+                      </Link>
+                      <Link
+                        href={`/dankelola/ticket/tipe/${t.id}/edit`}
+                        className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-primary-600 transition-colors"
+                        title="Edit"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Link>
+                      <button
+                        onClick={() => toggleTiket(t.id)}
+                        className={`grid h-7 w-7 place-items-center rounded-lg transition-colors ${
+                          t.aktif
+                            ? 'text-slate-400 hover:bg-yellow-50 hover:text-yellow-600'
+                            : 'text-green-500 hover:bg-green-50'
+                        }`}
+                        title={t.aktif ? 'Tutup' : 'Buka'}
+                      >
+                        <Eye className="h-3.5 w-3.5" />
                       </button>
-                      {menuOpen === t.id && (
-                        <>
-                          <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(null)} />
-                          <div className="absolute right-0 top-8 z-20 w-40 rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
-                            <Link
-                              href={`/dankelola/ticket/tipe/${t.id}`}
-                              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                              onClick={() => setMenuOpen(null)}
-                            >
-                              <Eye className="h-3.5 w-3.5" /> Detail
-                            </Link>
-                            <Link
-                              href={`/dankelola/ticket/tipe/${t.id}/edit`}
-                              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                              onClick={() => setMenuOpen(null)}
-                            >
-                              <Pencil className="h-3.5 w-3.5" /> Edit
-                            </Link>
-                            {!t.aktif && (
-                              <button
-                                onClick={() => toggleTiket(t.id)}
-                                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-green-600 hover:bg-green-50"
-                              >
-                                <Eye className="h-3.5 w-3.5" /> Buka
-                              </button>
-                            )}
-                            <button
-                              onClick={() => hapusTiket(t.id, t.nama)}
-                              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" /> Hapus
-                            </button>
-                          </div>
-                        </>
-                      )}
+                      <button
+                        onClick={() => hapusTiket(t.id, t.nama)}
+                        className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                        title="Hapus"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   </td>
                 </tr>
