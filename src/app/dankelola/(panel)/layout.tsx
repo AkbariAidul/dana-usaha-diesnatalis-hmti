@@ -265,7 +265,14 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         </aside>
 
         <main className="flex-1 overflow-y-auto">
-          <div key={pathname} className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8 animate-fade-in">
+          <div
+            key={pathname}
+            className={`px-4 py-6 md:px-8 md:py-8 animate-fade-in ${
+              pathname.startsWith('/dankelola/ticket/tipe') || pathname.startsWith('/dankelola/ticket/periode')
+                ? 'w-full'
+                : 'mx-auto max-w-6xl'
+            }`}
+          >
             <div className="mb-4 flex items-center gap-2 text-sm text-slate-500 md:hidden">
               {breadcrumbs.map((crumb, idx) => (
                 <div key={crumb.href} className="flex items-center gap-2">
