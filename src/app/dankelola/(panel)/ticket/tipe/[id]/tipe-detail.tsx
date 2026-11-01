@@ -43,6 +43,11 @@ export default function TipeDetail({
   const [bundleMin, setBundleMin] = useState(2)
   const [bundleDiskon, setBundleDiskon] = useState(0)
   const [bundleSubmitting, setBundleSubmitting] = useState(false)
+  const [periodeNama, setPeriodeNama] = useState('')
+  const [periodeMulai, setPeriodeMulai] = useState('')
+  const [periodeSelesai, setPeriodeSelesai] = useState('')
+  const [periodeHarga, setPeriodeHarga] = useState(0)
+  const [periodeSubmitting, setPeriodeSubmitting] = useState(false)
 
   useEffect(() => {
     ;(async () => {
@@ -132,6 +137,44 @@ export default function TipeDetail({
       await reloadBundles()
     } catch (e) { toast.error(String(e)) }
   }
+
+  async function reloadPeriods() {
+    const p = await getJSON<TicketPeriode[]>('/api/ticket/periode')
+    setPeriods(p as TicketPeriode[])
+  }
+
+  async function tambahPeriode() {
+    if (!ticket) return
+    if (!periodeMulai || !periodeSelesai) { toast.error('Tanggal wajib diisi'); return }
+    if (periodeSelesai < periodeMulai) { toast.error('Tanggal selesai harus setelah mulai'); return }
+    if (!periodeHarga) { toast.error('Harga wajib diisi'); return }
+    setPeriodeSubmitting(true)
+    try {
+      await sendJSON('/api/ticket/periode', 'POST', {
+        tiket_tipe_id: ticket.id,
+        nama: periodeNama.trim() || null,
+        tanggal_mulai: periodeMulai,
+        tanggal_selesai: periodeSelesai,
+        harga: Number(periodeHarga),
+      })
+      toast.success('Periode harga ditambahkan')
+      await reloadPeriods()
+      setPeriodeNama('')
+      setPeriodeMulai('')
+      setPeriodeSelesai('')
+      setPeriodeHarga(0)
+    } catch (e) { toast.error(String(e)) } finally { setPeriodeSubmitting(false) }
+  }
+
+  async function hapusPeriode(id: string) {
+    if (!window.confirm('Hapus periode ini?')) return
+    try {
+      await sendJSON('/api/ticket/periode', 'DELETE', { id })
+      toast.success('Periode dihapus')
+      await reloadPeriods()
+    } catch (e) { toast.error(String(e)) }
+  }
+
   const input = 'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10 disabled:bg-slate-50 disabled:text-slate-700'
   const label = 'mb-1 block text-xs font-medium text-slate-500'
 
@@ -191,10 +234,7 @@ export default function TipeDetail({
 
       {/* ── Periode ── */}
       <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-slate-900">Periode Harga</h2>
-          {!readOnly && <Link href={`/dankelola/ticket/periode`} className="text-xs text-primary-600 hover:underline">Kelola semua periode</Link>}
-        </div>
+        <h2 className="font-semibold text-slate-900">Periode Harga</h2>
         {tipePeriods.length === 0 ? (
           <p className="text-sm text-slate-400">Belum ada periode. Menggunakan harga dasar {formatRupiah(Number(ticket.harga))}.</p>
         ) : (
@@ -205,6 +245,7 @@ export default function TipeDetail({
                   <th className="px-3 py-2">Nama</th>
                   <th className="px-3 py-2">Periode</th>
                   <th className="px-3 py-2">Harga</th>
+                  {!readOnly && <th className="px-3 py-2">Aksi</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100/80">
@@ -213,10 +254,26 @@ export default function TipeDetail({
                     <td className="px-3 py-2 font-medium">{p.nama || '-'}</td>
                     <td className="px-3 py-2 text-slate-500">{p.tanggal_mulai} — {p.tanggal_selesai}</td>
                     <td className="px-3 py-2 font-semibold text-primary-600">{formatRupiah(Number(p.harga))}</td>
+                    {!readOnly && (
+                      <td className="px-3 py-2">
+                        <button onClick={() => hapusPeriode(p.id)} className="text-xs text-red-600 hover:underline">Hapus</button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+        {!readOnly && (
+          <div className="grid gap-3 border-t border-slate-100 pt-3 md:grid-cols-5 md:items-end">
+            <div><label className={label}>Nama (opsional)</label><input className={input} value={periodeNama} onChange={e => setPeriodeNama(e.target.value)} placeholder="Early Bird" /></div>
+            <div><label className={label}>Mulai</label><input type="date" className={input} value={periodeMulai} onChange={e => setPeriodeMulai(e.target.value)} /></div>
+            <div><label className={label}>Selesai</label><input type="date" className={input} value={periodeSelesai} onChange={e => setPeriodeSelesai(e.target.value)} /></div>
+            <div><label className={label}>Harga (Rp)</label><input type="number" min={0} className={input} value={periodeHarga || ''} onChange={e => setPeriodeHarga(Number(e.target.value))} /></div>
+            <button onClick={tambahPeriode} disabled={periodeSubmitting} className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+              {periodeSubmitting ? 'Menyimpan...' : '+ Tambah Periode'}
+            </button>
           </div>
         )}
       </div>

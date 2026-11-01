@@ -69,7 +69,6 @@ export default function TahapPage() {
         </div>
         <div className="flex items-center gap-2">
           <Link href="/dankelola/ticket/tipe/new" className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">+ Tambah Tipe</Link>
-          <Link href="/dankelola/ticket/periode/new" className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">+ Tambah Periode</Link>
         </div>
       </div>
 
