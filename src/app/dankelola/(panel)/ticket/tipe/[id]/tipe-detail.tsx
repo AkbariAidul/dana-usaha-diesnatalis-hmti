@@ -40,6 +40,9 @@ export default function TipeDetail({
   const [form, setForm] = useState<FormState>({ nama: '', deskripsi: '', harga: 0, jumlah_orang: 1, aktif: true, is_hari_h: false, kuota: 10, selesai_jual: '' })
   const [submitting, setSubmitting] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [bundleMin, setBundleMin] = useState(2)
+  const [bundleDiskon, setBundleDiskon] = useState(0)
+  const [bundleSubmitting, setBundleSubmitting] = useState(false)
 
   useEffect(() => {
     ;(async () => {
@@ -98,6 +101,37 @@ export default function TipeDetail({
     } catch (e) { toast.error(String(e)) }
   }
 
+  async function reloadBundles() {
+    const b = await getJSON<TicketBundleDiscount[]>('/api/ticket/bundle')
+    setBundles(b as TicketBundleDiscount[])
+  }
+
+  async function tambahBundle() {
+    if (!ticket) return
+    if (bundleMin < 2) { toast.error('Jumlah minimum minimal 2'); return }
+    if (bundleDiskon <= 0 || bundleDiskon > 100) { toast.error('Diskon harus 1-100%'); return }
+    setBundleSubmitting(true)
+    try {
+      await sendJSON('/api/ticket/bundle', 'POST', {
+        tiket_tipe_id: ticket.id,
+        jumlah_min: Number(bundleMin),
+        diskon_persen: Number(bundleDiskon),
+      })
+      toast.success('Diskon bundle ditambahkan')
+      await reloadBundles()
+      setBundleMin(2)
+      setBundleDiskon(0)
+    } catch (e) { toast.error(String(e)) } finally { setBundleSubmitting(false) }
+  }
+
+  async function hapusBundle(id: string) {
+    if (!window.confirm('Hapus diskon bundle ini?')) return
+    try {
+      await sendJSON('/api/ticket/bundle', 'DELETE', { id })
+      toast.success('Diskon bundle dihapus')
+      await reloadBundles()
+    } catch (e) { toast.error(String(e)) }
+  }
   const input = 'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10 disabled:bg-slate-50 disabled:text-slate-700'
   const label = 'mb-1 block text-xs font-medium text-slate-500'
 
@@ -189,10 +223,7 @@ export default function TipeDetail({
 
       {/* ── Bundle Discount ── */}
       <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-slate-900">Diskon Bundle</h2>
-          {!readOnly && <Link href={`/dankelola/ticket/periode`} className="text-xs text-primary-600 hover:underline">Kelola semua diskon</Link>}
-        </div>
+        <h2 className="font-semibold text-slate-900">Diskon Bundle</h2>
         {tipeBundles.length === 0 ? (
           <p className="text-sm text-slate-400">Belum ada diskon bundle.</p>
         ) : (
@@ -202,6 +233,7 @@ export default function TipeDetail({
                 <tr>
                   <th className="px-3 py-2">Syarat</th>
                   <th className="px-3 py-2">Diskon</th>
+                  {!readOnly && <th className="px-3 py-2">Aksi</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100/80">
@@ -209,41 +241,31 @@ export default function TipeDetail({
                   <tr key={b.id} className="hover:bg-slate-50">
                     <td className="px-3 py-2">Beli {b.jumlah_min}+ tiket</td>
                     <td className="px-3 py-2 font-semibold text-green-600">{b.diskon_persen}%</td>
+                    {!readOnly && (
+                      <td className="px-3 py-2">
+                        <button onClick={() => hapusBundle(b.id)} className="text-xs text-red-600 hover:underline">Hapus</button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-      </div>
-
-      {/* ── Statistik ── */}
-      <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm space-y-3">
-        <h2 className="font-semibold text-slate-900">Statistik</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center">
-            <p className="text-2xl font-bold text-primary-600">{ticket.terjual ?? 0}</p>
-            <p className="text-xs text-slate-500">Terjual</p>
+        {!readOnly && (
+          <div className="flex flex-wrap items-end gap-3 border-t border-slate-100 pt-3">
+            <div>
+              <label className={label}>Beli minimal (tiket)</label>
+              <input type="number" min={2} className={input} value={bundleMin} onChange={e => setBundleMin(Number(e.target.value))} />
+            </div>
+            <div>
+              <label className={label}>Diskon (%)</label>
+              <input type="number" min={1} max={100} className={input} value={bundleDiskon || ''} onChange={e => setBundleDiskon(Number(e.target.value))} />
+            </div>
+            <button onClick={tambahBundle} disabled={bundleSubmitting} className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+              {bundleSubmitting ? 'Menyimpan...' : '+ Tambah Diskon'}
+            </button>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center">
-            <p className="text-2xl font-bold text-orange-600">{ticket.pending ?? 0}</p>
-            <p className="text-xs text-slate-500">Menunggu Verif</p>
-          </div>
-          {ticket.is_hari_h && (
-            <>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center">
-                <p className="text-2xl font-bold text-green-600">{ticket.kuota ?? 0}</p>
-                <p className="text-xs text-slate-500">Kuota</p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center">
-                <p className="text-2xl font-bold text-slate-900">{ticket.sisa ?? 0}</p>
-                <p className="text-xs text-slate-500">Sisa</p>
-              </div>
-            </>
-          )}
-        </div>
-        {ticket.selesai_jual && (
-          <p className="text-xs text-slate-500">Tutup penjualan: {new Date(ticket.selesai_jual).toLocaleString('id-ID')}</p>
         )}
       </div>
     </div>

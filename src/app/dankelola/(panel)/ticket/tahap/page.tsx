@@ -84,7 +84,7 @@ export default function TahapPage() {
               <th className="px-4 py-3 font-medium text-slate-600">Periode Aktif</th>
               <th className="px-4 py-3 font-medium text-slate-600">Diskon Bundle</th>
               <th className="px-4 py-3 font-medium text-slate-600">Hari H</th>
-              <th className="px-4 py-3 font-medium text-slate-600 w-12"></th>
+              <th className="px-4 py-3 font-medium text-slate-600">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
