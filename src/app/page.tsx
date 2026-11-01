@@ -22,7 +22,7 @@ export default async function Home() {
 
   return (
     <div className="relative min-h-screen bg-white text-[#111827]">
-      <header className="border-b border-slate-200/70 bg-white/95 backdrop-blur-xl lg:absolute lg:inset-x-0 lg:top-0 lg:z-30 lg:border-transparent lg:bg-gradient-to-b lg:from-white/85 lg:via-white/40 lg:to-transparent lg:backdrop-blur-none">
+      <header className="absolute inset-x-0 top-0 z-30">
         <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <Link href="/" className="flex min-w-0 items-center gap-3">
             <Image
@@ -63,7 +63,7 @@ export default async function Home() {
           </div>
         </div>
 
-        <nav className="flex gap-1 overflow-x-auto border-t border-slate-100 px-4 py-2 text-sm md:hidden">
+        <nav className="flex gap-1 overflow-x-auto px-4 py-2 text-sm md:hidden">
           {navLinks.map((link) => (
             <Link
               key={link.href}
