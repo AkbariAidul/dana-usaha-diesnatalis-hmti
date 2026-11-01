@@ -5,11 +5,16 @@ import { Html5Qrcode } from 'html5-qrcode'
 import { Camera, CameraOff } from 'lucide-react'
 import { siapkanBeep } from '@/lib/beep'
 
-export function QrScanner({ onScan }: { onScan: (value: string) => void }) {
+export function QrScanner({ onScan, paused = false }: { onScan: (value: string) => void; paused?: boolean }) {
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const lastRef = useRef({ value: '', at: 0 })
+  const pausedRef = useRef(paused)
   const [aktif, setAktif] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    pausedRef.current = paused
+  }, [paused])
 
   useEffect(() => {
     return () => {
@@ -31,6 +36,7 @@ export function QrScanner({ onScan }: { onScan: (value: string) => void }) {
         { facingMode: 'environment' },
         { fps: 10, qrbox: { width: 240, height: 240 } },
         (value) => {
+          if (pausedRef.current) return
           const now = Date.now()
           if (value === lastRef.current.value && now - lastRef.current.at < 2500) return
           lastRef.current = { value, at: now }
@@ -70,7 +76,7 @@ export function QrScanner({ onScan }: { onScan: (value: string) => void }) {
         {aktif ? <CameraOff className="h-4 w-4" /> : <Camera className="h-4 w-4" />}
         {aktif ? 'Matikan Kamera' : 'Aktifkan Kamera'}
       </button>
-      <p className="text-xs text-slate-500">Kamera butuh HTTPS atau localhost. Bisa juga ketik kode manual di bawah.</p>
+      <p className="text-xs text-slate-500">Kalau kamera error, kamu bisa pakai input manual kode di bawah.</p>
     </div>
   )
 }
