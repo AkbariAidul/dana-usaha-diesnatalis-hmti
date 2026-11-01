@@ -268,7 +268,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           <div
             key={pathname}
             className={`px-4 py-6 md:px-8 md:py-8 animate-fade-in ${
-              pathname.startsWith('/dankelola/ticket/tipe') || pathname.startsWith('/dankelola/ticket/periode')
+              pathname.startsWith('/dankelola/ticket/tipe') ||
+              pathname.startsWith('/dankelola/ticket/periode') ||
+              pathname.startsWith('/dankelola/ticket/tahap')
                 ? 'w-full'
                 : 'mx-auto max-w-6xl'
             }`}
