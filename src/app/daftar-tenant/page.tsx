@@ -4,7 +4,8 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '@/app/dankelola/api'
 import { hitungHarga, periodeDariTanggal, periodeLabel, KategoriSewa, HargaDasar, FaktorHarga, PeriodeHarga } from '@/lib/types'
-import { formatRupiah } from '@/lib/utils'
+import { formatDate, formatRupiah, todayISO } from '@/lib/utils'
+import { buatQrisDinamis } from '@/lib/qris'
 import QRCode from 'qrcode'
 
 export default function DaftarTenantPublik() {
@@ -12,11 +13,12 @@ export default function DaftarTenantPublik() {
   const [hargaDasar, setHargaDasar] = useState<Array<{ kategori_sewa_id: string; jenis_usaha: string; periode: string; harga: number }>>([])
   const [faktor, setFaktor] = useState<Array<{ tipe: string; nilai: string; multiplier: number }>>([])
   const [periods, setPeriods] = useState<PeriodeHarga[]>([])
+  const [acara, setAcara] = useState<{ tanggal_acara: string } | null>(null)
   const [qris, setQris] = useState<Record<string, string>>({})
   const [step, setStep] = useState(1)
   const [form, setForm] = useState({
     nama_usaha: '', kontak: '', email: '', alamat: '', deskripsi_usaha: '',
-    kategori_sewa_id: '', jenis_usaha: 'F&B', asal: 'Internal Kampus', lokasi: 'Reguler', tgl_daftar: new Date().toISOString().slice(0,10), tgl_acara: ''
+    kategori_sewa_id: '', jenis_usaha: 'F&B', asal: 'Internal Kampus', lokasi: 'Reguler',
   })
   const [pendaftaran, setPendaftaran] = useState<{ id: string; kode_pendaftaran: string; nama_usaha: string; kontak: string; harga_akhir: number; dp_wajib: number } | null>(null)
   const [file, setFile] = useState<File | null>(null)
@@ -26,17 +28,19 @@ export default function DaftarTenantPublik() {
   useEffect(() => {
     Promise.all([
       getJSON<{ kategori: KategoriSewa[]; hargaDasar: HargaDasar[]; faktor: FaktorHarga[]; periode: PeriodeHarga[] }>('/api/master'),
-      getJSON<Record<string, string>>('/api/pengaturan/qris')
-    ]).then(([m, q]) => {
+      getJSON<Record<string, string>>('/api/pengaturan/qris'),
+      getJSON<{ tanggal_acara: string } | null>('/api/acara')
+    ]).then(([m, q, a]) => {
       setKategori(m.kategori || [])
       setHargaDasar(m.hargaDasar || [])
       setFaktor(m.faktor || [])
       setPeriods(m.periode || [])
       setQris(q)
+      setAcara(a)
     })
   }, [])
 
-  const periode = periodeDariTanggal(form.tgl_daftar, periods)
+  const periode = periodeDariTanggal(todayISO(), periods)
   const harga = useMemo(() => {
     const hd = hargaDasar.find((h) => h.kategori_sewa_id === form.kategori_sewa_id && h.jenis_usaha === form.jenis_usaha && h.periode === periode)
     if (!hd) return 0
@@ -47,8 +51,14 @@ export default function DaftarTenantPublik() {
   const dp = Math.ceil(harga/2)
 
   useEffect(() => {
-    if (qris.qris_payload) QRCode.toDataURL(qris.qris_payload, { width: 320, margin: 1 }).then(setQr).catch(()=>{})
-  }, [qris])
+    const nominal = pendaftaran?.dp_wajib
+    if (!qris.qris_payload || !nominal) {
+      setQr('')
+      return
+    }
+    const payload = buatQrisDinamis(qris.qris_payload, nominal)
+    QRCode.toDataURL(payload, { width: 320, margin: 2, errorCorrectionLevel: 'H' }).then(setQr).catch(()=>{})
+  }, [qris, pendaftaran])
 
   async function daftar() {
     if (!periode) return toast.error('Tanggal daftar di luar periode open tenant')
@@ -125,12 +135,11 @@ export default function DaftarTenantPublik() {
                 <label className="mb-1 block text-sm font-medium">Lokasi</label>
                 <select className={input} value={form.lokasi} onChange={e=>setForm({...form,lokasi:e.target.value})}><option>Reguler</option><option>Strategis 1</option><option>Strategis 2</option></select>
               </div>
-              <div><label className="mb-1 block text-sm font-medium">Tanggal Daftar</label><input type="date" className={input} value={form.tgl_daftar} onChange={e=>setForm({...form,tgl_daftar:e.target.value})}/></div>
-              <div><label className="mb-1 block text-sm font-medium">Tanggal Acara (opsional)</label><input type="date" className={input} value={form.tgl_acara} onChange={e=>setForm({...form,tgl_acara:e.target.value})}/></div>
               <div className="md:col-span-2 rounded-xl bg-slate-50 p-4 flex items-center justify-between">
                 <div className="text-sm">
                   <p>Periode: <span className="font-medium">{periode ? periodeLabel(periode, periods) : 'Di luar periode'}</span></p>
                   <p className="text-slate-500">{periods.map((p)=>`${p.nama} ${p.tanggal_mulai}–${p.tanggal_selesai}`).join(' • ')}</p>
+                  {acara?.tanggal_acara && <p className="text-slate-500">Tanggal Acara: {formatDate(acara.tanggal_acara)}</p>}
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-slate-500">Estimasi Harga</p>
@@ -159,7 +168,18 @@ export default function DaftarTenantPublik() {
             </div>
             <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40 space-y-4 text-center">
               <h2 className="text-lg font-semibold text-slate-900">Scan QRIS untuk Bayar DP</h2>
-              {qr ? <img src={qr} alt="QRIS" className="mx-auto rounded-xl border border-slate-100" /> : <div className="mx-auto h-80 w-80 skeleton" />}
+              <div className="mx-auto w-fit rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                {qr ? (
+                  <div className="relative h-80 w-80">
+                    <img src={qr} alt="QRIS" className="h-full w-full rounded-lg" />
+                    <span className="pointer-events-none absolute inset-0 grid place-items-center">
+                      <span className="grid h-16 w-16 place-items-center rounded-full border border-slate-200 bg-white p-1 shadow-sm">
+                        <img src="/favicon.png" alt="Logo" className="h-full w-full object-contain" />
+                      </span>
+                    </span>
+                  </div>
+                ) : <div className="h-80 w-80 skeleton" />}
+              </div>
               <p className="text-sm text-slate-500">{qris.qris_nama_merchant || 'Merchant Himpunan'}</p>
               <p className="text-xs text-slate-400">Transfer sesuai nominal DP lalu upload bukti dibawah ini.</p>
               <input type="file" accept="image/*,application/pdf" onChange={e=>setFile(e.target.files?.[0]||null)} className="block w-full text-sm" />

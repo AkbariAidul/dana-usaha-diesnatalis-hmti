@@ -1,16 +1,18 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { getPeriodeHarga, getHargaDasar, getFaktorHarga } from '@/lib/queries'
+import { getPeriodeHarga, getHargaDasar, getFaktorHarga, getAcara } from '@/lib/queries'
 import { hitungHarga, periodeDariTanggal } from '@/lib/types'
+import { todayISO } from '@/lib/utils'
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const tglDaftar = body.tgl_daftar || new Date().toISOString().slice(0, 10)
-    const [periods, hargaDasar, faktor] = await Promise.all([
+    const tglDaftar = todayISO()
+    const [periods, hargaDasar, faktor, acara] = await Promise.all([
       getPeriodeHarga(),
       getHargaDasar(),
       getFaktorHarga(),
+      getAcara(),
     ])
     const periode = periodeDariTanggal(tglDaftar, periods)
     if (!periode) {
@@ -35,6 +37,7 @@ export async function POST(request: Request) {
     const payload = {
       ...body,
       tgl_daftar: tglDaftar,
+      tgl_acara: acara?.tanggal_acara ?? null,
       periode_daftar: periode,
       harga_akhir: harga,
       dp_wajib: Math.ceil(harga / 2),

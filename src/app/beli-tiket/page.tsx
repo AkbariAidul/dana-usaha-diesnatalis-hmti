@@ -19,7 +19,7 @@ export default function BeliTiketPublik() {
   useEffect(() => {
     Promise.all([getJSON<{ tiket: Array<{ id: string; nama: string; harga: number; deskripsi?: string; kuota: number; terjual: number }>; varian: Array<Record<string, unknown>> }>('/api/public/katalog'), getJSON<Record<string, string>>('/api/pengaturan/qris')]).then(([k,q])=>{setKatalog({ tiket: k.tiket || [], varian: k.varian || [] }); setQris(q)})
   }, [])
-  useEffect(() => { if (qris.qris_payload) QRCode.toDataURL(qris.qris_payload,{width:320,margin:1}).then(setQr).catch(()=>{}) }, [qris])
+  useEffect(() => { if (qris.qris_payload) QRCode.toDataURL(qris.qris_payload,{width:320,margin:2,errorCorrectionLevel:'H'}).then(setQr).catch(()=>{}) }, [qris])
 
   const tipe = katalog.tiket.find((t)=>t.id===form.tiket_tipe_id)
   const total = tipe ? Number(tipe.harga) * Number(form.jumlah) : 0
@@ -98,7 +98,18 @@ export default function BeliTiketPublik() {
             </div>
             <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40 text-center space-y-4">
               <h2 className="text-lg font-semibold text-slate-900">Scan QRIS</h2>
-              {qr ? <img src={qr} alt="QRIS" className="mx-auto rounded-xl border border-slate-100" /> : <div className="mx-auto h-80 w-80 skeleton" />}
+              <div className="mx-auto w-fit rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                {qr ? (
+                  <div className="relative h-80 w-80">
+                    <img src={qr} alt="QRIS" className="h-full w-full rounded-lg" />
+                    <span className="pointer-events-none absolute inset-0 grid place-items-center">
+                      <span className="grid h-16 w-16 place-items-center rounded-full border border-slate-200 bg-white p-1 shadow-sm">
+                        <img src="/favicon.png" alt="Logo" className="h-full w-full object-contain" />
+                      </span>
+                    </span>
+                  </div>
+                ) : <div className="h-80 w-80 skeleton" />}
+              </div>
               <input type="file" accept="image/*,application/pdf" onChange={e=>setFile(e.target.files?.[0]||null)} className="block w-full text-sm" />
               <button onClick={upload} disabled={uploading||!file} className="w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">{uploading?'Mengupload...':'Upload Bukti Bayar'}</button>
             </div>
