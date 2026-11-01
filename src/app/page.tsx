@@ -78,15 +78,15 @@ export default async function Home() {
 
       <main className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:h-[calc(100dvh-72px)] lg:px-8">
         <section className="relative grid w-full gap-8 py-8 sm:py-10 lg:h-full lg:grid-cols-[55fr_45fr] lg:items-center lg:gap-12 lg:py-6">
-          <div className="relative order-1 h-[260px] w-full sm:h-[340px] lg:absolute lg:inset-y-0 lg:left-0 lg:z-0 lg:h-full lg:w-[72%]">
+          <div className="relative order-1 aspect-video w-full lg:absolute lg:inset-0 lg:z-0 lg:aspect-auto lg:h-full">
             <div className="hero-photo absolute inset-0">
               <Image
                 src="/hero.png"
                 alt="Dokumentasi dua orang di area festival In4Days XI"
                 fill
                 priority
-                className="object-cover object-center"
-                sizes="(min-width: 1024px) 72vw, 100vw"
+                className="object-contain object-left"
+                sizes="(min-width: 1280px) 1216px, 100vw"
               />
             </div>
             <div className="hero-photo-fade pointer-events-none absolute inset-0 hidden lg:block" />
