@@ -21,8 +21,8 @@ export default async function Home() {
   const authed = !!token && (await cookies()).get('dashboard_session')?.value === token
 
   return (
-    <div className="min-h-screen bg-white text-[#111827]">
-      <header className="border-b border-slate-200/70 bg-white/95 backdrop-blur-xl">
+    <div className="relative min-h-screen bg-white text-[#111827]">
+      <header className="border-b border-slate-200/70 bg-white/95 backdrop-blur-xl lg:absolute lg:inset-x-0 lg:top-0 lg:z-30 lg:border-transparent lg:bg-gradient-to-b lg:from-white/85 lg:via-white/40 lg:to-transparent lg:backdrop-blur-none">
         <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <Link href="/" className="flex min-w-0 items-center gap-3">
             <Image
@@ -76,7 +76,7 @@ export default async function Home() {
         </nav>
       </header>
 
-      <main className="relative w-full lg:h-[calc(100dvh-72px)]">
+      <main className="relative w-full lg:h-[100dvh]">
         <section className="relative w-full overflow-hidden lg:h-full">
           <div className="relative aspect-video w-full lg:absolute lg:inset-0 lg:z-0 lg:aspect-auto lg:h-full">
             <div className="hero-photo absolute inset-0">
