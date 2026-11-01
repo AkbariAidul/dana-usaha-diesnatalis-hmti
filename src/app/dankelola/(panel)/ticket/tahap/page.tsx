@@ -204,7 +204,7 @@ export default function TahapPage() {
                       </Link>
                       <button
                         onClick={() => hapusTiket(t.id, t.nama)}
-                        className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                        className="grid h-7 w-7 place-items-center rounded-lg text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors"
                         title="Hapus"
                       >
                         <Trash2 className="h-3.5 w-3.5" />

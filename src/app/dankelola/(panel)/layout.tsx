@@ -243,7 +243,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             </div>
             <div className="flex-1 overflow-y-auto py-2">{nav}</div>
             <div className="border-t border-white/15 px-3 py-3">
-              <button onClick={logout} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-white/70 transition-all hover:bg-red-500/20 hover:text-red-300">
+                <button onClick={logout} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-red-300 transition-all hover:bg-red-500/20 hover:text-red-200">
                 <LogOut className="h-4 w-4 shrink-0" />
                 <span>Keluar</span>
               </button>
@@ -257,7 +257,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         <aside className="hidden md:flex md:w-56 md:flex-col md:border-r md:border-white/15 bg-[#6D28D9]">
           <div className="flex-1 overflow-y-auto py-2">{nav}</div>
           <div className="shrink-0 border-t border-white/15 px-3 py-3">
-            <button onClick={logout} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-white/70 transition-all hover:bg-red-500/20 hover:text-red-300">
+            <button onClick={logout} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-red-300 transition-all hover:bg-red-500/20 hover:text-red-200">
               <LogOut className="h-4 w-4 shrink-0" />
               <span>Keluar</span>
             </button>

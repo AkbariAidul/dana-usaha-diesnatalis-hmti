@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../../api'
 import type { TicketKatalogItem, TicketPeriode, TicketBundleDiscount } from '@/lib/types'
 import { formatRupiah } from '@/lib/utils'
+import { Pencil, Trash2 } from 'lucide-react'
 
 type FormState = {
   nama: string
@@ -283,9 +284,13 @@ export default function TipeDetail({
                     <td className="px-3 py-2 text-slate-500">{p.tanggal_mulai.slice(0, 10)} — {p.tanggal_selesai.slice(0, 10)}</td>
                     <td className="px-3 py-2 font-semibold text-primary-600">{formatRupiah(Number(p.harga))}</td>
                     <td className="px-3 py-2">
-                      <div className="flex gap-2">
-                        <button onClick={() => editPeriode(p)} className="text-xs text-primary-600 hover:underline">Edit</button>
-                        <button onClick={() => hapusPeriode(p.id)} className="text-xs text-red-600 hover:underline">Hapus</button>
+                      <div className="flex gap-1">
+                        <button onClick={() => editPeriode(p)} className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-primary-600 transition-colors" title="Edit">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button onClick={() => hapusPeriode(p.id)} className="grid h-7 w-7 place-items-center rounded-lg text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors" title="Hapus">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -329,9 +334,13 @@ export default function TipeDetail({
                     <td className="px-3 py-2">Beli {b.jumlah_min}+ tiket</td>
                     <td className="px-3 py-2 font-semibold text-green-600">{b.diskon_persen}%</td>
                     <td className="px-3 py-2">
-                      <div className="flex gap-2">
-                        <button onClick={() => editBundle(b)} className="text-xs text-primary-600 hover:underline">Edit</button>
-                        <button onClick={() => hapusBundle(b.id)} className="text-xs text-red-600 hover:underline">Hapus</button>
+                      <div className="flex gap-1">
+                        <button onClick={() => editBundle(b)} className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-primary-600 transition-colors" title="Edit">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button onClick={() => hapusBundle(b.id)} className="grid h-7 w-7 place-items-center rounded-lg text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors" title="Hapus">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                       </div>
                     </td>
                   </tr>
