@@ -51,15 +51,6 @@ export default async function Home() {
                 </Link>
               ))}
             </nav>
-            {authed && (
-              <Link
-                href="/dankelola"
-                className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700"
-              >
-                <LayoutDashboard className="h-4 w-4" />
-                <span className="hidden sm:inline">Dashboard</span>
-              </Link>
-            )}
           </div>
         </div>
 
@@ -141,6 +132,16 @@ export default async function Home() {
           </div>
         </section>
       </main>
+
+      {authed && (
+        <Link
+          href="/dankelola"
+          className="fixed bottom-4 left-4 z-40 inline-flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/90 px-4 py-2.5 text-sm font-medium text-primary-700 shadow-lg shadow-slate-900/10 backdrop-blur transition-colors hover:bg-primary-600 hover:text-white"
+        >
+          <LayoutDashboard className="h-4 w-4" />
+          <span>Dashboard</span>
+        </Link>
+      )}
     </div>
   )
 }
