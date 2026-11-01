@@ -48,6 +48,8 @@ export default function TipeDetail({
   const [periodeSelesai, setPeriodeSelesai] = useState('')
   const [periodeHarga, setPeriodeHarga] = useState(0)
   const [periodeSubmitting, setPeriodeSubmitting] = useState(false)
+  const [editPeriodeId, setEditPeriodeId] = useState<string | null>(null)
+  const [editBundleId, setEditBundleId] = useState<string | null>(null)
 
   useEffect(() => {
     ;(async () => {
@@ -111,22 +113,34 @@ export default function TipeDetail({
     setBundles(b as TicketBundleDiscount[])
   }
 
-  async function tambahBundle() {
+  async function simpanBundle() {
     if (!ticket) return
     if (bundleMin < 2) { toast.error('Jumlah minimum minimal 2'); return }
     if (bundleDiskon <= 0 || bundleDiskon > 100) { toast.error('Diskon harus 1-100%'); return }
     setBundleSubmitting(true)
     try {
       await sendJSON('/api/ticket/bundle', 'POST', {
+        ...(editBundleId ? { id: editBundleId } : {}),
         tiket_tipe_id: ticket.id,
         jumlah_min: Number(bundleMin),
         diskon_persen: Number(bundleDiskon),
       })
-      toast.success('Diskon bundle ditambahkan')
+      toast.success(editBundleId ? 'Diskon bundle diperbarui' : 'Diskon bundle ditambahkan')
       await reloadBundles()
-      setBundleMin(2)
-      setBundleDiskon(0)
+      resetBundleForm()
     } catch (e) { toast.error(String(e)) } finally { setBundleSubmitting(false) }
+  }
+
+  function resetBundleForm() {
+    setEditBundleId(null)
+    setBundleMin(2)
+    setBundleDiskon(0)
+  }
+
+  function editBundle(b: TicketBundleDiscount) {
+    setEditBundleId(b.id)
+    setBundleMin(b.jumlah_min)
+    setBundleDiskon(b.diskon_persen)
   }
 
   async function hapusBundle(id: string) {
@@ -143,7 +157,7 @@ export default function TipeDetail({
     setPeriods(p as TicketPeriode[])
   }
 
-  async function tambahPeriode() {
+  async function simpanPeriode() {
     if (!ticket) return
     if (!periodeMulai || !periodeSelesai) { toast.error('Tanggal wajib diisi'); return }
     if (periodeSelesai < periodeMulai) { toast.error('Tanggal selesai harus setelah mulai'); return }
@@ -151,19 +165,33 @@ export default function TipeDetail({
     setPeriodeSubmitting(true)
     try {
       await sendJSON('/api/ticket/periode', 'POST', {
+        ...(editPeriodeId ? { id: editPeriodeId } : {}),
         tiket_tipe_id: ticket.id,
         nama: periodeNama.trim() || null,
         tanggal_mulai: periodeMulai,
         tanggal_selesai: periodeSelesai,
         harga: Number(periodeHarga),
       })
-      toast.success('Periode harga ditambahkan')
+      toast.success(editPeriodeId ? 'Periode diperbarui' : 'Periode harga ditambahkan')
       await reloadPeriods()
-      setPeriodeNama('')
-      setPeriodeMulai('')
-      setPeriodeSelesai('')
-      setPeriodeHarga(0)
+      resetPeriodeForm()
     } catch (e) { toast.error(String(e)) } finally { setPeriodeSubmitting(false) }
+  }
+
+  function resetPeriodeForm() {
+    setEditPeriodeId(null)
+    setPeriodeNama('')
+    setPeriodeMulai('')
+    setPeriodeSelesai('')
+    setPeriodeHarga(0)
+  }
+
+  function editPeriode(p: TicketPeriode) {
+    setEditPeriodeId(p.id)
+    setPeriodeNama(p.nama ?? '')
+    setPeriodeMulai(p.tanggal_mulai.slice(0, 10))
+    setPeriodeSelesai(p.tanggal_selesai.slice(0, 10))
+    setPeriodeHarga(Number(p.harga))
   }
 
   async function hapusPeriode(id: string) {
@@ -245,37 +273,39 @@ export default function TipeDetail({
                   <th className="px-3 py-2">Nama</th>
                   <th className="px-3 py-2">Periode</th>
                   <th className="px-3 py-2">Harga</th>
-                  {!readOnly && <th className="px-3 py-2">Aksi</th>}
+                  <th className="px-3 py-2">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100/80">
                 {tipePeriods.map((p) => (
                   <tr key={p.id} className="hover:bg-slate-50">
                     <td className="px-3 py-2 font-medium">{p.nama || '-'}</td>
-                    <td className="px-3 py-2 text-slate-500">{p.tanggal_mulai} — {p.tanggal_selesai}</td>
+                    <td className="px-3 py-2 text-slate-500">{p.tanggal_mulai.slice(0, 10)} — {p.tanggal_selesai.slice(0, 10)}</td>
                     <td className="px-3 py-2 font-semibold text-primary-600">{formatRupiah(Number(p.harga))}</td>
-                    {!readOnly && (
-                      <td className="px-3 py-2">
+                    <td className="px-3 py-2">
+                      <div className="flex gap-2">
+                        <button onClick={() => editPeriode(p)} className="text-xs text-primary-600 hover:underline">Edit</button>
                         <button onClick={() => hapusPeriode(p.id)} className="text-xs text-red-600 hover:underline">Hapus</button>
-                      </td>
-                    )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-        {!readOnly && (
-          <div className="grid gap-3 border-t border-slate-100 pt-3 md:grid-cols-5 md:items-end">
-            <div><label className={label}>Nama (opsional)</label><input className={input} value={periodeNama} onChange={e => setPeriodeNama(e.target.value)} placeholder="Early Bird" /></div>
-            <div><label className={label}>Mulai</label><input type="date" className={input} value={periodeMulai} onChange={e => setPeriodeMulai(e.target.value)} /></div>
-            <div><label className={label}>Selesai</label><input type="date" className={input} value={periodeSelesai} onChange={e => setPeriodeSelesai(e.target.value)} /></div>
-            <div><label className={label}>Harga (Rp)</label><input type="number" min={0} className={input} value={periodeHarga || ''} onChange={e => setPeriodeHarga(Number(e.target.value))} /></div>
-            <button onClick={tambahPeriode} disabled={periodeSubmitting} className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-              {periodeSubmitting ? 'Menyimpan...' : '+ Tambah Periode'}
+        <div className="grid gap-3 border-t border-slate-100 pt-3 md:grid-cols-5 md:items-end">
+          <div><label className={label}>Nama (opsional)</label><input className={input} value={periodeNama} onChange={e => setPeriodeNama(e.target.value)} placeholder="Early Bird" /></div>
+          <div><label className={label}>Mulai</label><input type="date" className={input} value={periodeMulai} onChange={e => setPeriodeMulai(e.target.value)} /></div>
+          <div><label className={label}>Selesai</label><input type="date" className={input} value={periodeSelesai} onChange={e => setPeriodeSelesai(e.target.value)} /></div>
+          <div><label className={label}>Harga (Rp)</label><input type="number" min={0} className={input} value={periodeHarga || ''} onChange={e => setPeriodeHarga(Number(e.target.value))} /></div>
+          <div className="flex gap-2">
+            <button onClick={simpanPeriode} disabled={periodeSubmitting} className="flex-1 rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+              {periodeSubmitting ? 'Menyimpan...' : editPeriodeId ? 'Simpan' : '+ Tambah Periode'}
             </button>
+            {editPeriodeId && <button onClick={resetPeriodeForm} className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600">Batal</button>}
           </div>
-        )}
+        </div>
       </div>
 
       {/* ── Bundle Discount ── */}
@@ -290,7 +320,7 @@ export default function TipeDetail({
                 <tr>
                   <th className="px-3 py-2">Syarat</th>
                   <th className="px-3 py-2">Diskon</th>
-                  {!readOnly && <th className="px-3 py-2">Aksi</th>}
+                  <th className="px-3 py-2">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100/80">
@@ -298,32 +328,32 @@ export default function TipeDetail({
                   <tr key={b.id} className="hover:bg-slate-50">
                     <td className="px-3 py-2">Beli {b.jumlah_min}+ tiket</td>
                     <td className="px-3 py-2 font-semibold text-green-600">{b.diskon_persen}%</td>
-                    {!readOnly && (
-                      <td className="px-3 py-2">
+                    <td className="px-3 py-2">
+                      <div className="flex gap-2">
+                        <button onClick={() => editBundle(b)} className="text-xs text-primary-600 hover:underline">Edit</button>
                         <button onClick={() => hapusBundle(b.id)} className="text-xs text-red-600 hover:underline">Hapus</button>
-                      </td>
-                    )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-        {!readOnly && (
-          <div className="flex flex-wrap items-end gap-3 border-t border-slate-100 pt-3">
-            <div>
-              <label className={label}>Beli minimal (tiket)</label>
-              <input type="number" min={2} className={input} value={bundleMin} onChange={e => setBundleMin(Number(e.target.value))} />
-            </div>
-            <div>
-              <label className={label}>Diskon (%)</label>
-              <input type="number" min={1} max={100} className={input} value={bundleDiskon || ''} onChange={e => setBundleDiskon(Number(e.target.value))} />
-            </div>
-            <button onClick={tambahBundle} disabled={bundleSubmitting} className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-              {bundleSubmitting ? 'Menyimpan...' : '+ Tambah Diskon'}
-            </button>
+        <div className="flex flex-wrap items-end gap-3 border-t border-slate-100 pt-3">
+          <div>
+            <label className={label}>Beli minimal (tiket)</label>
+            <input type="number" min={2} className={input} value={bundleMin} onChange={e => setBundleMin(Number(e.target.value))} />
           </div>
-        )}
+          <div>
+            <label className={label}>Diskon (%)</label>
+            <input type="number" min={1} max={100} className={input} value={bundleDiskon || ''} onChange={e => setBundleDiskon(Number(e.target.value))} />
+          </div>
+          <button onClick={simpanBundle} disabled={bundleSubmitting} className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+            {bundleSubmitting ? 'Menyimpan...' : editBundleId ? 'Simpan' : '+ Tambah Diskon'}
+          </button>
+          {editBundleId && <button onClick={resetBundleForm} className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600">Batal</button>}
+        </div>
       </div>
     </div>
   )
