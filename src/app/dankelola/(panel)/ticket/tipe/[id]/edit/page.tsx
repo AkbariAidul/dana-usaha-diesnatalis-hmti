@@ -46,18 +46,24 @@ export default function TipeEditPage({ params }: { params: Promise<{ id: string 
   useEffect(() => {
     ;(async () => {
       const resolved = await params
-      const data = await getJSON<TicketKatalogItem>(`/api/ticket/${resolved.id}`)
-      setTicket(data)
+      const data = await getJSON<TicketKatalogItem[]>('/api/ticket')
+      const found = (data as TicketKatalogItem[]).find((t) => t.id === resolved.id)
+      if (!found) {
+        toast.error('Tipe tiket tidak ditemukan')
+        router.push('/dankelola/ticket/tahap')
+        return
+      }
+      setTicket(found)
       setForm({
-        id: data.id,
-        nama: data.nama,
-        deskripsi: data.deskripsi ?? '',
-        harga: Number(data.harga),
-        jumlah_orang: Number(data.jumlah_orang ?? 1),
-        is_hari_h: Boolean(data.is_hari_h),
-        kuota: Number(data.kuota ?? 0) || 10,
-        selesai_jual: toLocalInput(data.selesai_jual),
-        aktif: data.aktif,
+        id: found.id,
+        nama: found.nama,
+        deskripsi: found.deskripsi ?? '',
+        harga: Number(found.harga),
+        jumlah_orang: Number(found.jumlah_orang ?? 1),
+        is_hari_h: Boolean(found.is_hari_h),
+        kuota: Number(found.kuota ?? 0) || 10,
+        selesai_jual: toLocalInput(found.selesai_jual),
+        aktif: found.aktif,
       })
       setLoading(false)
     })()
