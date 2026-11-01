@@ -66,33 +66,33 @@ body {
   animation: fade-in 0.25s ease-out both;
 }
 
-/* ── Sidebar tree connectors (VS Code style) ──────────────────────────────
+/* ── Sidebar tree connector (Settings-style reference) ────────────────────
  *
  *   GROUP
  *   │
- *   ╭── First item
- *   ├── Middle item
- *   ├── Another middle
- *   ╰── Last item
+ *   ├── My details
+ *   ├── My profile
+ *   ├── Security
+ *   ├── Integrations
+ *   └── Billing
  *
- * Vertical line at left:0, horizontal branches at each item.
- * First item has rounded top-left corner.
- * Last item has rounded bottom-left corner.
+ * Satu garis vertikal kontину dari atas ke bawah grup.
+ * Setiap item punya garis horizontal pendek menempel ke garis vertikal.
  */
 
 .sidebar-tree {
   position: relative;
+  margin-left: 1.5rem;
   padding-left: 0;
-  margin-left: 1.5rem; /* ml-6 — same indent as before */
 }
 
-/* Continuous vertical line from first to last item */
+/* Garis vertikal utama — dari atas sampai bawah seluruh submenu */
 .sidebar-tree::before {
   content: '';
   position: absolute;
   left: 0;
-  top: 0.5rem;   /* start below first item's top */
-  bottom: 0.5rem; /* end above last item's bottom */
+  top: 0;
+  bottom: 0;
   width: 1px;
   background: rgba(255, 255, 255, 0.35);
 }
@@ -104,53 +104,14 @@ body {
   box-sizing: border-box;
 }
 
-/* Default: horizontal line from spine to text */
+/* Garis horizontal dari spine ke teks — selalu di tengah item */
 .sidebar-tree-item::before {
   content: '';
   position: absolute;
   left: 0;
   top: 50%;
-  width: 0.75rem; /* 12px — reaches from spine to text start */
+  width: 0.75rem; /* 12px — panjang cabang horizontal */
   height: 1px;
   background: rgba(255, 255, 255, 0.35);
   transform: translateY(-50%);
-}
-
-/* First item: curved top-left corner */
-.sidebar-tree-item:first-child::before {
-  top: 50%;
-  height: 50%;
-  width: 0.75rem;
-  background: transparent;
-  border-left: 1px solid rgba(255, 255, 255, 0.35);
-  border-top: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 0 0 0 8px;
-  transform: none;
-  left: 0;
-}
-
-/* Last item: curved bottom-left corner */
-.sidebar-tree-item:last-child::before {
-  top: 50%;
-  height: 50%;
-  width: 0.75rem;
-  background: transparent;
-  border-left: 1px solid rgba(255, 255, 255, 0.35);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 8px 0 0 0;
-  transform: none;
-  left: 0;
-}
-
-/* Only child: full corner curve */
-.sidebar-tree-item:only-child::before {
-  top: 50%;
-  height: 50%;
-  width: 0.75rem;
-  background: transparent;
-  border-left: 1px solid rgba(255, 255, 255, 0.35);
-  border-top: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 0 0 0 8px;
-  transform: none;
-  left: 0;
 }
