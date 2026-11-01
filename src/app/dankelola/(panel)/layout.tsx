@@ -30,9 +30,27 @@ function getBreadcrumbs(pathname: string) {
     group.children ?? (group.href ? [{ label: group.label, href: group.href }] : [])
   )
   let active: { label: string; href: string } | undefined
+  // Exact match or direct child
   for (const item of items) {
     if (pathname === item.href || pathname.startsWith(`${item.href}/`)) {
       if (!active || item.href.length > active.href.length) active = item
+    }
+  }
+  // Fallback: deepest common prefix when sub-page shares parent path
+  if (!active) {
+    let bestMatch = 0
+    for (const item of items) {
+      const segs = item.href.split('/').filter(Boolean)
+      const parts = pathname.split('/').filter(Boolean)
+      let match = 0
+      for (let i = 0; i < Math.min(segs.length, parts.length); i++) {
+        if (segs[i] !== parts[i]) break
+        match++
+      }
+      if (match >= 2 && match > bestMatch) {
+        bestMatch = match
+        active = item
+      }
     }
   }
   const breadcrumbs: { label: string; href: string }[] = [{ label: 'Dashboard', href: '/dankelola' }]
