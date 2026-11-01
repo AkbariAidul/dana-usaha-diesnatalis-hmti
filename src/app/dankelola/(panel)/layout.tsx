@@ -40,7 +40,6 @@ function getBreadcrumbs(pathname: string) {
     breadcrumbs.push({ label: active.label, href: active.href })
   }
 
-  // Dynamic sub-routes that extend active menu items
   if (pathname.startsWith('/dankelola/ticket/tipe/')) {
     const action = pathname === '/dankelola/ticket/tipe/new' ? 'Tambah' : 'Edit'
     breadcrumbs.push({ label: action, href: pathname })
@@ -101,11 +100,13 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               aria-current={active ? 'page' : undefined}
               className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-150 ${
                 active
-                  ? 'bg-primary-50 text-primary-700 font-medium'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  ? 'bg-white/15 text-white font-medium shadow-sm'
+                  : 'text-white/70 hover:bg-white/10 hover:text-white'
               }`}
             >
-              <Icon className={`h-4 w-4 shrink-0 transition-colors ${active ? 'text-primary-600' : 'text-slate-400 group-hover:text-slate-600'}`} />
+              <Icon className={`h-4 w-4 shrink-0 transition-colors ${
+                active ? 'text-white' : 'text-white/50 group-hover:text-white/80'
+              }`} />
               <span className="flex-1">{group.label}</span>
             </Link>
           )
@@ -123,16 +124,22 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               aria-expanded={isOpen}
               className={`group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-all duration-150 ${
                 groupActive
-                  ? 'text-primary-700 bg-primary-50/50'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  ? 'text-white bg-white/10'
+                  : 'text-white/70 hover:bg-white/10 hover:text-white'
               }`}
             >
-              <Icon className={`h-4 w-4 shrink-0 transition-colors ${groupActive ? 'text-primary-600' : 'text-slate-400 group-hover:text-slate-600'}`} />
-              <span className="flex-1 text-xs font-semibold uppercase tracking-wider text-slate-500 group-hover:text-slate-700">{group.label}</span>
-              <ChevronRight className={`h-3.5 w-3.5 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''} ${groupActive ? 'text-primary-500' : 'text-slate-400'}`} />
+              <Icon className={`h-4 w-4 shrink-0 transition-colors ${
+                groupActive ? 'text-white' : 'text-white/50 group-hover:text-white/80'
+              }`} />
+              <span className="flex-1 text-xs font-semibold uppercase tracking-wider transition-colors">
+                {group.label}
+              </span>
+              <ChevronRight className={`h-3.5 w-3.5 transition-transform duration-200 ${
+                isOpen ? 'rotate-90' : ''
+              } ${groupActive ? 'text-white/80' : 'text-white/40'}`} />
             </button>
             {isOpen && group.children && (
-              <div className="ml-6 flex flex-col gap-0.5 border-l-2 border-slate-100 pl-3 mt-0.5 pb-1">
+              <div className="ml-6 flex flex-col gap-0.5 border-l-2 border-white/15 pl-3 mt-0.5 pb-1">
                 {group.children.map((child) => {
                   const childActive = isPathActive(pathname, child.href)
                   return (
@@ -143,8 +150,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                       aria-current={childActive ? 'page' : undefined}
                       className={`rounded-md px-2.5 py-1.5 text-sm transition-all duration-150 ${
                         childActive
-                          ? 'bg-primary-50 text-primary-700 font-medium'
-                          : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                          ? 'bg-white/15 text-white font-medium'
+                          : 'text-white/60 hover:bg-white/10 hover:text-white'
                       }`}
                     >
                       {child.label}
@@ -164,11 +171,10 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       {/* Header - Fixed */}
       <header className="shrink-0 border-b border-slate-200 bg-white z-30">
         <div className="flex h-14 items-center justify-between px-4 md:px-6">
-          {/* Left: Logo + Name */}
           <div className="-ml-4 flex items-center gap-3">
-            <button 
-              onClick={() => setOpen(true)} 
-              aria-label="Buka menu" 
+            <button
+              onClick={() => setOpen(true)}
+              aria-label="Buka menu"
               className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 md:hidden mr-1"
             >
               <Menu className="h-5 w-5" />
@@ -178,20 +184,19 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               <p className="text-sm font-bold text-slate-900">Dana Usaha HMTI</p>
               <p className="text-[10px] text-slate-500">Sistem Pengelolaan Dana Usaha</p>
             </div>
-            {/* Breadcrumb */}
             <nav className="ml-2 hidden md:flex items-center gap-2 border-l border-slate-200 pl-4 text-sm" aria-label="Breadcrumb">
-            {breadcrumbs.map((crumb, idx) => (
-              <div key={crumb.href} className="flex items-center gap-2">
-                {idx > 0 && <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
-                {idx === breadcrumbs.length - 1 ? (
-                  <span className="text-slate-700 font-medium">{crumb.label}</span>
-                ) : (
-                  <Link href={crumb.href} className="text-slate-500 hover:text-slate-700 transition-colors">
-                    {crumb.label}
-                  </Link>
-                )}
-              </div>
-            ))}
+              {breadcrumbs.map((crumb, idx) => (
+                <div key={crumb.href} className="flex items-center gap-2">
+                  {idx > 0 && <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+                  {idx === breadcrumbs.length - 1 ? (
+                    <span className="text-slate-700 font-medium">{crumb.label}</span>
+                  ) : (
+                    <Link href={crumb.href} className="text-slate-500 hover:text-slate-700 transition-colors">
+                      {crumb.label}
+                    </Link>
+                  )}
+                </div>
+              ))}
             </nav>
           </div>
         </div>
@@ -201,23 +206,22 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       {open && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 flex w-64 flex-col border-r border-slate-200 bg-white shadow-xl">
-            {/* Mobile sidebar header */}
-            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+          <aside className="absolute inset-y-0 left-0 flex w-64 flex-col bg-gradient-to-b from-primary-800 to-primary-950 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/15 px-4 py-3">
               <div className="flex items-center gap-2">
-                <Image src="/logo-dies.png" alt="Logo" width={100} height={33} className="h-auto w-24 rounded-lg" />
+                <Image src="/logo-dies.png" alt="Logo" width={100} height={33} className="h-auto w-24 rounded-lg bg-white p-1" />
                 <div className="leading-tight">
-                  <p className="text-sm font-semibold text-slate-900">Dana Usaha</p>
-                  <p className="text-[10px] text-slate-500">Dies Natalis</p>
+                  <p className="text-sm font-semibold text-white">Dana Usaha</p>
+                  <p className="text-[10px] text-white/60">Dies Natalis</p>
                 </div>
               </div>
-              <button onClick={() => setOpen(false)} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100">
+              <button onClick={() => setOpen(false)} className="rounded-lg p-1.5 text-white/60 hover:bg-white/10 hover:text-white">
                 <X className="h-5 w-5" />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto py-2">{nav}</div>
-            <div className="border-t border-slate-100 px-3 py-3">
-              <button onClick={logout} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-all hover:bg-red-50 hover:text-red-600">
+            <div className="border-t border-white/15 px-3 py-3">
+              <button onClick={logout} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-white/70 transition-all hover:bg-red-500/20 hover:text-red-300">
                 <LogOut className="h-4 w-4 shrink-0" />
                 <span>Keluar</span>
               </button>
@@ -228,23 +232,18 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
       {/* Desktop Layout */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Desktop sidebar */}
-        <aside className="hidden md:flex md:w-56 md:flex-col md:border-r md:border-slate-200 md:bg-white md:shadow-sm md:h-full">
-          {/* Menu - scrollable */}
+        <aside className="hidden md:flex md:w-56 md:flex-col md:border-r md:border-primary-700/30 bg-gradient-to-b from-primary-800 to-primary-950 shadow-inner">
           <div className="flex-1 overflow-y-auto py-2">{nav}</div>
-          {/* Logout button - fixed at bottom */}
-          <div className="shrink-0 border-t border-slate-100 px-3 py-3">
-            <button onClick={logout} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-all hover:bg-red-50 hover:text-red-600">
+          <div className="shrink-0 border-t border-white/15 px-3 py-3">
+            <button onClick={logout} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-white/70 transition-all hover:bg-red-500/20 hover:text-red-300">
               <LogOut className="h-4 w-4 shrink-0" />
               <span>Keluar</span>
             </button>
           </div>
         </aside>
 
-        {/* Main content - scrollable */}
         <main className="flex-1 overflow-y-auto">
           <div key={pathname} className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8 animate-fade-in">
-            {/* Mobile breadcrumb */}
             <div className="mb-4 flex items-center gap-2 text-sm text-slate-500 md:hidden">
               {breadcrumbs.map((crumb, idx) => (
                 <div key={crumb.href} className="flex items-center gap-2">
