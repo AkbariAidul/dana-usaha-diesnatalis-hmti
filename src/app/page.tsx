@@ -1,8 +1,6 @@
 ﻿import Link from 'next/link'
 import Image from 'next/image'
 import { cookies } from 'next/headers'
-import { existsSync } from 'fs'
-import path from 'path'
 import { ArrowRight, LayoutDashboard } from 'lucide-react'
 
 const services = [
@@ -21,7 +19,6 @@ const navLinks = [
 export default async function Home() {
   const token = process.env.DASHBOARD_SESSION_SECRET || (process.env.NODE_ENV !== 'production' ? 'authenticated' : '')
   const authed = !!token && (await cookies()).get('dashboard_session')?.value === token
-  const hasHero = existsSync(path.join(process.cwd(), 'public', 'hero-in4days-xi.jpg'))
 
   return (
     <div className="min-h-screen bg-white text-[#111827]">
@@ -79,31 +76,23 @@ export default async function Home() {
         </nav>
       </header>
 
-      <main className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:flex lg:h-[calc(100dvh-72px)] lg:px-8">
-        <div className="grid w-full items-center gap-8 py-8 sm:py-10 lg:grid-cols-[55fr_45fr] lg:gap-12 lg:py-6">
-          <div className="relative order-1 h-[300px] w-full overflow-hidden rounded-[1.75rem] bg-[#F5F0FF] sm:h-[380px] lg:h-full lg:min-h-0">
-            {hasHero ? (
+      <main className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:h-[calc(100dvh-72px)] lg:px-8">
+        <section className="relative grid w-full gap-8 py-8 sm:py-10 lg:h-full lg:grid-cols-[55fr_45fr] lg:items-center lg:gap-12 lg:py-6">
+          <div className="relative order-1 h-[260px] w-full sm:h-[340px] lg:absolute lg:inset-y-0 lg:left-0 lg:z-0 lg:h-full lg:w-[72%]">
+            <div className="hero-photo absolute inset-0">
               <Image
-                src="/hero-in4days-xi.jpg"
-                alt="Dua mahasiswa di area festival kampus In4Days XI"
+                src="/hero.png"
+                alt="Dokumentasi dua orang di area festival In4Days XI"
                 fill
                 priority
                 className="object-cover object-center"
-                sizes="(min-width: 1024px) 55vw, 100vw"
+                sizes="(min-width: 1024px) 72vw, 100vw"
               />
-            ) : (
-              <div className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden px-8 text-center">
-                <div className="absolute -left-16 -top-16 h-56 w-56 rounded-full bg-white/70" />
-                <div className="absolute -bottom-24 -right-16 h-72 w-72 rounded-full bg-primary-100/70" />
-                <div className="absolute left-1/2 top-1/2 h-[140%] w-[140%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/60" />
-                <Image src="/logo-dies.png" alt="Logo In4Days XI" width={280} height={92} priority className="relative h-auto w-52 sm:w-64" />
-                <p className="relative mt-6 text-[11px] font-semibold uppercase tracking-[0.28em] text-primary-700/70">Campus Festival Portal</p>
-              </div>
-            )}
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/10 to-transparent" />
+            </div>
+            <div className="hero-photo-fade pointer-events-none absolute inset-0 hidden lg:block" />
           </div>
 
-          <div className="order-2 min-w-0">
+          <div className="relative z-10 order-2 min-w-0 lg:col-start-2">
             <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary-600">In4Days XI · Dies Natalis HMTI</p>
             <h1 className="mt-3 text-balance text-[clamp(2rem,3.4vw,3.25rem)] font-semibold leading-[1.05] tracking-tight text-[#111827]">
               Jadilah Bagian dari In4Days XI
@@ -129,7 +118,7 @@ export default async function Home() {
               ))}
             </div>
           </div>
-        </div>
+        </section>
       </main>
     </div>
   )

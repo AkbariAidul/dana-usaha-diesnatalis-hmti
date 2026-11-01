@@ -102,6 +102,58 @@ body {
   animation: dialog-out 0.16s ease-in both;
 }
 
+.hero-photo {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 62%,
+    rgba(0, 0, 0, 0.55) 84%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 62%,
+    rgba(0, 0, 0, 0.55) 84%,
+    transparent 100%
+  );
+}
+
+@media (min-width: 1024px) {
+  .hero-photo {
+    -webkit-mask-image: linear-gradient(
+      to right,
+      #000 0%,
+      #000 46%,
+      rgba(0, 0, 0, 0.9) 60%,
+      rgba(0, 0, 0, 0.55) 72%,
+      rgba(0, 0, 0, 0.2) 84%,
+      transparent 96%
+    );
+    mask-image: linear-gradient(
+      to right,
+      #000 0%,
+      #000 46%,
+      rgba(0, 0, 0, 0.9) 60%,
+      rgba(0, 0, 0, 0.55) 72%,
+      rgba(0, 0, 0, 0.2) 84%,
+      transparent 96%
+    );
+  }
+}
+
+.hero-photo-fade {
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    transparent 46%,
+    rgba(255, 255, 255, 0.12) 58%,
+    rgba(255, 255, 255, 0.5) 70%,
+    rgba(255, 255, 255, 0.9) 82%,
+    #ffffff 94%
+  );
+}
+
 /* ── Sidebar tree connector ───────────────────────────────────────────────
  *
  *   GROUP
