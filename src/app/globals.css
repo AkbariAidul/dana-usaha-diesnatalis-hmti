@@ -66,7 +66,7 @@ body {
   animation: fade-in 0.25s ease-out both;
 }
 
-/* ── Sidebar tree connector (Settings-style reference) ────────────────────
+/* ── Sidebar tree connector ───────────────────────────────────────────────
  *
  *   GROUP
  *   │
@@ -76,25 +76,14 @@ body {
  *   ├── Integrations
  *   └── Billing
  *
- * Satu garis vertikal kontину dari atas ke bawah grup.
- * Setiap item punya garis horizontal pendek menempel ke garis vertikal.
+ * Garis vertikal di sisi kiri, cabang horizontal pendek ke tiap item.
  */
 
 .sidebar-tree {
   position: relative;
-  margin-left: 1.5rem;
+  margin-left: 1.5rem; /* ml-6 — indent dari margin kiri sidebar */
   padding-left: 0;
-}
-
-/* Garis vertikal utama — dari atas sampai bawah seluruh submenu */
-.sidebar-tree::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: rgba(255, 255, 255, 0.35);
+  border-left: 1px solid rgba(255, 255, 255, 0.35);
 }
 
 .sidebar-tree-item {
@@ -102,15 +91,16 @@ body {
   display: block;
   width: 100%;
   box-sizing: border-box;
+  padding-left: 0.75rem; /* 12px — jarak dari garis vertikal ke teks */
 }
 
-/* Garis horizontal dari spine ke teks — selalu di tengah item */
+/* Garis horizontal dari spine ke teks — center vertikal */
 .sidebar-tree-item::before {
   content: '';
   position: absolute;
-  left: 0;
+  left: -1px; /* -1px: menyentuh garis vertikal (border-left) */
   top: 50%;
-  width: 0.75rem; /* 12px — panjang cabang horizontal */
+  width: 0.625rem; /* 10px — panjang cabang horizontal */
   height: 1px;
   background: rgba(255, 255, 255, 0.35);
   transform: translateY(-50%);
