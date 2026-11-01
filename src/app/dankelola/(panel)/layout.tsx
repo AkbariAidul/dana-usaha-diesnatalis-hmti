@@ -100,12 +100,12 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               aria-current={active ? 'page' : undefined}
               className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-150 ${
                 active
-                  ? 'bg-white/15 text-white font-medium shadow-sm'
-                  : 'text-white/70 hover:bg-white/10 hover:text-white'
+                  ? 'bg-white/18 text-white font-medium'
+                  : 'text-white hover:bg-white/10'
               }`}
             >
               <Icon className={`h-4 w-4 shrink-0 transition-colors ${
-                active ? 'text-white' : 'text-white/50 group-hover:text-white/80'
+                active ? 'text-white' : 'text-[#E9D5FF]'
               }`} />
               <span className="flex-1">{group.label}</span>
             </Link>
@@ -125,18 +125,18 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               className={`group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-all duration-150 ${
                 groupActive
                   ? 'text-white bg-white/10'
-                  : 'text-white/70 hover:bg-white/10 hover:text-white'
+                  : 'text-white hover:bg-white/10'
               }`}
             >
               <Icon className={`h-4 w-4 shrink-0 transition-colors ${
-                groupActive ? 'text-white' : 'text-white/50 group-hover:text-white/80'
+                groupActive ? 'text-white' : 'text-[#E9D5FF]'
               }`} />
-              <span className="flex-1 text-xs font-semibold uppercase tracking-wider transition-colors">
+              <span className="flex-1 text-xs font-semibold uppercase tracking-wider">
                 {group.label}
               </span>
               <ChevronRight className={`h-3.5 w-3.5 transition-transform duration-200 ${
                 isOpen ? 'rotate-90' : ''
-              } ${groupActive ? 'text-white/80' : 'text-white/40'}`} />
+              } ${groupActive ? 'text-white' : 'text-white/60'}`} />
             </button>
             {isOpen && group.children && (
               <div className="ml-6 flex flex-col gap-0.5 border-l-2 border-white/15 pl-3 mt-0.5 pb-1">
@@ -150,8 +150,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                       aria-current={childActive ? 'page' : undefined}
                       className={`rounded-md px-2.5 py-1.5 text-sm transition-all duration-150 ${
                         childActive
-                          ? 'bg-white/15 text-white font-medium'
-                          : 'text-white/60 hover:bg-white/10 hover:text-white'
+                          ? 'bg-white/20 text-white font-medium'
+                          : 'text-white hover:bg-white/10'
                       }`}
                     >
                       {child.label}
@@ -206,7 +206,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       {open && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 flex w-64 flex-col bg-gradient-to-b from-primary-800 to-primary-950 shadow-2xl">
+          <aside className="absolute inset-y-0 left-0 flex w-64 flex-col bg-[#6D28D9] shadow-2xl">
             <div className="flex items-center justify-between border-b border-white/15 px-4 py-3">
               <div className="flex items-center gap-2">
                 <Image src="/logo-dies.png" alt="Logo" width={100} height={33} className="h-auto w-24 rounded-lg bg-white p-1" />
@@ -232,7 +232,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
       {/* Desktop Layout */}
       <div className="flex flex-1 overflow-hidden">
-        <aside className="hidden md:flex md:w-56 md:flex-col md:border-r md:border-primary-700/30 bg-gradient-to-b from-primary-800 to-primary-950 shadow-inner">
+        <aside className="hidden md:flex md:w-56 md:flex-col md:border-r md:border-white/15 bg-[#6D28D9]">
           <div className="flex-1 overflow-y-auto py-2">{nav}</div>
           <div className="shrink-0 border-t border-white/15 px-3 py-3">
             <button onClick={logout} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-white/70 transition-all hover:bg-red-500/20 hover:text-red-300">
