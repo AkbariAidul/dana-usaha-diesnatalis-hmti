@@ -31,9 +31,11 @@ function toLocalInput(iso: string | null) {
 export default function TipeDetail({
   params,
   readOnly = false,
+  create = false,
 }: {
-  params: Promise<{ id: string }>
+  params?: Promise<{ id: string }>
   readOnly?: boolean
+  create?: boolean
 }) {
   const router = useRouter()
   const confirm = useConfirm()
@@ -42,7 +44,7 @@ export default function TipeDetail({
   const [bundles, setBundles] = useState<TicketBundleDiscount[]>([])
   const [form, setForm] = useState<FormState>({ nama: '', deskripsi: '', harga: 0, jumlah_orang: 1, aktif: true, is_hari_h: false, kuota: 10, selesai_jual: '' })
   const [submitting, setSubmitting] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!create)
   const [bundleMin, setBundleMin] = useState(2)
   const [bundleDiskon, setBundleDiskon] = useState(0)
   const [bundleSubmitting, setBundleSubmitting] = useState(false)
@@ -55,7 +57,9 @@ export default function TipeDetail({
   const [editBundleId, setEditBundleId] = useState<string | null>(null)
 
   useEffect(() => {
+    if (create) return
     ;(async () => {
+      if (!params) return
       const resolved = await params
       const [tipe, allPeriods, allBundles] = await Promise.all([
         getJSON<TicketKatalogItem[]>('/api/ticket'),
@@ -79,15 +83,14 @@ export default function TipeDetail({
       })
       setLoading(false)
     })()
-  }, [params, router])
+  }, [params, router, create])
 
   async function simpan() {
-    if (!ticket) return
     if (!form.nama.trim() || !form.harga) { toast.error('Nama dan harga wajib diisi'); return }
     setSubmitting(true)
     try {
-      await sendJSON('/api/ticket', 'POST', {
-        id: ticket.id,
+      const saved = await sendJSON('/api/ticket', 'POST', {
+        ...(ticket ? { id: ticket.id } : {}),
         nama: form.nama.trim(),
         deskripsi: form.deskripsi.trim() || null,
         harga: Number(form.harga),
@@ -96,7 +99,13 @@ export default function TipeDetail({
         is_hari_h: form.is_hari_h,
         kuota: form.is_hari_h ? Number(form.kuota) || 10 : 0,
         selesai_jual: form.is_hari_h && form.selesai_jual ? new Date(form.selesai_jual).toISOString() : null,
-      })
+      }) as TicketKatalogItem
+      if (!ticket) {
+        setTicket(saved)
+        await Promise.all([reloadPeriods(), reloadBundles()])
+        toast.success('Tipe tiket dibuat. Tambahkan periode harga & diskon bundle di bawah.')
+        return
+      }
       toast.success('Tipe tiket diperbarui')
       router.push('/dankelola/ticket/tahap')
     } catch (e) { toast.error(String(e)) } finally { setSubmitting(false) }
@@ -232,19 +241,21 @@ export default function TipeDetail({
       </div>
     )
   }
-  if (!ticket) return null
+  if (!ticket && !create) return null
 
-  const tipePeriods = periods.filter((p) => p.tiket_tipe_id === ticket.id)
-  const tipeBundles = bundles.filter((b) => b.tiket_tipe_id === ticket.id)
+  const tipePeriods = ticket ? periods.filter((p) => p.tiket_tipe_id === ticket.id) : []
+  const tipeBundles = ticket ? bundles.filter((b) => b.tiket_tipe_id === ticket.id) : []
 
   return (
     <div className="space-y-6">
       {/* ── Header ── */}
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-          {readOnly ? 'Detail Tipe Tiket' : 'Edit Tipe Tiket'}
+          {create ? (ticket ? 'Edit Tipe Tiket' : 'Tambah Tipe Tiket') : readOnly ? 'Detail Tipe Tiket' : 'Edit Tipe Tiket'}
         </h1>
-        <p className="text-sm text-slate-500">{ticket.nama}</p>
+        <p className="text-sm text-slate-500">
+          {ticket ? ticket.nama : 'Buat tipe tiket baru untuk dijual di halaman publik.'}
+        </p>
       </div>
 
       {/* ── Form ── */}
@@ -268,11 +279,16 @@ export default function TipeDetail({
         )}
         <div className="flex justify-end gap-2 pt-2">
           {readOnly ? (
-            <Link href={`/dankelola/ticket/tipe/${ticket.id}/edit`} className="px-4 py-2 bg-primary-600 text-white text-sm rounded-xl">Edit</Link>
+            <Link href={`/dankelola/ticket/tipe/${ticket?.id}/edit`} className="px-4 py-2 bg-primary-600 text-white text-sm rounded-xl">Edit</Link>
+          ) : !ticket ? (
+            <>
+              <Link href="/dankelola/ticket/tahap" className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl">Batal</Link>
+              <button onClick={simpan} disabled={submitting} className="px-4 py-2 bg-primary-600 text-white text-sm rounded-xl disabled:opacity-50">{submitting ? 'Menyimpan...' : 'Simpan'}</button>
+            </>
           ) : (
             <>
-              <button onClick={hapus} className="px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-xl">Hapus</button>
-              <Link href="/dankelola/ticket/tahap" className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl">Batal</Link>
+              {!create && <button onClick={hapus} className="px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-xl">Hapus</button>}
+              <Link href="/dankelola/ticket/tahap" className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl">{create ? 'Selesai' : 'Batal'}</Link>
               <button onClick={simpan} disabled={submitting} className="px-4 py-2 bg-primary-600 text-white text-sm rounded-xl disabled:opacity-50">{submitting ? 'Menyimpan...' : 'Simpan Perubahan'}</button>
             </>
           )}
@@ -282,105 +298,117 @@ export default function TipeDetail({
       {/* ── Periode ── */}
       <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm space-y-3">
         <h2 className="font-semibold text-slate-900">Periode Harga</h2>
-        {tipePeriods.length === 0 ? (
-          <p className="text-sm text-slate-400">Belum ada periode. Menggunakan harga dasar {formatRupiah(Number(ticket.harga))}.</p>
+        {create && !ticket ? (
+          <p className="text-sm text-slate-400">Simpan informasi dasar terlebih dahulu untuk menambahkan periode harga.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-left">
-                <tr>
-                  <th className="px-3 py-2">Nama</th>
-                  <th className="px-3 py-2">Periode</th>
-                  <th className="px-3 py-2">Harga</th>
-                  <th className="px-3 py-2">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100/80">
-                {tipePeriods.map((p) => (
-                  <tr key={p.id} className="hover:bg-slate-50">
-                    <td className="px-3 py-2 font-medium">{p.nama || '-'}</td>
-                    <td className="px-3 py-2 text-slate-500">{p.tanggal_mulai.slice(0, 10)} — {p.tanggal_selesai.slice(0, 10)}</td>
-                    <td className="px-3 py-2 font-semibold text-primary-600">{formatRupiah(Number(p.harga))}</td>
-                    <td className="px-3 py-2">
-                      <div className="flex gap-1">
-                        <button onClick={() => editPeriode(p)} className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-primary-600 transition-colors" title="Edit">
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button onClick={() => hapusPeriode(p.id)} className="grid h-7 w-7 place-items-center rounded-lg text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors" title="Hapus">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <>
+            {tipePeriods.length === 0 ? (
+              <p className="text-sm text-slate-400">Belum ada periode. Menggunakan harga dasar {formatRupiah(Number(ticket?.harga ?? 0))}.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 text-left">
+                    <tr>
+                      <th className="px-3 py-2">Nama</th>
+                      <th className="px-3 py-2">Periode</th>
+                      <th className="px-3 py-2">Harga</th>
+                      <th className="px-3 py-2">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100/80">
+                    {tipePeriods.map((p) => (
+                      <tr key={p.id} className="hover:bg-slate-50">
+                        <td className="px-3 py-2 font-medium">{p.nama || '-'}</td>
+                        <td className="px-3 py-2 text-slate-500">{p.tanggal_mulai.slice(0, 10)} — {p.tanggal_selesai.slice(0, 10)}</td>
+                        <td className="px-3 py-2 font-semibold text-primary-600">{formatRupiah(Number(p.harga))}</td>
+                        <td className="px-3 py-2">
+                          <div className="flex gap-1">
+                            <button onClick={() => editPeriode(p)} className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-primary-600 transition-colors" title="Edit">
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button onClick={() => hapusPeriode(p.id)} className="grid h-7 w-7 place-items-center rounded-lg text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors" title="Hapus">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <div className="grid gap-3 border-t border-slate-100 pt-3 md:grid-cols-5 md:items-end">
+              <div><label className={label}>Nama (opsional)</label><input className={input} value={periodeNama} onChange={e => setPeriodeNama(e.target.value)} placeholder="Early Bird" /></div>
+              <div><label className={label}>Mulai</label><input type="date" className={input} value={periodeMulai} onChange={e => setPeriodeMulai(e.target.value)} /></div>
+              <div><label className={label}>Selesai</label><input type="date" className={input} value={periodeSelesai} onChange={e => setPeriodeSelesai(e.target.value)} /></div>
+              <div><label className={label}>Harga (Rp)</label><input type="number" min={0} className={input} value={periodeHarga || ''} onChange={e => setPeriodeHarga(Number(e.target.value))} /></div>
+              <div className="flex gap-2">
+                <button onClick={simpanPeriode} disabled={periodeSubmitting} className="flex-1 rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+                  {periodeSubmitting ? 'Menyimpan...' : editPeriodeId ? 'Simpan' : '+ Tambah Periode'}
+                </button>
+                {editPeriodeId && <button onClick={resetPeriodeForm} className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600">Batal</button>}
+              </div>
+            </div>
+          </>
         )}
-        <div className="grid gap-3 border-t border-slate-100 pt-3 md:grid-cols-5 md:items-end">
-          <div><label className={label}>Nama (opsional)</label><input className={input} value={periodeNama} onChange={e => setPeriodeNama(e.target.value)} placeholder="Early Bird" /></div>
-          <div><label className={label}>Mulai</label><input type="date" className={input} value={periodeMulai} onChange={e => setPeriodeMulai(e.target.value)} /></div>
-          <div><label className={label}>Selesai</label><input type="date" className={input} value={periodeSelesai} onChange={e => setPeriodeSelesai(e.target.value)} /></div>
-          <div><label className={label}>Harga (Rp)</label><input type="number" min={0} className={input} value={periodeHarga || ''} onChange={e => setPeriodeHarga(Number(e.target.value))} /></div>
-          <div className="flex gap-2">
-            <button onClick={simpanPeriode} disabled={periodeSubmitting} className="flex-1 rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-              {periodeSubmitting ? 'Menyimpan...' : editPeriodeId ? 'Simpan' : '+ Tambah Periode'}
-            </button>
-            {editPeriodeId && <button onClick={resetPeriodeForm} className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600">Batal</button>}
-          </div>
-        </div>
       </div>
 
       {/* ── Bundle Discount ── */}
       <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm space-y-3">
         <h2 className="font-semibold text-slate-900">Diskon Bundle</h2>
-        {tipeBundles.length === 0 ? (
-          <p className="text-sm text-slate-400">Belum ada diskon bundle.</p>
+        {create && !ticket ? (
+          <p className="text-sm text-slate-400">Simpan informasi dasar terlebih dahulu untuk menambahkan diskon bundle.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-left">
-                <tr>
-                  <th className="px-3 py-2">Syarat</th>
-                  <th className="px-3 py-2">Diskon</th>
-                  <th className="px-3 py-2">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100/80">
-                {tipeBundles.map((b) => (
-                  <tr key={b.id} className="hover:bg-slate-50">
-                    <td className="px-3 py-2">Beli {b.jumlah_min}+ tiket</td>
-                    <td className="px-3 py-2 font-semibold text-green-600">{b.diskon_persen}%</td>
-                    <td className="px-3 py-2">
-                      <div className="flex gap-1">
-                        <button onClick={() => editBundle(b)} className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-primary-600 transition-colors" title="Edit">
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button onClick={() => hapusBundle(b.id)} className="grid h-7 w-7 place-items-center rounded-lg text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors" title="Hapus">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <>
+            {tipeBundles.length === 0 ? (
+              <p className="text-sm text-slate-400">Belum ada diskon bundle.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 text-left">
+                    <tr>
+                      <th className="px-3 py-2">Syarat</th>
+                      <th className="px-3 py-2">Diskon</th>
+                      <th className="px-3 py-2">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100/80">
+                    {tipeBundles.map((b) => (
+                      <tr key={b.id} className="hover:bg-slate-50">
+                        <td className="px-3 py-2">Beli {b.jumlah_min}+ tiket</td>
+                        <td className="px-3 py-2 font-semibold text-green-600">{b.diskon_persen}%</td>
+                        <td className="px-3 py-2">
+                          <div className="flex gap-1">
+                            <button onClick={() => editBundle(b)} className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-primary-600 transition-colors" title="Edit">
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button onClick={() => hapusBundle(b.id)} className="grid h-7 w-7 place-items-center rounded-lg text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors" title="Hapus">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <div className="flex flex-wrap items-end gap-3 border-t border-slate-100 pt-3">
+              <div>
+                <label className={label}>Beli minimal (tiket)</label>
+                <input type="number" min={2} className={input} value={bundleMin} onChange={e => setBundleMin(Number(e.target.value))} />
+              </div>
+              <div>
+                <label className={label}>Diskon (%)</label>
+                <input type="number" min={1} max={100} className={input} value={bundleDiskon || ''} onChange={e => setBundleDiskon(Number(e.target.value))} />
+              </div>
+              <button onClick={simpanBundle} disabled={bundleSubmitting} className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+                {bundleSubmitting ? 'Menyimpan...' : editBundleId ? 'Simpan' : '+ Tambah Diskon'}
+              </button>
+              {editBundleId && <button onClick={resetBundleForm} className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600">Batal</button>}
+            </div>
+          </>
         )}
-        <div className="flex flex-wrap items-end gap-3 border-t border-slate-100 pt-3">
-          <div>
-            <label className={label}>Beli minimal (tiket)</label>
-            <input type="number" min={2} className={input} value={bundleMin} onChange={e => setBundleMin(Number(e.target.value))} />
-          </div>
-          <div>
-            <label className={label}>Diskon (%)</label>
-            <input type="number" min={1} max={100} className={input} value={bundleDiskon || ''} onChange={e => setBundleDiskon(Number(e.target.value))} />
-          </div>
-          <button onClick={simpanBundle} disabled={bundleSubmitting} className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-            {bundleSubmitting ? 'Menyimpan...' : editBundleId ? 'Simpan' : '+ Tambah Diskon'}
-          </button>
-          {editBundleId && <button onClick={resetBundleForm} className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600">Batal</button>}
-        </div>
       </div>
     </div>
   )
