@@ -67,7 +67,10 @@ export default function TahapPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Tipe & Harga</h1>
           <p className="text-sm text-slate-500">Kelola tipe tiket, periode harga, dan diskon bundle.</p>
         </div>
-        <Link href="/dankelola/ticket/tipe/new" className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">+ Tambah Tipe</Link>
+        <div className="flex items-center gap-2">
+          <Link href="/dankelola/ticket/tipe/new" className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">+ Tambah Tipe</Link>
+          <Link href="/dankelola/ticket/periode/new" className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">+ Tambah Periode</Link>
+        </div>
       </div>
 
       <div className="rounded-2xl border border-slate-200/70 bg-white shadow-sm overflow-hidden">
@@ -132,13 +135,21 @@ export default function TahapPage() {
                     </span>
                   </td>
 
-                  {/* Periode Aktif */}
+                  {/* Periode */}
                   <td className="px-4 py-3">
-                    {activePeriod ? (
-                      <span className="text-xs text-slate-600">{activePeriod.nama || 'Harga periode'} · {formatRupiah(Number(activePeriod.harga))}</span>
-                    ) : (
-                      <span className="text-xs text-slate-400">{formatRupiah(Number(t.harga))}</span>
-                    )}
+                    {(() => {
+                      const tPeriods = periods.filter((p) => p.tiket_tipe_id === t.id)
+                      if (tPeriods.length === 0) return <span className="text-xs text-slate-400">Harga dasar {formatRupiah(Number(t.harga))}</span>
+                      return (
+                        <div className="space-y-0.5">
+                          {tPeriods.map((p) => (
+                            <p key={p.id} className="text-xs text-slate-600">
+                              {p.nama || 'Periode'} · {p.tanggal_mulai}—{p.tanggal_selesai} · <span className="font-medium text-primary-600">{formatRupiah(Number(p.harga))}</span>
+                            </p>
+                          ))}
+                        </div>
+                      )
+                    })()}
                   </td>
 
                   {/* Bundle */}
