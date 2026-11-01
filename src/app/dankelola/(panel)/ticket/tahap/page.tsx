@@ -44,15 +44,6 @@ export default function TahapPage() {
       toast.success('Tipe tiket dihapus')
       await load()
     } catch (e) { toast.error(String(e)) }
-    setMenuOpen(null)
-  }
-
-  async function toggleTiket(id: string) {
-    try {
-      await sendJSON('/api/ticket', 'POST', { id, aktif: true })
-      await load()
-    } catch (e) { toast.error(String(e)) }
-    setMenuOpen(null)
   }
 
   const getActivePeriod = (t: TicketKatalogItem) =>
