@@ -66,53 +66,91 @@ body {
   animation: fade-in 0.25s ease-out both;
 }
 
-/* ── Sidebar tree connectors ─────────────────────────────────────────────── */
-/*
- * Tree connector visual:
+/* ── Sidebar tree connectors (VS Code style) ──────────────────────────────
+ *
  *   GROUP
  *   │
- *   ├─ child 1
- *   ├─ child 2
- *   └─ child 3
+ *   ╭── First item
+ *   ├── Middle item
+ *   ├── Another middle
+ *   ╰── Last item
  *
- * Vertical line sits at x = 6px (sidebar px-1.5).
- * Horizontal lines start at x = 6px, end at text start x = 24px (width 18px).
+ * Vertical line at left:0, horizontal branches at each item.
+ * First item has rounded top-left corner.
+ * Last item has rounded bottom-left corner.
  */
 
 .sidebar-tree {
   position: relative;
-  /* No extra padding — ml-6 on the div already indents everything.
-     The tree line sits at the left edge of the content area. */
+  padding-left: 0;
+  margin-left: 1.5rem; /* ml-6 — same indent as before */
 }
 
-/* Continuous vertical line from first item to last item */
+/* Continuous vertical line from first to last item */
 .sidebar-tree::before {
   content: '';
   position: absolute;
-  left: 6px;   /* aligns with the group icon column */
-  top: 0.125rem;  /* tt-1 — slight offset from first item */
-  bottom: 0.125rem; /* bb-1 — slight offset from last item */
+  left: 0;
+  top: 0.5rem;   /* start below first item's top */
+  bottom: 0.5rem; /* end above last item's bottom */
   width: 1px;
   background: rgba(255, 255, 255, 0.35);
-  border-radius: 1px;
 }
 
 .sidebar-tree-item {
   position: relative;
-  display: block;       /* ensures pseudo-elements align correctly */
+  display: block;
   width: 100%;
   box-sizing: border-box;
 }
 
-/* Horizontal line from the vertical spine to the text */
+/* Default: horizontal line from spine to text */
 .sidebar-tree-item::before {
   content: '';
   position: absolute;
-  left: 6px;              /* starts at the vertical line */
+  left: 0;
   top: 50%;
-  width: 18px;            /* 24px text-start − 6px line = 18px connector */
+  width: 0.75rem; /* 12px — reaches from spine to text start */
   height: 1px;
   background: rgba(255, 255, 255, 0.35);
-  border-radius: 1px;
   transform: translateY(-50%);
+}
+
+/* First item: curved top-left corner */
+.sidebar-tree-item:first-child::before {
+  top: 50%;
+  height: 50%;
+  width: 0.75rem;
+  background: transparent;
+  border-left: 1px solid rgba(255, 255, 255, 0.35);
+  border-top: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 0 0 0 8px;
+  transform: none;
+  left: 0;
+}
+
+/* Last item: curved bottom-left corner */
+.sidebar-tree-item:last-child::before {
+  top: 50%;
+  height: 50%;
+  width: 0.75rem;
+  background: transparent;
+  border-left: 1px solid rgba(255, 255, 255, 0.35);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 8px 0 0 0;
+  transform: none;
+  left: 0;
+}
+
+/* Only child: full corner curve */
+.sidebar-tree-item:only-child::before {
+  top: 50%;
+  height: 50%;
+  width: 0.75rem;
+  background: transparent;
+  border-left: 1px solid rgba(255, 255, 255, 0.35);
+  border-top: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 0 0 0 8px;
+  transform: none;
+  left: 0;
 }
