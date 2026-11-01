@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto'
 import { supabase, supabaseAdmin } from './supabase'
-import type { Tenant, Pembayaran, KategoriSewa, HargaDasar, FaktorHarga, Acara, Merchandise, Ticket, PeriodeHarga } from './types'
+import { todayISO } from './utils'
+import type { Tenant, Pembayaran, KategoriSewa, HargaDasar, FaktorHarga, Acara, Merchandise, Ticket, TicketPeriode, TicketKatalogItem, PeriodeHarga } from './types'
 
 // ─── Acara ───────────────────────────────────────────────────────────────────
 
@@ -310,29 +311,109 @@ export async function deleteMerchandise(id: string) {
 
 // ─── Ticket ──────────────────────────────────────────────────────────────────
 
+const TICKET_FIELDS = ['nama', 'deskripsi', 'harga', 'jumlah_orang', 'kuota', 'urutan', 'aktif', 'is_hari_h', 'mulai_jual', 'selesai_jual'] as const
+const TICKET_PERIODE_FIELDS = ['tiket_tipe_id', 'nama', 'tanggal_mulai', 'tanggal_selesai', 'harga', 'urutan'] as const
+
+function pickFields<T extends Record<string, unknown>>(obj: T, fields: readonly string[]) {
+  const out: Record<string, unknown> = {}
+  for (const key of fields) {
+    if (key in obj) out[key] = obj[key]
+  }
+  return out
+}
+
 export async function getTicket(onlyAktif = false): Promise<Ticket[]> {
-  let query = supabase.from('ticket').select('*').order('harga')
+  let query = supabaseAdmin.from('tiket_tipe').select('*').order('urutan').order('nama')
   if (onlyAktif) query = query.eq('aktif', true)
   const { data, error } = await query
   if (error) throw error
-  return data ?? []
+  return (data ?? []) as Ticket[]
 }
 
 export async function upsertTicket(payload: Partial<Ticket>) {
+  const fields = pickFields(payload as Record<string, unknown>, TICKET_FIELDS)
   if (payload.id) {
     const { data, error } = await supabaseAdmin
-      .from('ticket').update(payload).eq('id', payload.id).select().single()
+      .from('tiket_tipe').update(fields).eq('id', payload.id).select().single()
     if (error) throw error
     return data
   }
-  const { data, error } = await supabaseAdmin.from('ticket').insert(payload).select().single()
+  const { data, error } = await supabaseAdmin.from('tiket_tipe').insert(fields).select().single()
   if (error) throw error
   return data
 }
 
 export async function deleteTicket(id: string) {
-  const { error } = await supabaseAdmin.from('ticket').delete().eq('id', id)
+  const { error } = await supabaseAdmin.from('tiket_tipe').delete().eq('id', id)
   if (error) throw error
+}
+
+export async function getTicketPeriode(tipeId?: string): Promise<TicketPeriode[]> {
+  let query = supabaseAdmin.from('tiket_periode').select('*').order('tanggal_mulai').order('urutan')
+  if (tipeId) query = query.eq('tiket_tipe_id', tipeId)
+  const { data, error } = await query
+  if (error) throw error
+  return (data ?? []) as TicketPeriode[]
+}
+
+export async function upsertTicketPeriode(payload: Partial<TicketPeriode>) {
+  const fields = pickFields(payload as Record<string, unknown>, TICKET_PERIODE_FIELDS)
+  if (payload.id) {
+    const { data, error } = await supabaseAdmin
+      .from('tiket_periode').update(fields).eq('id', payload.id).select().single()
+    if (error) throw error
+    return data
+  }
+  const { data, error } = await supabaseAdmin.from('tiket_periode').insert(fields).select().single()
+  if (error) throw error
+  return data
+}
+
+export async function deleteTicketPeriode(id: string) {
+  const { error } = await supabaseAdmin.from('tiket_periode').delete().eq('id', id)
+  if (error) throw error
+}
+
+export async function getTicketKatalog(): Promise<TicketKatalogItem[]> {
+  const [tipeRes, periodeRes, pendingRes] = await Promise.all([
+    supabaseAdmin.from('tiket_tipe').select('*').order('urutan').order('nama'),
+    supabaseAdmin.from('tiket_periode').select('*').order('tanggal_mulai').order('urutan'),
+    supabaseAdmin.from('pesanan_tiket').select('tiket_tipe_id,jumlah').eq('status', 'menunggu_verifikasi'),
+  ])
+  if (tipeRes.error) throw tipeRes.error
+  if (periodeRes.error) throw periodeRes.error
+  if (pendingRes.error) throw pendingRes.error
+
+  const periods = (periodeRes.data ?? []) as TicketPeriode[]
+  const pending = new Map<string, number>()
+  for (const row of (pendingRes.data ?? []) as { tiket_tipe_id: string | null; jumlah: number | null }[]) {
+    if (!row.tiket_tipe_id) continue
+    pending.set(row.tiket_tipe_id, (pending.get(row.tiket_tipe_id) ?? 0) + Number(row.jumlah ?? 0))
+  }
+
+  const today = todayISO()
+  const now = new Date()
+  return ((tipeRes.data ?? []) as Ticket[]).map((t) => {
+    const periode = periods.find(
+      (p) => p.tiket_tipe_id === t.id && today >= p.tanggal_mulai && today <= p.tanggal_selesai
+    ) ?? null
+    const pendingQty = pending.get(t.id) ?? 0
+    const kuota = Number(t.kuota ?? 0)
+    const sisa = kuota > 0 ? Math.max(0, kuota - Number(t.terjual ?? 0) - pendingQty) : null
+    const buka =
+      t.aktif &&
+      (!t.mulai_jual || now >= new Date(t.mulai_jual)) &&
+      (!t.selesai_jual || now <= new Date(t.selesai_jual)) &&
+      (sisa === null || sisa > 0)
+    return {
+      ...t,
+      harga_aktif: Number(periode?.harga ?? t.harga),
+      periode_aktif: periode,
+      pending: pendingQty,
+      sisa,
+      buka,
+    }
+  })
 }
 
 // ─── Audit Log ────────────────────────────────────────────────────────────────

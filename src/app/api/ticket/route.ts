@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
-import { getTicket, upsertTicket, deleteTicket, createAuditLog } from '@/lib/queries'
+import { getTicketKatalog, upsertTicket, deleteTicket, createAuditLog } from '@/lib/queries'
 
 export async function GET() {
   try {
-    const data = await getTicket()
+    const data = await getTicketKatalog()
     return NextResponse.json(data)
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })

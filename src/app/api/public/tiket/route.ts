@@ -1,14 +1,22 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { getTicketKatalog } from '@/lib/queries'
 import { signRef } from '@/lib/link-token'
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const tipe = await supabaseAdmin.from('tiket_tipe').select('*').eq('id', body.tiket_tipe_id).single()
-    if (!tipe.data) throw new Error('Tipe tiket tidak ditemukan')
-    const harga = Number((tipe.data as { harga: number }).harga)
-    const jumlah = Number(body.jumlah || 1)
+    if (!body.nama_pembeli || !body.kontak) throw new Error('Nama dan kontak wajib diisi')
+
+    const tipe = (await getTicketKatalog()).find((t) => t.id === body.tiket_tipe_id)
+    if (!tipe) throw new Error('Tipe tiket tidak ditemukan')
+    if (!tipe.buka) throw new Error('Tiket sedang ditutup atau sudah habis')
+
+    const jumlah = Math.max(1, Math.floor(Number(body.jumlah || 1)))
+    // ponytail: check-then-insert race; use a DB function/constraint if event-day oversell matters
+    if (tipe.sisa !== null && jumlah > tipe.sisa) throw new Error(`Sisa tiket ${tipe.sisa}`)
+
+    const harga = Number(tipe.harga_aktif)
     const total = harga * jumlah
     const existing = await supabaseAdmin.from('pesanan_tiket').select('no_pesanan')
     const max = (existing.data||[]).reduce((m:number,p:{ no_pesanan: string })=>{const n=Number(/(\d+)$/.exec(p.no_pesanan)?.[1]??0);return n>m?n:m},0)

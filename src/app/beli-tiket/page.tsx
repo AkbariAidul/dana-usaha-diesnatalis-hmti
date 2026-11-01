@@ -4,10 +4,11 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '@/app/dankelola/api'
 import { formatRupiah } from '@/lib/utils'
+import type { TicketKatalogItem } from '@/lib/types'
 import QRCode from 'qrcode'
 
 export default function BeliTiketPublik() {
-  const [katalog, setKatalog] = useState<{ tiket: Array<{ id: string; nama: string; harga: number; deskripsi?: string; kuota: number; terjual: number }>; varian: Array<Record<string, unknown>> }>({ tiket: [], varian: [] })
+  const [katalog, setKatalog] = useState<{ tiket: TicketKatalogItem[]; varian: Array<Record<string, unknown>> }>({ tiket: [], varian: [] })
   const [qris, setQris] = useState<Record<string, string>>({})
   const [form, setForm] = useState({ tiket_tipe_id: '', nama_pembeli: '', kontak: '', email: '', jumlah: 1 })
   const [pesanan, setPesanan] = useState<{ id: string; no_pesanan?: string; nama_pembeli?: string; jumlah?: number; total?: number; t?: string } | null>(null)
@@ -17,14 +18,20 @@ export default function BeliTiketPublik() {
   const [step, setStep] = useState(1)
 
   useEffect(() => {
-    Promise.all([getJSON<{ tiket: Array<{ id: string; nama: string; harga: number; deskripsi?: string; kuota: number; terjual: number }>; varian: Array<Record<string, unknown>> }>('/api/public/katalog'), getJSON<Record<string, string>>('/api/pengaturan/qris')]).then(([k,q])=>{setKatalog({ tiket: k.tiket || [], varian: k.varian || [] }); setQris(q)})
+    Promise.all([getJSON<{ tiket: TicketKatalogItem[]; varian: Array<Record<string, unknown>> }>('/api/public/katalog'), getJSON<Record<string, string>>('/api/pengaturan/qris')]).then(([k,q])=>{setKatalog({ tiket: k.tiket || [], varian: k.varian || [] }); setQris(q)})
   }, [])
   useEffect(() => { if (qris.qris_payload) QRCode.toDataURL(qris.qris_payload,{width:320,margin:2,errorCorrectionLevel:'H'}).then(setQr).catch(()=>{}) }, [qris])
 
   const tipe = katalog.tiket.find((t)=>t.id===form.tiket_tipe_id)
-  const total = tipe ? Number(tipe.harga) * Number(form.jumlah) : 0
+  const total = tipe ? Number(tipe.harga_aktif) * Number(form.jumlah) : 0
 
   async function beli() {
+    if (!tipe) { toast.error('Pilih tipe tiket'); return }
+    if (!tipe.buka) { toast.error('Tiket sedang ditutup atau sudah habis'); return }
+    if (tipe.sisa !== null && Number(form.jumlah) > tipe.sisa) {
+      toast.error(`Sisa tiket ${tipe.sisa}`)
+      return
+    }
     try {
       const res = await sendJSON('/api/public/tiket', 'POST', { ...form, jumlah: Number(form.jumlah) })
       setPesanan(res as { id: string; no_pesanan?: string; nama_pembeli?: string; jumlah?: number; total?: number; t?: string })
@@ -64,25 +71,39 @@ export default function BeliTiketPublik() {
             <div className="p-6 border-b border-slate-100"><h1 className="text-xl font-semibold text-slate-900">Pilih Tiket</h1><p className="text-sm text-slate-500">Pilih tipe tiket yang tersedia</p></div>
             <div className="p-6 grid md:grid-cols-2 gap-4">
               {katalog.tiket.map((t)=>(
-                <button key={t.id} onClick={()=>setForm({...form,tiket_tipe_id:t.id})} className={`text-left rounded-2xl border p-5 transition-all ${form.tiket_tipe_id===t.id?'border-indigo-500 ring-2 ring-indigo-500/10':'border-slate-200/70 hover:border-indigo-200'}`}>
-                  <div className="flex items-center justify-between"><h3 className="font-semibold text-slate-900">{t.nama}</h3><p className="text-indigo-600 font-semibold">{formatRupiah(t.harga)}</p></div>
-                  <p className="mt-1 text-sm text-slate-500">{t.deskripsi||'-'}</p>
-                  <p className="mt-2 text-xs text-slate-400">Kuota: {t.kuota} | Terjual: {t.terjual}</p>
+                <button key={t.id} disabled={!t.buka} onClick={()=>setForm({...form,tiket_tipe_id:t.id})} className={`text-left rounded-2xl border p-5 transition-all disabled:cursor-not-allowed disabled:opacity-60 ${form.tiket_tipe_id===t.id?'border-indigo-500 ring-2 ring-indigo-500/10':'border-slate-200/70 hover:border-indigo-200'}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-semibold text-slate-900">{t.nama}</h3>
+                        <span className={`rounded-full px-2 py-0.5 text-xs ${t.buka ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>{t.buka ? (t.is_hari_h ? 'Hari H' : 'Dibuka') : 'Ditutup'}</span>
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{t.jumlah_orang} orang</span>
+                      </div>
+                      <p className="mt-1 text-sm text-slate-500">{t.deskripsi||'-'}</p>
+                      {t.periode_aktif && <p className="mt-1 text-xs text-slate-400">Periode {t.periode_aktif.nama || 'aktif'}</p>}
+                      {t.is_hari_h && t.sisa !== null && <p className="mt-1 text-xs text-orange-600">Sisa {t.sisa} tiket</p>}
+                    </div>
+                    <p className="font-semibold text-indigo-600">{formatRupiah(t.harga_aktif)}</p>
+                  </div>
                 </button>
               ))}
               {katalog.tiket.length===0 && <p className="text-slate-400">Belum ada tiket yang aktif.</p>}
             </div>
-            {form.tiket_tipe_id && (
+            {form.tiket_tipe_id && tipe && (
               <div className="p-6 border-t border-slate-100 grid md:grid-cols-2 gap-4">
                 <div><label className="mb-1 block text-sm font-medium">Nama Pembeli</label><input className={input} value={form.nama_pembeli} onChange={e=>setForm({...form,nama_pembeli:e.target.value})}/></div>
                 <div><label className="mb-1 block text-sm font-medium">Kontak WA</label><input className={input} value={form.kontak} onChange={e=>setForm({...form,kontak:e.target.value})}/></div>
                 <div><label className="mb-1 block text-sm font-medium">Email (opsional)</label><input className={input} value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></div>
-                <div><label className="mb-1 block text-sm font-medium">Jumlah</label><input type="number" min={1} className={input} value={form.jumlah} onChange={e=>setForm({...form,jumlah:Number(e.target.value)})}/></div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Jumlah Tiket</label>
+                  <input type="number" min={1} max={tipe.is_hari_h && tipe.sisa !== null ? tipe.sisa : undefined} className={input} value={form.jumlah} onChange={e=>setForm({...form,jumlah:Math.max(1,Number(e.target.value))})}/>
+                  <p className="mt-1 text-xs text-slate-500">Berlaku untuk {Number(form.jumlah) * Number(tipe.jumlah_orang)} orang</p>
+                </div>
                 <div className="md:col-span-2 flex items-center justify-between rounded-xl bg-slate-50 p-4">
                   <p className="text-sm text-slate-500">Total Pembayaran</p>
                   <p className="text-lg font-semibold text-indigo-600">{formatRupiah(total)}</p>
                 </div>
-                <div className="md:col-span-2 flex justify-end"><button onClick={beli} disabled={!form.nama_pembeli||!form.kontak} className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50">Buat Pesanan</button></div>
+                <div className="md:col-span-2 flex justify-end"><button onClick={beli} disabled={!form.nama_pembeli||!form.kontak||!tipe.buka} className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50">{tipe.buka ? 'Buat Pesanan' : 'Tiket Ditutup'}</button></div>
               </div>
             )}
           </div>

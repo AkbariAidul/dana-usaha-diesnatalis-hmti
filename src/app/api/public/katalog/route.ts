@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { getTicketKatalog } from '@/lib/queries'
 
 export async function GET() {
   try {
-    const [tipe, varian] = await Promise.all([
-      supabaseAdmin.from('tiket_tipe').select('*').eq('aktif', true).order('urutan'),
+    const [tiket, varian] = await Promise.all([
+      getTicketKatalog(),
       supabaseAdmin.from('merch_varian').select('*').eq('aktif', true).order('urutan'),
     ])
-    return NextResponse.json({ tiket: tipe.data || [], varian: varian.data || [] })
+    return NextResponse.json({ tiket, varian: varian.data || [] })
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })
   }

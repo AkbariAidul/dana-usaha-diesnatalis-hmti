@@ -101,12 +101,34 @@ export interface Merchandise {
 export interface Ticket {
   id: string
   nama: string
+  deskripsi: string | null
   harga: number
+  jumlah_orang: number
   kuota: number
   terjual: number
-  mulai: string | null
-  selesai: string | null
+  urutan: number
   aktif: boolean
+  is_hari_h: boolean
+  mulai_jual: string | null
+  selesai_jual: string | null
+}
+
+export interface TicketPeriode {
+  id: string
+  tiket_tipe_id: string
+  nama: string | null
+  tanggal_mulai: string
+  tanggal_selesai: string
+  harga: number
+  urutan: number
+}
+
+export interface TicketKatalogItem extends Ticket {
+  harga_aktif: number
+  periode_aktif: TicketPeriode | null
+  pending: number
+  sisa: number | null
+  buka: boolean
 }
 
 // ─── Business Logic ───────────────────────────────────────────────────────────
