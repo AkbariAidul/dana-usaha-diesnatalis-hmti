@@ -299,7 +299,7 @@ export default function TahapPage() {
       {/* ═══════════════════════════════════════════════════════ */}
       {tiket.length === 0 && (
         <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-12 text-center">
-          <p className="text-slate-400">Belum ada tipe tiket. Klik "+ Tambah Tipe" untuk memulai.</p>
+          <p className="text-slate-400">Belum ada tipe tiket. Klik + Tambah Tipe untuk memulai.</p>
         </div>
       )}
 
