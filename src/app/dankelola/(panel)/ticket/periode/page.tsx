@@ -48,8 +48,8 @@ export default function PeriodePage() {
     if (!ok) return
     try {
       await sendJSON('/api/ticket/periode', 'DELETE', { id: p.id })
-      toast.success('Periode dihapus')
       await load()
+      toast.success('Periode dihapus')
     } catch (e) {
       toast.error((e as Error).message)
     }

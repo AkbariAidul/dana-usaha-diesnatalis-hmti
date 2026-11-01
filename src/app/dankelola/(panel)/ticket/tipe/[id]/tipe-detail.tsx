@@ -143,8 +143,8 @@ export default function TipeDetail({
         jumlah_min: Number(bundleMin),
         diskon_persen: Number(bundleDiskon),
       })
-      toast.success(editBundleId ? 'Diskon bundle diperbarui' : 'Diskon bundle ditambahkan')
       await reloadBundles()
+      toast.success(editBundleId ? 'Diskon bundle diperbarui' : 'Diskon bundle ditambahkan')
       resetBundleForm()
     } catch (e) { toast.error(String(e)) } finally { setBundleSubmitting(false) }
   }
@@ -170,8 +170,8 @@ export default function TipeDetail({
     if (!ok) return
     try {
       await sendJSON('/api/ticket/bundle', 'DELETE', { id })
-      toast.success('Diskon bundle dihapus')
       await reloadBundles()
+      toast.success('Diskon bundle dihapus')
     } catch (e) { toast.error(String(e)) }
   }
 
@@ -195,8 +195,8 @@ export default function TipeDetail({
         tanggal_selesai: periodeSelesai,
         harga: Number(periodeHarga),
       })
-      toast.success(editPeriodeId ? 'Periode diperbarui' : 'Periode harga ditambahkan')
       await reloadPeriods()
+      toast.success(editPeriodeId ? 'Periode diperbarui' : 'Periode harga ditambahkan')
       resetPeriodeForm()
     } catch (e) { toast.error(String(e)) } finally { setPeriodeSubmitting(false) }
   }
@@ -226,8 +226,8 @@ export default function TipeDetail({
     if (!ok) return
     try {
       await sendJSON('/api/ticket/periode', 'DELETE', { id })
-      toast.success('Periode dihapus')
       await reloadPeriods()
+      toast.success('Periode dihapus')
     } catch (e) { toast.error(String(e)) }
   }
 

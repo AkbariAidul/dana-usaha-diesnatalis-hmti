@@ -53,8 +53,8 @@ export default function TahapPage() {
     if (!ok) return
     try {
       await sendJSON('/api/ticket', 'DELETE', { id })
-      toast.success('Tipe tiket dihapus')
       await load()
+      toast.success('Tipe tiket dihapus')
     } catch (e) { toast.error(String(e)) }
   }
 
