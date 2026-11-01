@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { sendJSON } from '../../../../api'
 import { getJSON } from '../../../../api'
-import { ChevronLeft } from 'lucide-react'
 import type { TicketKatalogItem } from '@/lib/types'
 import { formatRupiah } from '@/lib/utils'
 
@@ -59,14 +58,9 @@ export default function PeriodeCreatePage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <Link href="/dankelola/ticket/tahap" className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50">
-          <ChevronLeft className="h-4 w-4" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Tambah Periode Harga</h1>
-          <p className="text-sm text-slate-500">Buat periode harga untuk salah satu tipe tiket.</p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Tambah Periode Harga</h1>
+        <p className="text-sm text-slate-500">Buat periode harga untuk salah satu tipe tiket.</p>
       </div>
 
       <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm space-y-4">

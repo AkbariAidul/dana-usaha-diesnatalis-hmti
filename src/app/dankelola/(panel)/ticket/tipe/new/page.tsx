@@ -5,9 +5,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { sendJSON } from '../../../../api'
-import { ChevronLeft } from 'lucide-react'
-import type { TicketKatalogItem } from '@/lib/types'
-import { formatRupiah } from '@/lib/utils'
 
 type FormState = {
   nama: string
@@ -22,13 +19,6 @@ type FormState = {
 
 function emptyForm(): FormState {
   return { nama: '', deskripsi: '', harga: 0, jumlah_orang: 1, aktif: true, is_hari_h: false, kuota: 10, selesai_jual: '' }
-}
-
-function toLocalInput(iso: string | null) {
-  if (!iso) return ''
-  const d = new Date(iso)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 export default function TipeCreatePage() {
@@ -61,14 +51,9 @@ export default function TipeCreatePage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <Link href="/dankelola/ticket/tahap" className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50">
-          <ChevronLeft className="h-4 w-4" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Tambah Tipe Tiket</h1>
-          <p className="text-sm text-slate-500">Buat tipe tiket baru untuk dijual di halaman publik.</p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Tambah Tipe Tiket</h1>
+        <p className="text-sm text-slate-500">Buat tipe tiket baru untuk dijual di halaman publik.</p>
       </div>
 
       <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm space-y-4">

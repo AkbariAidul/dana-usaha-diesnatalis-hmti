@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { ChevronLeft } from 'lucide-react'
 import { getJSON, sendJSON } from '../../../../../api'
 import type { TicketPeriode } from '@/lib/types'
 
@@ -105,19 +104,11 @@ export default function PeriodeEditPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <Link
-          href="/dankelola/ticket/periode"
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Edit Periode Harga</h1>
-          <p className="text-sm text-slate-500">
-            {periode?.nama || 'Tanpa nama'} — {periode ? new Date(periode.tanggal_mulai).toLocaleDateString('id-ID') : ''}
-          </p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Edit Periode Harga</h1>
+        <p className="text-sm text-slate-500">
+          {periode?.nama || 'Tanpa nama'} — {periode ? new Date(periode.tanggal_mulai).toLocaleDateString('id-ID') : ''}
+        </p>
       </div>
 
       <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40 space-y-4">
