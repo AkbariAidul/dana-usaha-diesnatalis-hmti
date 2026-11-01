@@ -87,7 +87,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   }
 
   const nav = (
-    <nav className="flex flex-col gap-0.5 px-2" aria-label="Navigasi dashboard">
+    <nav className="flex flex-col gap-0.5 px-1.5" aria-label="Navigasi dashboard">
       {menuConfig.map((group) => {
         const Icon = group.icon
         if (group.href && !group.children) {

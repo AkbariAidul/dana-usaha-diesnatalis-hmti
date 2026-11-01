@@ -67,34 +67,52 @@ body {
 }
 
 /* ── Sidebar tree connectors ─────────────────────────────────────────────── */
+/*
+ * Tree connector visual:
+ *   GROUP
+ *   │
+ *   ├─ child 1
+ *   ├─ child 2
+ *   └─ child 3
+ *
+ * Vertical line sits at x = 6px (sidebar px-1.5).
+ * Horizontal lines start at x = 6px, end at text start x = 24px (width 18px).
+ */
+
 .sidebar-tree {
   position: relative;
-  padding-left: 0.75rem; /* pl-3 — aligns children under the vertical line */
+  /* No extra padding — ml-6 on the div already indents everything.
+     The tree line sits at the left edge of the content area. */
 }
 
+/* Continuous vertical line from first item to last item */
 .sidebar-tree::before {
   content: '';
   position: absolute;
-  left: 0.25rem;  /* border-l position (ml-6 = 1.5rem, border-l sits at its left edge) */
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: rgba(255, 255, 255, 0.3);
+  left: 6px;   /* aligns with the group icon column */
+  top: 0.125rem;  /* tt-1 — slight offset from first item */
+  bottom: 0.125rem; /* bb-1 — slight offset from last item */
+  width: 1px;
+  background: rgba(255, 255, 255, 0.35);
   border-radius: 1px;
 }
 
 .sidebar-tree-item {
   position: relative;
+  display: block;       /* ensures pseudo-elements align correctly */
+  width: 100%;
+  box-sizing: border-box;
 }
 
+/* Horizontal line from the vertical spine to the text */
 .sidebar-tree-item::before {
   content: '';
   position: absolute;
-  left: -0.75rem; /* reaches back to the vertical line (pl-3 = 0.75rem) */
+  left: 6px;              /* starts at the vertical line */
   top: 50%;
-  width: 0.75rem; /* pl-3 */
-  height: 2px;
-  background: rgba(255, 255, 255, 0.3);
+  width: 18px;            /* 24px text-start − 6px line = 18px connector */
+  height: 1px;
+  background: rgba(255, 255, 255, 0.35);
   border-radius: 1px;
   transform: translateY(-50%);
 }
