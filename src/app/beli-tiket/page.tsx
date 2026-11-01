@@ -36,7 +36,7 @@ export default function BeliTiketPublik() {
       return
     }
     try {
-      const res = await sendJSON('/api/public/tiket', 'POST', { ...form, jumlah: Number(form.jumlah) })
+      const res = await sendJSON('/api/public/tiket', 'POST', { ...form, jumlah: Math.max(1, Number(form.jumlah) || 1) })
       setPesanan(res as { id: string; no_pesanan?: string; nama_pembeli?: string; jumlah?: number; total?: number; t?: string })
       setStep(2)
       toast.success('Pesanan dibuat, silakan bayar')
@@ -94,12 +94,12 @@ export default function BeliTiketPublik() {
             </div>
             {form.tiket_tipe_id && tipe && (
               <div className="p-6 border-t border-slate-100 grid md:grid-cols-2 gap-4">
-                <div><label className="mb-1 block text-sm font-medium">Nama Pembeli</label><input className={input} value={form.nama_pembeli} onChange={e=>setForm({...form,nama_pembeli:e.target.value})}/></div>
-                <div><label className="mb-1 block text-sm font-medium">Kontak WA</label><input className={input} value={form.kontak} onChange={e=>setForm({...form,kontak:e.target.value})}/></div>
-                <div><label className="mb-1 block text-sm font-medium">Email (opsional)</label><input className={input} value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></div>
+                <div><label className="mb-1 block text-sm font-medium">Nama Pembeli</label><input className={input} placeholder="Nama lengkap" value={form.nama_pembeli} onChange={e=>setForm({...form,nama_pembeli:e.target.value})}/></div>
+                <div><label className="mb-1 block text-sm font-medium">Kontak WA</label><input className={input} placeholder="08xxxxxxxxxx" value={form.kontak} onChange={e=>setForm({...form,kontak:e.target.value})}/></div>
+                <div><label className="mb-1 block text-sm font-medium">Email (opsional)</label><input className={input} placeholder="nama@email.com" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></div>
                 <div>
                   <label className="mb-1 block text-sm font-medium">Jumlah Tiket</label>
-                  <input type="number" min={1} max={tipe.is_hari_h && tipe.sisa !== null ? tipe.sisa : undefined} className={input} value={form.jumlah} onChange={e=>setForm({...form,jumlah:Math.max(1,Number(e.target.value))})}/>
+                  <input type="number" min={1} max={tipe.is_hari_h && tipe.sisa !== null ? tipe.sisa : undefined} className={input} placeholder="1" value={form.jumlah || ''} onChange={e=>setForm({...form,jumlah:Number(e.target.value)})}/>
                   <p className="mt-1 text-xs text-slate-500">Berlaku untuk {Number(form.jumlah) * Number(tipe.jumlah_orang)} orang</p>
                 </div>
                 <div className="md:col-span-2 flex items-center justify-between rounded-xl bg-slate-50 p-4">

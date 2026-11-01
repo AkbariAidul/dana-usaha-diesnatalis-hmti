@@ -69,6 +69,7 @@ export default function PreorderPage() {
   }
 
   async function simpanHarga() {
+    if (!harga || harga < 1) { toast.error('Harga PO minimal 1'); return }
     setSavingHarga(true)
     try {
       await sendJSON('/api/pengaturan/po', 'PATCH', { harga })
@@ -109,7 +110,7 @@ export default function PreorderPage() {
       <div className="flex flex-wrap items-end gap-2 rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
         <div>
           <label className="mb-1 block text-xs font-medium text-slate-500">Harga PO per item</label>
-          <input type="number" min={1} value={harga} onChange={(e) => setHarga(Number(e.target.value))} className="w-40 rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+          <input type="number" min={1} placeholder="cth: 75000" value={harga || ''} onChange={(e) => setHarga(Number(e.target.value))} className="w-40 rounded-xl border border-slate-200 px-3 py-2 text-sm" />
         </div>
         <button onClick={simpanHarga} disabled={savingHarga} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
           {savingHarga ? 'Menyimpan...' : 'Simpan Harga'}

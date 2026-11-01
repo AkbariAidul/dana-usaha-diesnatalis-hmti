@@ -39,8 +39,8 @@ export default function KuotaPage() {
   useLiveRefresh(load)
 
   async function tambah() {
-    if (!form.nama_lokasi) {
-      toast.error('Nama lokasi harus diisi')
+    if (!form.nama_lokasi || !form.total || form.total < 1) {
+      toast.error('Nama lokasi dan total harus diisi')
       return
     }
     try {
@@ -93,7 +93,7 @@ export default function KuotaPage() {
           <h2 className="font-semibold mb-4">Tambah Lokasi Stand</h2>
           <div className="grid md:grid-cols-3 gap-3">
             <input placeholder="Nama Lokasi" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.nama_lokasi} onChange={e => setForm({ ...form, nama_lokasi: e.target.value })} />
-            <input type="number" min="1" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.total} onChange={e => setForm({ ...form, total: Number(e.target.value) })} />
+            <input type="number" min="1" placeholder="Total" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.total || ''} onChange={e => setForm({ ...form, total: Number(e.target.value) })} />
             <input placeholder="Koordinat (opsional)" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.koordinat} onChange={e => setForm({ ...form, koordinat: e.target.value })} />
           </div>
           <div className="mt-4 flex justify-end gap-2">

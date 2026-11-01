@@ -132,6 +132,7 @@ export default function PeriodeEditPage({ params }: { params: Promise<{ id: stri
             <label className="mb-1 block text-sm font-medium">Nama Periode (opsional)</label>
             <input
               className={input}
+              placeholder="Contoh: Early Bird"
               value={form.nama}
               onChange={(e) => setForm({ ...form, nama: e.target.value })}
             />
@@ -165,6 +166,7 @@ export default function PeriodeEditPage({ params }: { params: Promise<{ id: stri
             type="number"
             min={0}
             className={input}
+            placeholder="cth: 50000"
             value={form.harga || ''}
             onChange={(e) => setForm({ ...form, harga: Number(e.target.value) })}
           />

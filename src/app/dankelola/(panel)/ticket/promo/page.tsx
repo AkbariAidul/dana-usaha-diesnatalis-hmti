@@ -40,8 +40,8 @@ export default function PromoPage() {
   useLiveRefresh(load)
 
   async function tambah() {
-    if (!form.kode || !form.deskripsi) {
-      toast.error('Kode dan deskripsi harus diisi')
+    if (!form.kode || !form.deskripsi || !form.kuota || form.kuota < 1) {
+      toast.error('Kode, deskripsi, dan kuota harus diisi')
       return
     }
     try {
@@ -91,8 +91,8 @@ export default function PromoPage() {
           <div className="grid md:grid-cols-4 gap-3">
             <input placeholder="Kode Promo" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.kode} onChange={e => setForm({ ...form, kode: e.target.value })} />
             <input placeholder="Deskripsi" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.deskripsi} onChange={e => setForm({ ...form, deskripsi: e.target.value })} />
-            <input type="number" min="0" max="100" placeholder="Diskon %" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.diskon} onChange={e => setForm({ ...form, diskon: Number(e.target.value) })} />
-            <input type="number" min="1" placeholder="Kuota" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.kuota} onChange={e => setForm({ ...form, kuota: Number(e.target.value) })} />
+            <input type="number" min="0" max="100" placeholder="Diskon %" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.diskon || ''} onChange={e => setForm({ ...form, diskon: Number(e.target.value) })} />
+            <input type="number" min="1" placeholder="Kuota" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.kuota || ''} onChange={e => setForm({ ...form, kuota: Number(e.target.value) })} />
           </div>
           <div className="mt-4 flex justify-end gap-2">
             <button onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl">Batal</button>

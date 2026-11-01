@@ -175,11 +175,11 @@ export default function TenantDetailPage() {
             <option>DP</option><option>Cicilan</option><option>Pelunasan</option>
           </select>
         </div>
-        <div><label className={label}>Nominal</label><input type="number" required min={1} className={input} value={form.nominal} onChange={(e) => setForm({ ...form, nominal: e.target.value })} /></div>
-        <div><label className={label}>Metode</label><input className={input} value={form.metode} onChange={(e) => setForm({ ...form, metode: e.target.value })} /></div>
-        <div><label className={label}>No Ref</label><input className={input} value={form.no_ref} onChange={(e) => setForm({ ...form, no_ref: e.target.value })} /></div>
+        <div><label className={label}>Nominal</label><input type="number" required min={1} className={input} placeholder="cth: 500000" value={form.nominal} onChange={(e) => setForm({ ...form, nominal: e.target.value })} /></div>
+        <div><label className={label}>Metode</label><input className={input} placeholder="cth: Transfer BCA" value={form.metode} onChange={(e) => setForm({ ...form, metode: e.target.value })} /></div>
+        <div><label className={label}>No Ref</label><input className={input} placeholder="cth: 123456789" value={form.no_ref} onChange={(e) => setForm({ ...form, no_ref: e.target.value })} /></div>
         <div><label className={label}>Bukti (jpg/png/webp/pdf)</label><input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className={input} onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></div>
-        <div className="md:col-span-3"><label className={label}>Keterangan</label><input className={input} value={form.keterangan} onChange={(e) => setForm({ ...form, keterangan: e.target.value })} /></div>
+        <div className="md:col-span-3"><label className={label}>Keterangan</label><input className={input} placeholder="Catatan (opsional)" value={form.keterangan} onChange={(e) => setForm({ ...form, keterangan: e.target.value })} /></div>
         <div className="md:col-span-3 flex justify-end">
           <button disabled={saving} className="bg-primary-600 text-white px-6 py-2.5.5 rounded-xl font-medium transition-all hover:bg-primary-700 hover:shadow-sm hover:shadow-primary-600/20 text-sm disabled:opacity-50">{saving ? 'Menyimpan...' : 'Catat Pembayaran'}</button>
         </div>

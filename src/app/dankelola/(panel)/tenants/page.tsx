@@ -123,9 +123,9 @@ export default function TenantsPage() {
 
       {showForm && (
         <form onSubmit={submit} className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40 grid md:grid-cols-2 gap-3">
-          <div><label className={label}>Nama Usaha</label><input required className={input} value={form.nama_usaha} onChange={(e) => setForm({ ...form, nama_usaha: e.target.value })} /></div>
-          <div><label className={label}>Kontak (WA)</label><input required className={input} value={form.kontak} onChange={(e) => setForm({ ...form, kontak: e.target.value })} /></div>
-          <div><label className={label}>Email (opsional)</label><input type="email" className={input} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+          <div><label className={label}>Nama Usaha</label><input required className={input} placeholder="cth: Kopi Senja" value={form.nama_usaha} onChange={(e) => setForm({ ...form, nama_usaha: e.target.value })} /></div>
+          <div><label className={label}>Kontak (WA)</label><input required className={input} placeholder="08xxxxxxxxxx" value={form.kontak} onChange={(e) => setForm({ ...form, kontak: e.target.value })} /></div>
+          <div><label className={label}>Email (opsional)</label><input type="email" className={input} placeholder="nama@email.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
           <div>
             <label className={label}>Kategori Sewa</label>
             <select required className={input} value={form.kategori_sewa_id} onChange={(e) => setForm({ ...form, kategori_sewa_id: e.target.value })}>
@@ -162,7 +162,7 @@ export default function TenantsPage() {
             </p>
           </div>
           <div><label className={label}>Tanggal Acara (opsional)</label><input type="date" className={input} value={form.tgl_acara} onChange={(e) => setForm({ ...form, tgl_acara: e.target.value })} /></div>
-          <div><label className={label}>Keterangan</label><input className={input} value={form.keterangan} onChange={(e) => setForm({ ...form, keterangan: e.target.value })} /></div>
+          <div><label className={label}>Keterangan</label><input className={input} placeholder="Catatan (opsional)" value={form.keterangan} onChange={(e) => setForm({ ...form, keterangan: e.target.value })} /></div>
           <div className="md:col-span-2 flex items-center justify-between border-t pt-3">
             <div className="text-sm">
               Harga: <span className="font-semibold text-primary-600">{formatRupiah(harga)}</span>

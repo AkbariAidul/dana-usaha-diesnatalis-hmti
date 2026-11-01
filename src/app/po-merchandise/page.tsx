@@ -71,14 +71,14 @@ export default function PoMerchandisePage() {
     if (form.tipe_pemesan === 'Pengurus Himpunan' && !form.pengurus_id) {
       return toast.error('Pilih nama pengurus dari daftar')
     }
-    if (!form.nama_pemesan.trim() || !form.kontak.trim() || !form.varian_id) {
-      return toast.error('Lengkapi nama, kontak, dan ukuran')
+    if (!form.nama_pemesan.trim() || !form.kontak.trim() || !form.varian_id || !form.qty || form.qty < 1) {
+      return toast.error('Lengkapi nama, kontak, ukuran, dan jumlah')
     }
     try {
       const res = await fetch('/api/public/po', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, qty: Number(form.qty) }),
+        body: JSON.stringify({ ...form, qty: Math.max(1, Number(form.qty) || 1) }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Gagal membuat pesanan')
@@ -184,18 +184,18 @@ export default function PoMerchandisePage() {
               ) : (
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">Nama Pemesan</label>
-                  <input className={input} value={form.nama_pemesan} onChange={(e) => setForm({ ...form, nama_pemesan: e.target.value })} />
+                  <input className={input} placeholder="Nama lengkap" value={form.nama_pemesan} onChange={(e) => setForm({ ...form, nama_pemesan: e.target.value })} />
                 </div>
               )}
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">Kontak WA</label>
-                  <input className={input} value={form.kontak} onChange={(e) => setForm({ ...form, kontak: e.target.value })} />
+                  <input className={input} placeholder="08xxxxxxxxxx" value={form.kontak} onChange={(e) => setForm({ ...form, kontak: e.target.value })} />
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">Email (opsional)</label>
-                  <input className={input} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                  <input className={input} placeholder="nama@email.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">Ukuran</label>
@@ -205,7 +205,7 @@ export default function PoMerchandisePage() {
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">Jumlah</label>
-                  <input type="number" min={1} max={20} className={input} value={form.qty} onChange={(e) => setForm({ ...form, qty: Number(e.target.value) })} />
+                  <input type="number" min={1} max={20} className={input} placeholder="1" value={form.qty || ''} onChange={(e) => setForm({ ...form, qty: Number(e.target.value) })} />
                 </div>
               </div>
 

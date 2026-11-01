@@ -39,8 +39,8 @@ export default function StokPage() {
   useLiveRefresh(load)
 
   async function tambah() {
-    if (!form.produk) {
-      toast.error('Nama produk harus diisi')
+    if (!form.produk || !form.qty || form.qty < 1) {
+      toast.error('Nama produk dan qty harus diisi')
       return
     }
     try {
@@ -93,7 +93,7 @@ export default function StokPage() {
           <h2 className="font-semibold mb-4">Tambah Log Stok</h2>
           <div className="grid md:grid-cols-4 gap-3">
             <input placeholder="Nama Produk" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.produk} onChange={e => setForm({ ...form, produk: e.target.value })} />
-            <input type="number" min="1" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.qty} onChange={e => setForm({ ...form, qty: Number(e.target.value) })} />
+            <input type="number" min="1" placeholder="Qty" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.qty || ''} onChange={e => setForm({ ...form, qty: Number(e.target.value) })} />
             <select className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.jenis} onChange={e => setForm({ ...form, jenis: e.target.value as 'masuk' | 'keluar' })}>
               <option value="masuk">Masuk</option>
               <option value="keluar">Keluar</option>

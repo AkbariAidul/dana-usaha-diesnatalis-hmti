@@ -40,8 +40,8 @@ export default function KasirPage() {
   useLiveRefresh(load)
 
   async function tambah() {
-    if (!form.produk || !form.dicatat_oleh) {
-      toast.error('Produk dan nama kasir harus diisi')
+    if (!form.produk || !form.dicatat_oleh || !form.qty || form.qty < 1) {
+      toast.error('Produk, qty, dan nama kasir harus diisi')
       return
     }
     try {
@@ -95,7 +95,7 @@ export default function KasirPage() {
           <h2 className="font-semibold mb-4">Transaksi Baru</h2>
           <div className="grid md:grid-cols-4 gap-3">
             <input placeholder="Nama Produk" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.produk} onChange={e => setForm({ ...form, produk: e.target.value })} />
-            <input type="number" min="1" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.qty} onChange={e => setForm({ ...form, qty: Number(e.target.value) })} />
+            <input type="number" min="1" placeholder="Qty" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.qty || ''} onChange={e => setForm({ ...form, qty: Number(e.target.value) })} />
             <select className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.metode} onChange={e => setForm({ ...form, metode: e.target.value })}>
               <option>Tunai</option><option>QRIS</option><option>Transfer</option>
             </select>

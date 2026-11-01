@@ -180,7 +180,7 @@ function BuktiUpload({ kode, token, nominal, onDone }: { kode: string; token: st
       {nominal !== undefined && (
         <div>
           <label className="mb-1 block text-xs font-medium text-slate-600">Nominal</label>
-          <input type="number" min={1} value={nilai} onChange={(e) => setNilai(e.target.value)} className={input} />
+          <input type="number" min={1} placeholder="cth: 50000" value={nilai} onChange={(e) => setNilai(e.target.value)} className={input} />
         </div>
       )}
       <input type="file" accept="image/*,application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="block w-full text-sm" />

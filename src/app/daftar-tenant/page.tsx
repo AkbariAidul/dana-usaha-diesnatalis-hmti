@@ -111,11 +111,11 @@ export default function DaftarTenantPublik() {
               <p className="text-sm text-slate-500">Isi data usaha kamu sesuai ketentuan open tenant.</p>
             </div>
             <div className="p-6 grid md:grid-cols-2 gap-4">
-              <div className="md:col-span-2"><label className="mb-1 block text-sm font-medium">Nama Usaha</label><input className={input} value={form.nama_usaha} onChange={e=>setForm({...form,nama_usaha:e.target.value})}/></div>
-              <div><label className="mb-1 block text-sm font-medium">Kontak WA</label><input className={input} value={form.kontak} onChange={e=>setForm({...form,kontak:e.target.value})}/></div>
-              <div><label className="mb-1 block text-sm font-medium">Email (opsional)</label><input className={input} value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></div>
-              <div className="md:col-span-2"><label className="mb-1 block text-sm font-medium">Alamat</label><input className={input} value={form.alamat} onChange={e=>setForm({...form,alamat:e.target.value})}/></div>
-              <div className="md:col-span-2"><label className="mb-1 block text-sm font-medium">Deskripsi Usaha</label><textarea className={input} value={form.deskripsi_usaha} onChange={e=>setForm({...form,deskripsi_usaha:e.target.value})}/></div>
+              <div className="md:col-span-2"><label className="mb-1 block text-sm font-medium">Nama Usaha</label><input className={input} placeholder="cth: Kopi Senja" value={form.nama_usaha} onChange={e=>setForm({...form,nama_usaha:e.target.value})}/></div>
+              <div><label className="mb-1 block text-sm font-medium">Kontak WA</label><input className={input} placeholder="08xxxxxxxxxx" value={form.kontak} onChange={e=>setForm({...form,kontak:e.target.value})}/></div>
+              <div><label className="mb-1 block text-sm font-medium">Email (opsional)</label><input className={input} placeholder="nama@email.com" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></div>
+              <div className="md:col-span-2"><label className="mb-1 block text-sm font-medium">Alamat</label><input className={input} placeholder="Alamat lengkap stand/usaha" value={form.alamat} onChange={e=>setForm({...form,alamat:e.target.value})}/></div>
+              <div className="md:col-span-2"><label className="mb-1 block text-sm font-medium">Deskripsi Usaha</label><textarea className={input} placeholder="Ceritakan singkat usaha kamu" value={form.deskripsi_usaha} onChange={e=>setForm({...form,deskripsi_usaha:e.target.value})}/></div>
               <div>
                 <label className="mb-1 block text-sm font-medium">Kategori Sewa</label>
                 <select className={input} value={form.kategori_sewa_id} onChange={e=>setForm({...form,kategori_sewa_id:e.target.value})}>

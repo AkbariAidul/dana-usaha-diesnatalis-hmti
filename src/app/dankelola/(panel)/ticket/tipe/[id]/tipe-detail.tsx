@@ -262,18 +262,18 @@ export default function TipeDetail({
       <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm space-y-4">
         <h2 className="font-semibold text-slate-900">Informasi Dasar</h2>
         <div className="grid gap-3 md:grid-cols-3">
-          <div><label className={label}>Nama Tiket</label><input disabled={readOnly} className={input} value={form.nama} onChange={e => setForm({ ...form, nama: e.target.value })} /></div>
-          <div><label className={label}>Harga Dasar (Rp)</label><input disabled={readOnly} type="number" min={0} className={input} value={form.harga || ''} onChange={e => setForm({ ...form, harga: Number(e.target.value) })} /></div>
-          <div><label className={label}>Berlaku untuk (orang)</label><input disabled={readOnly} type="number" min={1} className={input} value={form.jumlah_orang} onChange={e => setForm({ ...form, jumlah_orang: Number(e.target.value) })} /></div>
+          <div><label className={label}>Nama Tiket</label><input disabled={readOnly} className={input} placeholder="cth: Tiket Presale" value={form.nama} onChange={e => setForm({ ...form, nama: e.target.value })} /></div>
+          <div><label className={label}>Harga Dasar (Rp)</label><input disabled={readOnly} type="number" min={0} className={input} placeholder="cth: 50000" value={form.harga || ''} onChange={e => setForm({ ...form, harga: Number(e.target.value) })} /></div>
+          <div><label className={label}>Berlaku untuk (orang)</label><input disabled={readOnly} type="number" min={1} className={input} placeholder="cth: 1" value={form.jumlah_orang || ''} onChange={e => setForm({ ...form, jumlah_orang: Number(e.target.value) })} /></div>
         </div>
-        <div><label className={label}>Deskripsi</label><textarea disabled={readOnly} className={input} rows={2} value={form.deskripsi} onChange={e => setForm({ ...form, deskripsi: e.target.value })} /></div>
+        <div><label className={label}>Deskripsi</label><textarea disabled={readOnly} className={input} rows={2} placeholder="Deskripsi singkat tipe tiket" value={form.deskripsi} onChange={e => setForm({ ...form, deskripsi: e.target.value })} /></div>
         <div className="flex flex-wrap items-center gap-4">
           <label className="flex items-center gap-2 text-sm"><input disabled={readOnly} type="checkbox" checked={form.aktif} onChange={e => setForm({ ...form, aktif: e.target.checked })} /> <span>Buka order</span></label>
           <label className="flex items-center gap-2 text-sm"><input disabled={readOnly} type="checkbox" checked={form.is_hari_h} onChange={e => setForm({ ...form, is_hari_h: e.target.checked, kuota: e.target.checked ? form.kuota || 10 : 0 })} /> <span>Tiket Hari H (kuota terbatas)</span></label>
         </div>
         {form.is_hari_h && (
           <div className="grid gap-3 md:grid-cols-2">
-            <div><label className={label}>Kuota</label><input disabled={readOnly} type="number" min={1} className={input} value={form.kuota} onChange={e => setForm({ ...form, kuota: Number(e.target.value) })} /></div>
+            <div><label className={label}>Kuota</label><input disabled={readOnly} type="number" min={1} className={input} placeholder="cth: 10" value={form.kuota || ''} onChange={e => setForm({ ...form, kuota: Number(e.target.value) })} /></div>
             <div><label className={label}>Tutup Penjualan</label><input disabled={readOnly} type="datetime-local" className={input} value={form.selesai_jual} onChange={e => setForm({ ...form, selesai_jual: e.target.value })} /></div>
           </div>
         )}
@@ -341,7 +341,7 @@ export default function TipeDetail({
               <div><label className={label}>Nama (opsional)</label><input className={input} value={periodeNama} onChange={e => setPeriodeNama(e.target.value)} placeholder="Early Bird" /></div>
               <div><label className={label}>Mulai</label><input type="date" className={input} value={periodeMulai} onChange={e => setPeriodeMulai(e.target.value)} /></div>
               <div><label className={label}>Selesai</label><input type="date" className={input} value={periodeSelesai} onChange={e => setPeriodeSelesai(e.target.value)} /></div>
-              <div><label className={label}>Harga (Rp)</label><input type="number" min={0} className={input} value={periodeHarga || ''} onChange={e => setPeriodeHarga(Number(e.target.value))} /></div>
+              <div><label className={label}>Harga (Rp)</label><input type="number" min={0} className={input} placeholder="cth: 50000" value={periodeHarga || ''} onChange={e => setPeriodeHarga(Number(e.target.value))} /></div>
               <div className="flex gap-2">
                 <button onClick={simpanPeriode} disabled={periodeSubmitting} className="flex-1 rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
                   {periodeSubmitting ? 'Menyimpan...' : editPeriodeId ? 'Simpan' : '+ Tambah Periode'}
@@ -396,11 +396,11 @@ export default function TipeDetail({
             <div className="flex flex-wrap items-end gap-3 border-t border-slate-100 pt-3">
               <div>
                 <label className={label}>Beli minimal (tiket)</label>
-                <input type="number" min={2} className={input} value={bundleMin} onChange={e => setBundleMin(Number(e.target.value))} />
+                <input type="number" min={2} className={input} placeholder="cth: 5" value={bundleMin || ''} onChange={e => setBundleMin(Number(e.target.value))} />
               </div>
               <div>
                 <label className={label}>Diskon (%)</label>
-                <input type="number" min={1} max={100} className={input} value={bundleDiskon || ''} onChange={e => setBundleDiskon(Number(e.target.value))} />
+                <input type="number" min={1} max={100} className={input} placeholder="cth: 10" value={bundleDiskon || ''} onChange={e => setBundleDiskon(Number(e.target.value))} />
               </div>
               <button onClick={simpanBundle} disabled={bundleSubmitting} className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
                 {bundleSubmitting ? 'Menyimpan...' : editBundleId ? 'Simpan' : '+ Tambah Diskon'}

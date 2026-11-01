@@ -45,8 +45,8 @@ export default function PeralatanPage() {
   }
 
   async function simpan() {
-    if (!form.nama) {
-      toast.error('Nama barang harus diisi')
+    if (!form.nama || !form.jumlah || form.jumlah < 1) {
+      toast.error('Nama barang dan jumlah harus diisi')
       return
     }
     setSaving(true)
@@ -138,11 +138,11 @@ export default function PeralatanPage() {
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium">Jumlah Sewa</label>
-              <input type="number" min={1} className={input} value={form.jumlah} onChange={e => setForm({ ...form, jumlah: Number(e.target.value) })} />
+              <input type="number" min={1} placeholder="cth: 5" className={input} value={form.jumlah || ''} onChange={e => setForm({ ...form, jumlah: Number(e.target.value) })} />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium">Harga Sewa / Unit</label>
-              <input type="number" min={0} className={input} value={form.harga_satuan} onChange={e => setForm({ ...form, harga_satuan: Number(e.target.value) })} />
+              <input type="number" min={0} placeholder="cth: 150000" className={input} value={form.harga_satuan || ''} onChange={e => setForm({ ...form, harga_satuan: Number(e.target.value) })} />
             </div>
           </div>
           <div className="mt-4 flex justify-end gap-2">

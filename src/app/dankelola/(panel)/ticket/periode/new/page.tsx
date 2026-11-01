@@ -81,7 +81,7 @@ export default function PeriodeCreatePage() {
           <div><label className={label}>Tanggal Selesai</label><input type="date" className={input} value={selesai} onChange={e => setSelesai(e.target.value)} /></div>
         </div>
 
-        <div><label className={label}>Harga (Rp)</label><input type="number" min={0} className={input} value={harga || ''} onChange={e => setHarga(Number(e.target.value))} /></div>
+        <div><label className={label}>Harga (Rp)</label><input type="number" min={0} className={input} placeholder="cth: 50000" value={harga || ''} onChange={e => setHarga(Number(e.target.value))} /></div>
 
         <div className="flex justify-end gap-2 pt-2">
           <Link href="/dankelola/ticket/tahap" className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl">Batal</Link>
