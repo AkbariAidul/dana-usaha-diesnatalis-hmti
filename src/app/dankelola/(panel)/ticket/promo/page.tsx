@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
+import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
 
 type Promo = {
@@ -22,15 +23,21 @@ export default function PromoPage() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ kode: '', deskripsi: '', diskon: 0, kuota: 10 })
 
+  const load = useCallback(async () => {
+    const data = await getJSON<Promo[]>('/api/ticket/promo')
+    setPromos(data)
+    setError(null)
+  }, [])
+
   useEffect(() => {
-    getJSON<Promo[]>('/api/ticket/promo')
-      .then(setPromos)
+    load()
       .catch((e) => {
         console.error('Failed to load promo:', e)
         setError('Gagal memuat data promo')
       })
       .finally(() => setLoading(false))
-  }, [])
+  }, [load])
+  useLiveRefresh(load)
 
   async function tambah() {
     if (!form.kode || !form.deskripsi) {
@@ -42,8 +49,7 @@ export default function PromoPage() {
       toast.success('Promo ditambahkan')
       setForm({ kode: '', deskripsi: '', diskon: 0, kuota: 10 })
       setShowForm(false)
-      const res = await getJSON<Promo[]>('/api/ticket/promo')
-      setPromos(res)
+      await load()
     } catch (e) { toast.error((e as Error).message) }
   }
 

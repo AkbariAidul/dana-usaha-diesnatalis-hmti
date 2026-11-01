@@ -58,9 +58,13 @@ export default function ScanPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'QR tidak valid')
-      setResult(data)
       beep()
-      if (action === 'confirm') toast.success('Berhasil dikonfirmasi')
+      if (action === 'confirm') {
+        toast.success('Berhasil dikonfirmasi')
+        setResult(null)
+      } else {
+        setResult(data)
+      }
     } catch (e) {
       toast.error((e as Error).message)
       if (action === 'lookup') setResult(null)

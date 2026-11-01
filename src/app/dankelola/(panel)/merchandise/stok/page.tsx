@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
+import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
 
 type StokLog = {
@@ -21,15 +22,21 @@ export default function StokPage() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ produk: '', qty: 1, jenis: 'masuk', keterangan: '' })
 
+  const load = useCallback(async () => {
+    const data = await getJSON<StokLog[]>('/api/merchandise/stok')
+    setLogs(data)
+    setError(null)
+  }, [])
+
   useEffect(() => {
-    getJSON<StokLog[]>('/api/merchandise/stok')
-      .then(setLogs)
+    load()
       .catch((e) => {
         console.error('Failed to load stok:', e)
         setError('Gagal memuat data stok')
       })
       .finally(() => setLoading(false))
-  }, [])
+  }, [load])
+  useLiveRefresh(load)
 
   async function tambah() {
     if (!form.produk) {
@@ -41,8 +48,7 @@ export default function StokPage() {
       toast.success('Log stok ditambahkan')
       setForm({ produk: '', qty: 1, jenis: 'masuk', keterangan: '' })
       setShowForm(false)
-      const res = await getJSON<StokLog[]>('/api/merchandise/stok')
-      setLogs(res)
+      await load()
     } catch (e) { toast.error((e as Error).message) }
   }
 

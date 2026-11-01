@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { getJSON } from '../../../api'
+import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
 import type { Ticket } from '@/lib/types'
 import { formatRupiah } from '@/lib/utils'
@@ -14,15 +15,21 @@ export default function TahapPage() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ nama: '', harga: 0, kuota: 0, deskripsi: '' })
 
+  const load = useCallback(async () => {
+    const data = await getJSON<Ticket[]>('/api/ticket')
+    setTiket(data)
+    setError(null)
+  }, [])
+
   useEffect(() => {
-    getJSON<Ticket[]>('/api/ticket')
-      .then(setTiket)
+    load()
       .catch((e) => {
         console.error('Failed to load ticket:', e)
         setError('Gagal memuat data tiket')
       })
       .finally(() => setLoading(false))
-  }, [])
+  }, [load])
+  useLiveRefresh(load)
 
   async function tambah() {
     if (!form.nama || !form.harga || !form.kuota) {
@@ -38,8 +45,7 @@ export default function TahapPage() {
       toast.success('Tipe tiket ditambahkan')
       setForm({ nama: '', harga: 0, kuota: 0, deskripsi: '' })
       setShowForm(false)
-      const res = await getJSON<Ticket[]>('/api/ticket')
-      setTiket(res)
+      await load()
     } catch (e) { toast.error((e as Error).message) }
   }
 

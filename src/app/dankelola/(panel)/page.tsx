@@ -1,9 +1,10 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import type { Tenant, Pembayaran, PeriodeHarga } from '@/lib/types'
 import { formatRupiah, formatDate } from '@/lib/utils'
 import { periodeDariTanggal } from '@/lib/types'
+import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { getJSON } from '../api'
 import { CardsSkeleton } from './ui'
 
@@ -13,15 +14,19 @@ export default function RingkasanPage() {
   const [periods, setPeriods] = useState<PeriodeHarga[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    Promise.all([
+  const load = useCallback(async () => {
+    const [t, p, pr] = await Promise.all([
       getJSON<Tenant[]>('/api/tenants'),
       getJSON<Pembayaran[]>('/api/pembayaran'),
       getJSON<PeriodeHarga[]>('/api/master/periode'),
     ])
-      .then(([t, p, pr]) => { setTenants(t); setPembayaran(p); setPeriods(pr) })
-      .finally(() => setLoading(false))
+    setTenants(t); setPembayaran(p); setPeriods(pr)
   }, [])
+
+  useEffect(() => {
+    load().finally(() => setLoading(false))
+  }, [load])
+  useLiveRefresh(load)
 
   const today = new Date().toISOString().slice(0, 10)
   const periodeAktif = periodeDariTanggal(today, periods)

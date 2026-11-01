@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
+import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
 import { formatDate, formatRupiah } from '@/lib/utils'
 
@@ -57,6 +58,7 @@ export default function PreorderPage() {
   }
 
   useEffect(() => { load() }, [])
+  useLiveRefresh(load)
 
   async function updateStatus(id: string, status: string) {
     try {

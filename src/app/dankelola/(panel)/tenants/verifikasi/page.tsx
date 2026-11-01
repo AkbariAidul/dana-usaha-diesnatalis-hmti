@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { getJSON, sendJSON } from '../../../api'
+import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
 
 type Pendaftaran = {
@@ -31,15 +32,21 @@ export default function VerifikasiTenantPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [catatan, setCatatan] = useState('')
 
+  const load = useCallback(async () => {
+    const data = await getJSON<Pendaftaran[]>('/api/public/tenant')
+    setPendaftaran(data)
+    setError(null)
+  }, [])
+
   useEffect(() => {
-    getJSON<Pendaftaran[]>('/api/public/tenant')
-      .then(setPendaftaran)
+    load()
       .catch((e) => {
         console.error('Failed to load pendaftaran:', e)
         setError('Gagal memuat data pendaftaran')
       })
       .finally(() => setLoading(false))
-  }, [])
+  }, [load])
+  useLiveRefresh(load)
 
   async function handleVerifikasi(id: string, status: 'dp_diterima' | 'ditolak') {
     if (!id) return
@@ -51,8 +58,7 @@ export default function VerifikasiTenantPage() {
       toast.success(`Pendaftaran ${status === 'dp_diterima' ? 'diterima' : 'ditolak'}`)
       setCatatan('')
       setSelectedId(null)
-      const res = await getJSON<Pendaftaran[]>('/api/public/tenant')
-      setPendaftaran(res)
+      await load()
     } catch (e) { toast.error((e as Error).message) }
   }
 

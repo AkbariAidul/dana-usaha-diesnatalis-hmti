@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { getJSON, sendJSON } from '../../../api'
+import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
 
 type Pesanan = {
@@ -29,15 +30,21 @@ export default function VerifikasiTiketPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [catatan, setCatatan] = useState('')
 
+  const load = useCallback(async () => {
+    const data = await getJSON<Pesanan[]>('/api/ticket/verification')
+    setPesanan(data)
+    setError(null)
+  }, [])
+
   useEffect(() => {
-    getJSON<Pesanan[]>('/api/ticket/verification')
-      .then(setPesanan)
+    load()
       .catch((e) => {
         console.error('Failed to load pesanan:', e)
         setError('Gagal memuat data pesanan')
       })
       .finally(() => setLoading(false))
-  }, [])
+  }, [load])
+  useLiveRefresh(load)
 
   async function handleVerifikasi(id: string, status: 'lunas' | 'ditolak') {
     if (!id) return
@@ -50,8 +57,7 @@ export default function VerifikasiTiketPage() {
       toast.success(`Pesanan ${status === 'lunas' ? 'diterima' : 'ditolak'}`)
       setCatatan('')
       setSelectedId(null)
-      const res = await getJSON<Pesanan[]>('/api/ticket/verification')
-      setPesanan(res)
+      await load()
     } catch (e) { toast.error((e as Error).message) }
   }
 

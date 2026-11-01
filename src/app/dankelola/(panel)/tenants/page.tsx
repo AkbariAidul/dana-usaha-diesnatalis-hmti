@@ -6,6 +6,7 @@ import type { Tenant, KategoriSewa, HargaDasar, FaktorHarga, PeriodeHarga } from
 import { formatRupiah, formatDate } from '@/lib/utils'
 import { STATUS_LABEL, STATUS_COLOR, hitungHarga, periodeDariTanggal, periodeLabel } from '@/lib/types'
 import { getJSON, sendJSON } from '../../api'
+import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { TableSkeleton } from '../ui'
 
 const today = new Date().toISOString().slice(0, 10)
@@ -42,6 +43,7 @@ export default function TenantsPage() {
   useEffect(() => {
     load().catch((e) => toast.error(e.message)).finally(() => setLoading(false))
   }, [])
+  useLiveRefresh(load)
 
   const periode = periodeDariTanggal(form.tgl_daftar, periods)
 

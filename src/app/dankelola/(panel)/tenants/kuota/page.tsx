@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
+import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
 
 type KuotaItem = {
@@ -21,15 +22,21 @@ export default function KuotaPage() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ nama_lokasi: '', total: 5, koordinat: '' })
 
+  const load = useCallback(async () => {
+    const data = await getJSON<KuotaItem[]>('/api/kuota')
+    setItems(data)
+    setError(null)
+  }, [])
+
   useEffect(() => {
-    getJSON<KuotaItem[]>('/api/kuota')
-      .then(setItems)
+    load()
       .catch((e) => {
         console.error('Failed to load kuota:', e)
         setError('Gagal memuat data kuota')
       })
       .finally(() => setLoading(false))
-  }, [])
+  }, [load])
+  useLiveRefresh(load)
 
   async function tambah() {
     if (!form.nama_lokasi) {
@@ -41,8 +48,7 @@ export default function KuotaPage() {
       toast.success('Lokasi ditambahkan')
       setForm({ nama_lokasi: '', total: 5, koordinat: '' })
       setShowForm(false)
-      const res = await getJSON<KuotaItem[]>('/api/kuota')
-      setItems(res)
+      await load()
     } catch (e) { toast.error((e as Error).message) }
   }
 

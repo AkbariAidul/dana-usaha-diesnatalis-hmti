@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
+import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
 
 type KasirTransaksi = {
@@ -22,15 +23,21 @@ export default function KasirPage() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ produk: '', qty: 1, metode: 'Tunai', dicatat_oleh: '' })
 
+  const load = useCallback(async () => {
+    const data = await getJSON<KasirTransaksi[]>('/api/merchandise/kasir')
+    setTransaksi(data)
+    setError(null)
+  }, [])
+
   useEffect(() => {
-    getJSON<KasirTransaksi[]>('/api/merchandise/kasir')
-      .then(setTransaksi)
+    load()
       .catch((e) => {
         console.error('Failed to load kasir:', e)
         setError('Gagal memuat data kasir')
       })
       .finally(() => setLoading(false))
-  }, [])
+  }, [load])
+  useLiveRefresh(load)
 
   async function tambah() {
     if (!form.produk || !form.dicatat_oleh) {
@@ -42,8 +49,7 @@ export default function KasirPage() {
       toast.success('Transaksi disimpan')
       setForm({ produk: '', qty: 1, metode: 'Tunai', dicatat_oleh: '' })
       setShowForm(false)
-      const res = await getJSON<KasirTransaksi[]>('/api/merchandise/kasir')
-      setTransaksi(res)
+      await load()
     } catch (e) { toast.error((e as Error).message) }
   }
 

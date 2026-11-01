@@ -1,7 +1,8 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { getJSON } from '../../api'
+import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { TableSkeleton } from '../ui'
 
 type AuditRow = {
@@ -16,9 +17,14 @@ export default function AuditPage() {
   const [data, setData] = useState<AuditRow[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    getJSON<AuditRow[]>('/api/audit').then(setData).catch((e) => toast.error(e.message)).finally(() => setLoading(false))
+  const load = useCallback(async () => {
+    setData(await getJSON<AuditRow[]>('/api/audit'))
   }, [])
+
+  useEffect(() => {
+    load().catch((e) => toast.error(e.message)).finally(() => setLoading(false))
+  }, [load])
+  useLiveRefresh(load)
 
   return (
     <div className="space-y-4">

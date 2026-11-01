@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
+import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
 import type { Peralatan } from '@/lib/types'
 import { formatRupiah } from '@/lib/utils'
@@ -32,6 +33,7 @@ export default function PeralatanPage() {
       })
       .finally(() => setLoading(false))
   }, [])
+  useLiveRefresh(load)
 
   function bukaForm(item?: Peralatan) {
     setForm(item

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
+import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
 
 type Pengurus = {
@@ -32,6 +33,7 @@ export default function PengurusPage() {
   }
 
   useEffect(() => { load() }, [])
+  useLiveRefresh(load)
 
   async function tambah() {
     if (!form.nama.trim()) return

@@ -1,19 +1,25 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import type { Tenant } from '@/lib/types'
 import { formatRupiah } from '@/lib/utils'
 import { STATUS_LABEL } from '@/lib/types'
 import { getJSON } from '../../api'
+import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../ui'
 
 export default function LaporanPage() {
   const [data, setData] = useState<Tenant[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    getJSON<Tenant[]>('/api/tenants').then(setData).catch((e) => toast.error(e.message)).finally(() => setLoading(false))
+  const load = useCallback(async () => {
+    setData(await getJSON<Tenant[]>('/api/tenants'))
   }, [])
+
+  useEffect(() => {
+    load().catch((e) => toast.error(e.message)).finally(() => setLoading(false))
+  }, [load])
+  useLiveRefresh(load)
 
   const aktif = data.filter((t) => t.status !== 'batal')
   const totalTagihan = aktif.reduce((s, t) => s + t.harga_akhir, 0)

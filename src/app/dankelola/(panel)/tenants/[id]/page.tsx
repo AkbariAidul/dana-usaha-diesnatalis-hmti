@@ -7,6 +7,7 @@ import type { Tenant, Pembayaran, PeriodeHarga } from '@/lib/types'
 import { formatRupiah, formatDate } from '@/lib/utils'
 import { STATUS_LABEL, STATUS_COLOR, periodeLabel, hitungHariTersisa, hitungMinimalCicilan, tambahHari } from '@/lib/types'
 import { getJSON, sendJSON, bustCache } from '../../../api'
+import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
 
 export default function TenantDetailPage() {
@@ -41,6 +42,7 @@ export default function TenantDetailPage() {
   useEffect(() => {
     load().catch((e) => toast.error(e.message)).finally(() => setLoading(false))
   }, [load])
+  useLiveRefresh(load)
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()

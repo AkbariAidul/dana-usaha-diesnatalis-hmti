@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import type { Tenant, Pembayaran } from '@/lib/types'
 import { formatRupiah, formatDate } from '@/lib/utils'
 import { getJSON, sendJSON } from '../../../api'
+import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
 
 export default function PembayaranPage() {
@@ -14,18 +15,23 @@ export default function PembayaranPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    Promise.all([
+  const load = useCallback(async () => {
+    const [p, t] = await Promise.all([
       getJSON<Pembayaran[]>('/api/pembayaran'),
       getJSON<Tenant[]>('/api/tenants'),
-    ]).then(([p, t]) => {
-      setPembayaran(p)
-      setTenants(t)
-    }).catch((e) => {
+    ])
+    setPembayaran(p)
+    setTenants(t)
+    setError(null)
+  }, [])
+
+  useEffect(() => {
+    load().catch((e) => {
       console.error('Failed to load:', e)
       setError('Gagal memuat data pembayaran')
     }).finally(() => setLoading(false))
-  }, [])
+  }, [load])
+  useLiveRefresh(load)
 
   const tenantMap = Object.fromEntries(tenants.map(t => [t.id, t]))
 
@@ -33,12 +39,7 @@ export default function PembayaranPage() {
     try {
       await sendJSON(`/api/pembayaran/${id}`, 'PATCH', { action })
       toast.success(action === 'approve' ? 'Pembayaran diverifikasi' : 'Pembayaran ditolak')
-      const [p, t] = await Promise.all([
-        getJSON<Pembayaran[]>('/api/pembayaran'),
-        getJSON<Tenant[]>('/api/tenants'),
-      ])
-      setPembayaran(p)
-      setTenants(t)
+      await load()
     } catch (e) { toast.error((e as Error).message) }
   }
 

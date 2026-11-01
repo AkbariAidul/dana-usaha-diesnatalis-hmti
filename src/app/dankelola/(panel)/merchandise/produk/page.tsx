@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { getJSON } from '../../../api'
+import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
 import type { Merchandise } from '@/lib/types'
 import { formatRupiah } from '@/lib/utils'
@@ -14,15 +15,21 @@ export default function ProdukPage() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ nama: '', deskripsi: '', harga: 0, stok: 0 })
 
+  const load = useCallback(async () => {
+    const data = await getJSON<Merchandise[]>('/api/merchandise')
+    setItems(data)
+    setError(null)
+  }, [])
+
   useEffect(() => {
-    getJSON<Merchandise[]>('/api/merchandise')
-      .then(setItems)
+    load()
       .catch((e) => {
         console.error('Failed to load merchandise:', e)
         setError('Gagal memuat data produk')
       })
       .finally(() => setLoading(false))
-  }, [])
+  }, [load])
+  useLiveRefresh(load)
 
   async function tambah() {
     if (!form.nama || !form.harga) {
@@ -38,8 +45,7 @@ export default function ProdukPage() {
       toast.success('Produk ditambahkan')
       setForm({ nama: '', deskripsi: '', harga: 0, stok: 0 })
       setShowForm(false)
-      const res = await getJSON<Merchandise[]>('/api/merchandise')
-      setItems(res)
+      await load()
     } catch (e) { toast.error((e as Error).message) }
   }
 

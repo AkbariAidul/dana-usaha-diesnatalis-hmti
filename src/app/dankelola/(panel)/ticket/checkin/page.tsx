@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
 import { beep } from '@/lib/beep'
+import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
 
 type TiketIssued = {
@@ -22,15 +23,21 @@ export default function CheckinPage() {
   const [error, setError] = useState<string | null>(null)
   const [scanResult, setScanResult] = useState('')
 
+  const load = useCallback(async () => {
+    const data = await getJSON<TiketIssued[]>('/api/ticket/checkin')
+    setTikets(data)
+    setError(null)
+  }, [])
+
   useEffect(() => {
-    getJSON<TiketIssued[]>('/api/ticket/checkin')
-      .then(setTikets)
+    load()
       .catch((e) => {
         console.error('Failed to load checkin:', e)
         setError('Gagal memuat data tiket')
       })
       .finally(() => setLoading(false))
-  }, [])
+  }, [load])
+  useLiveRefresh(load)
 
   async function scanQr() {
     const code = scanResult.trim()
@@ -48,8 +55,7 @@ export default function CheckinPage() {
       await sendJSON('/api/ticket/checkin', 'POST', { id: found.id, dicatat_oleh: 'Admin' })
       beep()
       toast.success('Check-in berhasil')
-      const res = await getJSON<TiketIssued[]>('/api/ticket/checkin')
-      setTikets(res)
+      await load()
       setScanResult('')
     } catch (e) { toast.error((e as Error).message) }
   }

@@ -6,6 +6,7 @@ import QRCode from 'qrcode'
 import { toast } from 'sonner'
 import { ArrowLeft, CheckCircle2, Clock, QrCode, Upload } from 'lucide-react'
 import { formatDate, formatRupiah } from '@/lib/utils'
+import { useLiveRefresh } from '@/lib/use-live-refresh'
 
 type Pembayaran = {
   id: string
@@ -195,8 +196,8 @@ export function LacakDetail({ kode, token }: { kode: string; token: string }) {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const res = await fetch(`/api/public/status?kode=${encodeURIComponent(kode)}&t=${encodeURIComponent(token)}`, { cache: 'no-store' })
       const json = await res.json()
@@ -204,13 +205,14 @@ export function LacakDetail({ kode, token }: { kode: string; token: string }) {
       setData(json)
       setError(null)
     } catch (err) {
-      setError((err as Error).message)
+      if (!silent) setError((err as Error).message)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [kode, token])
 
   useEffect(() => { void load() }, [load])
+  useLiveRefresh(() => load(true), 3000)
 
   return (
     <div className="min-h-screen bg-[#f7f9fc]">

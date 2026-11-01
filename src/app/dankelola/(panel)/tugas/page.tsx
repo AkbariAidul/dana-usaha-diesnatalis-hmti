@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { getJSON } from '../../api'
+import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { TableSkeleton, PageSkeleton } from '../ui'
 
 type Tugas = {
@@ -19,9 +20,14 @@ export default function TugasPage() {
   const [daftar, setDaftar] = useState<Tugas[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    getJSON<Tugas[]>('/api/tugas').then(setDaftar).catch((e) => toast.error(e.message)).finally(() => setLoading(false))
+  const load = useCallback(async () => {
+    setDaftar(await getJSON<Tugas[]>('/api/tugas'))
   }, [])
+
+  useEffect(() => {
+    load().catch((e) => toast.error(e.message)).finally(() => setLoading(false))
+  }, [load])
+  useLiveRefresh(load)
 
   if (loading) return <PageSkeleton />
 

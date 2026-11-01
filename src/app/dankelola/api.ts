@@ -2,7 +2,7 @@ type Entry = { data: unknown; at: number }
 
 const cache = new Map<string, Entry>()
 const inflight = new Map<string, Promise<unknown>>()
-const TTL = 30_000
+const TTL = 3_000
 
 async function fetchStore<T>(url: string): Promise<T> {
   const pending = inflight.get(url)
@@ -21,12 +21,7 @@ async function fetchStore<T>(url: string): Promise<T> {
 
 export async function getJSON<T>(url: string): Promise<T> {
   const hit = cache.get(url)
-  if (hit) {
-    if (Date.now() - hit.at > TTL) {
-      void fetchStore<T>(url).catch(() => {})
-    }
-    return hit.data as T
-  }
+  if (hit && Date.now() - hit.at <= TTL) return hit.data as T
   return fetchStore<T>(url)
 }
 

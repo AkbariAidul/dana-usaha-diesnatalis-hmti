@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, TicketIcon } from "lucide-react";
 import { getTicket } from "@/lib/queries";
 import { formatRupiah } from "@/lib/utils";
+import { AutoRefresh } from "@/components/auto-refresh";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,7 @@ export default async function TicketPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <AutoRefresh />
       <header className="bg-white shadow-sm sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
           <Link href="/" className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
