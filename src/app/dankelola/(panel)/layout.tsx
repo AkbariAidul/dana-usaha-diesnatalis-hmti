@@ -139,7 +139,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               } ${groupActive ? 'text-white' : 'text-white/60'}`} />
             </button>
             {isOpen && group.children && (
-              <div className="ml-6 flex flex-col gap-0.5 border-l-2 border-white/15 pl-3 mt-0.5 pb-1">
+              <div className="ml-6 mt-0.5 pb-1 sidebar-tree">
                 {group.children.map((child) => {
                   const childActive = isPathActive(pathname, child.href)
                   return (
@@ -148,7 +148,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                       href={child.href}
                       onClick={() => setOpen(false)}
                       aria-current={childActive ? 'page' : undefined}
-                      className={`rounded-md px-2.5 py-1.5 text-sm transition-all duration-150 ${
+                      className={`sidebar-tree-item rounded-md px-2.5 py-1.5 text-sm transition-all duration-150 ${
                         childActive
                           ? 'bg-white/20 text-white font-medium'
                           : 'text-white hover:bg-white/10'

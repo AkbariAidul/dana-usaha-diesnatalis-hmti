@@ -65,3 +65,36 @@ body {
 .animate-fade-in {
   animation: fade-in 0.25s ease-out both;
 }
+
+/* ── Sidebar tree connectors ─────────────────────────────────────────────── */
+.sidebar-tree {
+  position: relative;
+  padding-left: 0.75rem; /* pl-3 — aligns children under the vertical line */
+}
+
+.sidebar-tree::before {
+  content: '';
+  position: absolute;
+  left: 0.25rem;  /* border-l position (ml-6 = 1.5rem, border-l sits at its left edge) */
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 1px;
+}
+
+.sidebar-tree-item {
+  position: relative;
+}
+
+.sidebar-tree-item::before {
+  content: '';
+  position: absolute;
+  left: -0.75rem; /* reaches back to the vertical line (pl-3 = 0.75rem) */
+  top: 50%;
+  width: 0.75rem; /* pl-3 */
+  height: 2px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 1px;
+  transform: translateY(-50%);
+}
