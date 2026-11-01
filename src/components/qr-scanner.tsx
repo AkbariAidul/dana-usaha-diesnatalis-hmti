@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Html5Qrcode } from 'html5-qrcode'
 import { Camera, CameraOff } from 'lucide-react'
+import { siapkanBeep } from '@/lib/beep'
 
 export function QrScanner({ onScan }: { onScan: (value: string) => void }) {
   const scannerRef = useRef<Html5Qrcode | null>(null)
@@ -22,6 +23,7 @@ export function QrScanner({ onScan }: { onScan: (value: string) => void }) {
 
   async function mulai() {
     setError('')
+    siapkanBeep()
     try {
       const scanner = new Html5Qrcode('qr-reader')
       scannerRef.current = scanner

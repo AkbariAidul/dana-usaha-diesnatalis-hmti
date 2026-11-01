@@ -1,10 +1,20 @@
 let ctx: AudioContext | null = null
 
-export function beep() {
+export function siapkanBeep() {
   if (typeof window === 'undefined') return
   try {
     ctx ??= new AudioContext()
     if (ctx.state === 'suspended') void ctx.resume()
+  } catch {
+    // browser tanpa audio
+  }
+}
+
+export function beep() {
+  if (typeof window === 'undefined') return
+  try {
+    siapkanBeep()
+    if (!ctx) return
 
     const osc = ctx.createOscillator()
     const gain = ctx.createGain()
