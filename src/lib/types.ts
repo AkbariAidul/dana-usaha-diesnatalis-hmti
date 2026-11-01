@@ -30,6 +30,18 @@ export interface FaktorHarga {
   multiplier: number
 }
 
+export interface Peralatan {
+  id: string
+  nama: string
+  jenis: string
+  jumlah: number
+  status: 'tersedia' | 'dipinjam' | 'rusak'
+  harga_satuan: number
+  vendor: string
+}
+
+export type KomposisiPeralatan = Record<string, Record<string, number>>
+
 export interface Tenant {
   id: string
   kode_stand: string

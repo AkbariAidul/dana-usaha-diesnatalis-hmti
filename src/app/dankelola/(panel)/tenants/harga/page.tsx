@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
 import { PageSkeleton } from '../../ui'
-import type { KategoriSewa, HargaDasar, FaktorHarga, PeriodeHarga } from '@/lib/types'
+import type { KategoriSewa, HargaDasar, FaktorHarga, PeriodeHarga, Peralatan, KomposisiPeralatan } from '@/lib/types'
 import { periodeDariTanggal } from '@/lib/types'
 import { formatRupiah, formatDate } from '@/lib/utils'
 
@@ -19,21 +20,32 @@ export default function HargaPage() {
   const [hargaDasar, setHargaDasar] = useState<HargaDasar[]>([])
   const [faktor, setFaktor] = useState<FaktorHarga[]>([])
   const [periods, setPeriods] = useState<PeriodeHarga[]>([])
+  const [peralatan, setPeralatan] = useState<Peralatan[]>([])
+  const [komposisi, setKomposisi] = useState<KomposisiPeralatan>({})
+  const [komposisiEdits, setKomposisiEdits] = useState<Record<string, string>>({})
   const [selectedId, setSelectedId] = useState('')
   const [edits, setEdits] = useState<Record<string, string>>({})
   const [showPeriodForm, setShowPeriodForm] = useState(false)
   const [periodForm, setPeriodForm] = useState(emptyPeriode)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [savingKomposisi, setSavingKomposisi] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function load() {
-    const m = await getJSON<Master>('/api/master')
+    const [m, items, komp] = await Promise.all([
+      getJSON<Master>('/api/master'),
+      getJSON<Peralatan[]>('/api/peralatan'),
+      getJSON<KomposisiPeralatan>('/api/peralatan/komposisi'),
+    ])
     const list = m.periode || []
     setKategori(m.kategori || [])
     setHargaDasar(m.hargaDasar || [])
     setFaktor(m.faktor || [])
     setPeriods(list)
+    setPeralatan(items || [])
+    setKomposisi(komp || {})
+    setKomposisiEdits({})
     setSelectedId((prev) => (prev && list.some((p) => p.id === prev) ? prev : list[0]?.id ?? ''))
   }
 
@@ -59,6 +71,46 @@ export default function HargaPage() {
     }
     return map
   }, [hargaDasar, selected])
+
+  const modalByKategori = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const k of kategori) {
+      let total = 0
+      for (const item of peralatan) total += qtyKomposisi(k.id, item.id) * item.harga_satuan
+      map.set(k.id, total)
+    }
+    return map
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kategori, komposisi, komposisiEdits, peralatan])
+
+  function qtyKomposisi(kategoriId: string, peralatanId: string) {
+    const key = `${kategoriId}|${peralatanId}`
+    if (komposisiEdits[key] !== undefined) return Number(komposisiEdits[key]) || 0
+    return komposisi[kategoriId]?.[peralatanId] || 0
+  }
+
+  async function simpanKomposisi() {
+    const next: KomposisiPeralatan = {}
+    for (const k of kategori) {
+      const row: Record<string, number> = {}
+      for (const item of peralatan) {
+        const qty = qtyKomposisi(k.id, item.id)
+        if (qty > 0) row[item.id] = qty
+      }
+      if (Object.keys(row).length > 0) next[k.id] = row
+    }
+    setSavingKomposisi(true)
+    try {
+      const saved = await sendJSON('/api/peralatan/komposisi', 'POST', next) as KomposisiPeralatan
+      setKomposisi(saved)
+      setKomposisiEdits({})
+      toast.success('Komposisi modal paket disimpan')
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setSavingKomposisi(false)
+    }
+  }
 
   async function simpanPeriode() {
     if (!periodForm.nama || !periodForm.tanggal_mulai || !periodForm.tanggal_selesai) {
@@ -272,6 +324,118 @@ export default function HargaPage() {
                   })}
                 </tr>
               ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
+        <div className="mb-4">
+          <h2 className="font-semibold">Komposisi Modal Paket</h2>
+          <p className="text-sm text-slate-500">Isi jumlah barang yang dipakai tiap paket. Modal dihitung dari harga sewa vendor.</p>
+        </div>
+        {peralatan.length === 0 ? (
+          <p className="rounded-xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+            Belum ada barang sewa. Tambahkan dulu di <Link href="/dankelola/tenants/peralatan" className="text-indigo-600 hover:underline">Sewa Vendor</Link>.
+          </p>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Barang</th>
+                    <th className="px-3 py-2 text-right">Harga / Unit</th>
+                    {kategori.map((k) => <th key={k.id} className="px-3 py-2 text-center">{k.nama}</th>)}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100/80">
+                  {peralatan.map((item) => (
+                    <tr key={item.id}>
+                      <td className="px-3 py-2">
+                        <p className="font-medium">{item.nama}</p>
+                        <p className="text-xs text-slate-400">{item.jenis}{item.vendor ? ` · ${item.vendor}` : ''}</p>
+                      </td>
+                      <td className="px-3 py-2 text-right">{formatRupiah(item.harga_satuan)}</td>
+                      {kategori.map((k) => {
+                        const key = `${k.id}|${item.id}`
+                        return (
+                          <td key={k.id} className="px-3 py-2">
+                            <input
+                              type="number"
+                              min={0}
+                              className={`${input} w-20 text-center`}
+                              placeholder="0"
+                              value={komposisiEdits[key] ?? (komposisi[k.id]?.[item.id] ? String(komposisi[k.id][item.id]) : '')}
+                              onChange={(e) => setKomposisiEdits({ ...komposisiEdits, [key]: e.target.value })}
+                            />
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="bg-slate-50 font-semibold">
+                  <tr>
+                    <td className="px-3 py-2" colSpan={2}>Modal per Paket</td>
+                    {kategori.map((k) => <td key={k.id} className="px-3 py-2 text-center">{formatRupiah(modalByKategori.get(k.id) || 0)}</td>)}
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button disabled={savingKomposisi} onClick={simpanKomposisi} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50">
+                {savingKomposisi ? 'Menyimpan...' : 'Simpan Komposisi'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
+        <div className="mb-4">
+          <h2 className="font-semibold">Keuntungan per Paket</h2>
+          <p className="text-sm text-slate-500">
+            {selected ? `${selected.nama} · harga jual dikurangi modal paket` : 'Pilih periode terlebih dahulu'}
+          </p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50">
+              <tr>
+                <th className="px-3 py-2 text-left">Kategori</th>
+                <th className="px-3 py-2 text-right">Modal Paket</th>
+                {TIPE.map((t) => <th key={t} className="px-3 py-2 text-right">{t}</th>)}
+                {TIPE.map((t) => <th key={`${t}-laba`} className="px-3 py-2 text-right">Untung {t}</th>)}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100/80">
+              {kategori.map((k) => {
+                const modal = modalByKategori.get(k.id) || 0
+                return (
+                  <tr key={k.id}>
+                    <td className="px-3 py-2">
+                      <p className="font-medium">{k.nama}</p>
+                      <p className="font-mono text-xs text-slate-400">{k.kode}</p>
+                    </td>
+                    <td className="px-3 py-2 text-right">{formatRupiah(modal)}</td>
+                    {TIPE.map((jenis) => {
+                      const harga = hargaByKey.get(`${k.id}|${jenis}`)
+                      return <td key={jenis} className="px-3 py-2 text-right">{harga ? formatRupiah(harga.harga) : <span className="text-slate-400">-</span>}</td>
+                    })}
+                    {TIPE.map((jenis) => {
+                      const harga = hargaByKey.get(`${k.id}|${jenis}`)
+                      if (!harga) return <td key={`${jenis}-laba`} className="px-3 py-2 text-right text-slate-400">-</td>
+                      const laba = harga.harga - modal
+                      return (
+                        <td key={`${jenis}-laba`} className={`px-3 py-2 text-right font-semibold ${laba >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {formatRupiah(laba)}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>

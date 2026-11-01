@@ -46,7 +46,7 @@ export const menuConfig: MenuGroup[] = [
       { label: 'Data Tenant', href: '/dankelola/tenants' },
       { label: 'Pembayaran', href: '/dankelola/tenants/pembayaran' },
       { label: 'Paket & Harga', href: '/dankelola/tenants/harga' },
-      { label: 'Peralatan & Modal', href: '/dankelola/tenants/peralatan' },
+      { label: 'Sewa Vendor', href: '/dankelola/tenants/peralatan' },
       { label: 'Kuota & Denah', href: '/dankelola/tenants/kuota' },
     ],
   },
