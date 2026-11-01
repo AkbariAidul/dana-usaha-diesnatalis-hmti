@@ -204,17 +204,6 @@ export default function TahapPage() {
                         <Pencil className="h-3.5 w-3.5" />
                       </Link>
                       <button
-                        onClick={() => toggleTiket(t.id)}
-                        className={`grid h-7 w-7 place-items-center rounded-lg transition-colors ${
-                          t.aktif
-                            ? 'text-slate-400 hover:bg-yellow-50 hover:text-yellow-600'
-                            : 'text-green-500 hover:bg-green-50'
-                        }`}
-                        title={t.aktif ? 'Tutup' : 'Buka'}
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                      </button>
-                      <button
                         onClick={() => hapusTiket(t.id, t.nama)}
                         className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
                         title="Hapus"
