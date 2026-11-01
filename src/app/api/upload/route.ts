@@ -1,8 +1,13 @@
 import { NextResponse } from 'next/server'
-import { compressAndConvertToWebp } from '@/lib/image'
 import { supabaseAdmin } from '@/lib/supabase'
 
 const BUCKET = 'bukti'
+const MAX_SIZE = 5 * 1024 * 1024
+const EXT: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+}
 
 export async function POST(request: Request) {
   try {
@@ -10,17 +15,25 @@ export async function POST(request: Request) {
     const file = form.get('file') as File | null
     const folder = ((form.get('folder') as string) || 'bukti').replace(/[^a-zA-Z0-9_-]/g, '') || 'bukti'
 
-    if (!file) {
+    if (!file || file.size === 0) {
       return NextResponse.json({ error: 'File wajib diupload' }, { status: 400 })
     }
 
-    const bytes = await compressAndConvertToWebp(file)
-    const safeName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`
+    const ext = EXT[file.type]
+    if (!ext) {
+      return NextResponse.json({ error: 'Format file harus jpg, png, atau webp' }, { status: 400 })
+    }
+    if (file.size > MAX_SIZE) {
+      return NextResponse.json({ error: 'Ukuran file maksimal 5MB' }, { status: 400 })
+    }
+
+    const safeName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
     const path = `${folder}/${safeName}`
+    const bytes = Buffer.from(await file.arrayBuffer())
 
     const { error } = await supabaseAdmin.storage
       .from(BUCKET)
-      .upload(path, Buffer.from(bytes), { contentType: 'image/webp', cacheControl: '31536000', upsert: false })
+      .upload(path, bytes, { contentType: file.type, cacheControl: '31536000', upsert: false })
     if (error) throw error
 
     const { data } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(path)
