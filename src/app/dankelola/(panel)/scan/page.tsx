@@ -74,6 +74,8 @@ export default function ScanPage() {
         toast.success('Berhasil dikonfirmasi')
         setResult(null)
       } else {
+        const active = document.activeElement as HTMLElement | null
+        active?.blur()
         setResult(data)
       }
     } catch (e) {
@@ -121,13 +123,13 @@ export default function ScanPage() {
 
       {result && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4"
+          className="fixed inset-x-0 top-0 z-50 flex h-[100dvh] items-center justify-center bg-slate-900/60 p-4"
           onClick={() => setResult(null)}
         >
           <div
             role="dialog"
             aria-modal="true"
-            className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-5"
+            className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto overscroll-contain rounded-2xl bg-white p-4 shadow-xl sm:p-5"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-start justify-between gap-3">
