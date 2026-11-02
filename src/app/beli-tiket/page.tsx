@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '@/app/dankelola/api'
+import { buatQrisDinamis } from '@/lib/qris'
 import { formatRupiah } from '@/lib/utils'
 import type { TicketKatalogItem } from '@/lib/types'
 import QRCode from 'qrcode'
@@ -96,6 +97,7 @@ export default function BeliTiketPublik() {
   const [uploading, setUploading] = useState(false)
   const [qr, setQr] = useState('')
   const [step, setStep] = useState(1)
+  const nominalBayar = Number(pesanan?.total || 0)
 
   useEffect(() => {
     Promise.all([
@@ -108,11 +110,15 @@ export default function BeliTiketPublik() {
   }, [])
 
   useEffect(() => {
-    if (!qris.qris_payload) return
-    QRCode.toDataURL(qris.qris_payload, { width: 320, margin: 2, errorCorrectionLevel: 'H' })
+    if (!qris.qris_payload || nominalBayar <= 0) return
+    QRCode.toDataURL(buatQrisDinamis(qris.qris_payload, nominalBayar), {
+      width: 320,
+      margin: 2,
+      errorCorrectionLevel: 'H',
+    })
       .then(setQr)
       .catch(() => {})
-  }, [qris])
+  }, [qris, nominalBayar])
 
   useEffect(() => {
     if (!file) {
