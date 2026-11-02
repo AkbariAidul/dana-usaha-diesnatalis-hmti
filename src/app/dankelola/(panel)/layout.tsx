@@ -110,6 +110,9 @@ function getBreadcrumbs(pathname: string) {
     breadcrumbs.push({ label: action, href: pathname })
   } else if (pathname === '/dankelola/ticket/modal') {
     breadcrumbs.push({ label: 'Kelola Modal', href: pathname })
+  } else if (pathname.startsWith('/dankelola/merchandise/pengurus/')) {
+    const action = pathname === '/dankelola/merchandise/pengurus/new' ? 'Tambah Pengurus' : 'Edit Pengurus'
+    breadcrumbs.push({ label: action, href: pathname })
   }
 
   return breadcrumbs
@@ -420,7 +423,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               pathname.startsWith('/dankelola/ticket/tahap') ||
               pathname.startsWith('/dankelola/ticket/modal') ||
               pathname.startsWith('/dankelola/ticket/penjualan') ||
-              pathname.startsWith('/dankelola/ticket/checkin')
+              pathname.startsWith('/dankelola/ticket/checkin') ||
+              pathname.startsWith('/dankelola/merchandise/pengurus')
                 ? 'w-full'
                 : 'mx-auto max-w-6xl'
             }`}
