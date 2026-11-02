@@ -427,7 +427,7 @@ function TiketView({ data, token, reload }: { data: Extract<StatusResponse, { ti
                 <QrImage value={t.kode_qr} size={180} />
                 <p className="mt-2 font-mono text-xs text-slate-600">{t.kode_tampil}</p>
                 <p className={`mt-1 text-xs ${t.status === 'terpakai' ? 'text-green-700' : 'text-slate-500'}`}>
-                  {t.status === 'terpakai' ? `Sudah check-in ${t.digunakan_pada ? formatDateTime(t.digunakan_pada) : ''}` : 'Belum check-in'}
+                  {t.status === 'terpakai' ? (t.digunakan_pada ? `Sudah check-in ${formatDateTime(t.digunakan_pada)}` : 'Sudah check-in') : 'Belum check-in'}
                 </p>
               </div>
             ))}
