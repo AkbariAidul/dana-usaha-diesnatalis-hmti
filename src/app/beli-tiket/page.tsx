@@ -176,7 +176,7 @@ export default function BeliTiketPublik() {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,#f5f3ff,transparent_38%),radial-gradient(circle_at_top_right,#ecfeff,transparent_32%),#f8fafc]">
       <header className="sticky top-0 z-30 border-b border-white/70 bg-white/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl items-center px-4 py-3.5 sm:px-6">
+        <div className="mx-auto flex max-w-[1600px] items-center px-4 py-3.5 sm:px-6 lg:px-8">
           <Link href="/" className="flex min-w-0 items-center gap-3">
             <Image
               src="/logo-dies.png"
@@ -194,10 +194,10 @@ export default function BeliTiketPublik() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 pb-16 pt-6 sm:px-6 sm:pt-10">
+      <main className="mx-auto max-w-[1600px] px-4 pb-16 pt-6 sm:px-6 sm:pt-10 lg:px-8">
         {step === 1 && (
           <>
-            <div className="grid items-start gap-8 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[360px_minmax(0,1fr)]">
+            <div className="grid items-start gap-8 lg:grid-cols-[340px_minmax(0,1fr)] xl:grid-cols-[400px_minmax(0,1fr)]">
             <section className="lg:sticky lg:top-24 lg:self-start">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-600">Alur pembelian</p>
@@ -417,7 +417,7 @@ export default function BeliTiketPublik() {
 
             {tipe && (
               <section id="form-pembeli" className="mt-10 scroll-mt-24">
-                <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+                <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px]">
                   <div className="rounded-3xl border border-slate-200/70 bg-white p-5 shadow-sm shadow-slate-200/40 sm:p-6">
                     <div className="flex items-start justify-between gap-4">
                       <div>
