@@ -53,6 +53,22 @@ function normalisasiKontak(value: string) {
   return digits.slice(0, 13)
 }
 
+function LangkahCard({ item, index }: { item: (typeof alur)[number]; index: number }) {
+  const Icon = item.icon
+  return (
+    <div className="group relative overflow-hidden rounded-2xl border border-slate-200/70 bg-white p-3 shadow-sm shadow-slate-200/40 transition hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-lg hover:shadow-primary-600/5">
+      <div className="flex items-center gap-2">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-primary-50 text-primary-600 transition group-hover:bg-primary-600 group-hover:text-white">
+          <Icon className="h-4 w-4" />
+        </span>
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Langkah {index + 1}</p>
+      </div>
+      <p className="mt-2 text-xs font-semibold leading-snug text-slate-900">{item.title}</p>
+      <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">{item.desc}</p>
+    </div>
+  )
+}
+
 function statusTiket(t: TicketKatalogItem) {
   if (t.buka) return t.is_hari_h ? 'Hari H' : 'Dibuka'
   if (t.sisa === 0) return 'Habis'
@@ -197,7 +213,7 @@ export default function BeliTiketPublik() {
       <main className="mx-auto max-w-[1600px] px-4 pb-16 pt-6 sm:px-6 sm:pt-10 lg:px-8">
         {step === 1 && (
           <>
-            <div className="grid items-start gap-8 lg:grid-cols-[340px_minmax(0,1fr)] xl:grid-cols-[400px_minmax(0,1fr)]">
+            <div className="grid items-start gap-8 lg:grid-cols-[400px_minmax(0,1fr)] xl:grid-cols-[460px_minmax(0,1fr)]">
             <section className="lg:sticky lg:top-24 lg:self-start">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-600">Alur pembelian</p>
@@ -210,28 +226,19 @@ export default function BeliTiketPublik() {
               </div>
 
               <div className="mt-5 space-y-2.5">
-                {alur.map((item, index) => {
-                  const Icon = item.icon
-                  return (
-                    <div
-                      key={item.title}
-                      className="group relative overflow-hidden rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm shadow-slate-200/40 transition hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-lg hover:shadow-primary-600/5"
-                    >
-                      <div className="flex items-start gap-3">
-                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary-50 text-primary-600 transition group-hover:bg-primary-600 group-hover:text-white">
-                          <Icon className="h-5 w-5" />
-                        </span>
-                        <div className="min-w-0">
-                          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                            Langkah {index + 1}
-                          </p>
-                          <p className="mt-0.5 text-sm font-semibold text-slate-900">{item.title}</p>
-                          <p className="mt-1 text-xs leading-relaxed text-slate-500">{item.desc}</p>
-                        </div>
-                      </div>
+                {[0, 2, 4].map((start) => (
+                  <div
+                    key={start}
+                    className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch gap-1.5"
+                  >
+                    <LangkahCard item={alur[start]} index={start} />
+                    <div className="flex items-center justify-center text-primary-300">
+                      <span className="h-px w-2.5 bg-primary-200" />
+                      <ArrowRight className="-ml-1 h-4 w-4" />
                     </div>
-                  )
-                })}
+                    <LangkahCard item={alur[start + 1]} index={start + 1} />
+                  </div>
+                ))}
               </div>
             </section>
 
@@ -239,14 +246,14 @@ export default function BeliTiketPublik() {
               <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-600">Tipe & periode</p>
-                  <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">Pilih tiket yang paling cocok</h2>
+                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">Pilih tiket yang paling cocok</h2>
                 </div>
                 <p className="max-w-md text-sm text-slate-500">
                   Harga bisa berubah sesuai periode. Periode aktif ditandai dan otomatis dipakai saat checkout.
                 </p>
               </div>
 
-              <div className="mt-5 grid gap-5 xl:grid-cols-2">
+              <div className="mt-5 grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
                 {katalog.tiket.map((t) => {
                   const periods = t.periode ?? []
                   const habis = t.sisa === 0
@@ -256,20 +263,20 @@ export default function BeliTiketPublik() {
                   return (
                     <article
                       key={t.id}
-                      className={`relative overflow-hidden rounded-3xl border bg-white p-5 shadow-sm transition-all ${
+                      className={`relative overflow-hidden rounded-2xl border bg-white p-4 shadow-sm transition-all ${
                         selected
                           ? 'border-primary-400 ring-2 ring-primary-500/15 shadow-lg shadow-primary-600/10'
                           : 'border-slate-200/70 hover:border-primary-200 hover:shadow-lg hover:shadow-slate-200/50'
                       } ${!t.buka ? 'opacity-70' : ''}`}
                     >
-                      <div className="flex items-start gap-4">
+                      <div className="flex items-start gap-3">
                         {t.thumbnail_url ? (
-                          <div className="h-32 w-[102px] shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                          <div className="h-28 w-[90px] shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
                             <img src={t.thumbnail_url} alt={t.nama} className="h-full w-full object-cover" />
                           </div>
                         ) : (
-                          <div className="grid h-32 w-[102px] shrink-0 place-items-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-300">
-                            <Ticket className="h-8 w-8" />
+                          <div className="grid h-28 w-[90px] shrink-0 place-items-center rounded-xl border border-slate-200 bg-slate-50 text-slate-300">
+                            <Ticket className="h-7 w-7" />
                           </div>
                         )}
 
@@ -291,13 +298,13 @@ export default function BeliTiketPublik() {
                               {t.jumlah_orang} orang
                             </span>
                           </div>
-                          <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
+                          <p className="mt-1 text-xs leading-relaxed text-slate-500">
                             {t.deskripsi || 'Tiket masuk In4Days XI.'}
                           </p>
-                          <div className="mt-3 flex items-end justify-between gap-3">
+                          <div className="mt-2.5 flex items-end justify-between gap-3">
                             <div>
                               <p className="text-[11px] text-slate-400">Harga periode aktif</p>
-                              <p className="text-xl font-semibold text-primary-600">{formatRupiah(t.harga_aktif)}</p>
+                              <p className="text-lg font-semibold text-primary-600">{formatRupiah(t.harga_aktif)}</p>
                               {t.periode_aktif && Number(t.periode_aktif.harga) !== Number(t.harga) && (
                                 <p className="text-xs text-slate-400 line-through">{formatRupiah(t.harga)}</p>
                               )}
@@ -312,7 +319,7 @@ export default function BeliTiketPublik() {
                       </div>
 
                       {periods.length > 0 && (
-                        <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50/70 p-3">
+                        <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50/70 p-2.5">
                           <div className="flex items-center gap-1.5">
                             <CalendarDays className="h-3.5 w-3.5 text-slate-400" />
                             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Periode harga</p>
@@ -323,7 +330,7 @@ export default function BeliTiketPublik() {
                               return (
                                 <div
                                   key={p.id}
-                                  className={`flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl px-2.5 py-1.5 text-xs ${
+                                  className={`flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 rounded-lg px-2 py-1 text-xs ${
                                     aktif ? 'bg-white text-slate-900 shadow-sm ring-1 ring-primary-100' : 'text-slate-500'
                                   }`}
                                 >
@@ -362,7 +369,7 @@ export default function BeliTiketPublik() {
                       )}
 
                       {t.kuota > 0 && (
-                        <div className="mt-4">
+                        <div className="mt-3">
                           <div className="mb-1 flex justify-between text-[11px] text-slate-500">
                             <span>
                               {terpakai} terjual dari {t.kuota} tiket
@@ -378,16 +385,16 @@ export default function BeliTiketPublik() {
                         </div>
                       )}
 
-                      <button
-                        type="button"
-                        disabled={!t.buka}
-                        onClick={() => pilihTipe(t)}
-                        className={`mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
-                          selected
-                            ? 'bg-primary-600 text-white hover:bg-primary-700'
-                            : 'border border-slate-200 bg-white text-slate-700 hover:border-primary-200 hover:text-primary-700'
-                        } disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-400`}
-                      >
+                        <button
+                          type="button"
+                          disabled={!t.buka}
+                          onClick={() => pilihTipe(t)}
+                          className={`mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                            selected
+                              ? 'bg-primary-600 text-white hover:bg-primary-700'
+                              : 'border border-slate-200 bg-white text-slate-700 hover:border-primary-200 hover:text-primary-700'
+                          } disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-400`}
+                        >
                         {selected ? (
                           <>
                             <CheckCircle2 className="h-4 w-4" /> Tipe dipilih
