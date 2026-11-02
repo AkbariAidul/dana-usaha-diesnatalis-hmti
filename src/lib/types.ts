@@ -95,6 +95,11 @@ export interface Merchandise {
   harga: number
   stok: number
   stok_unlimited: boolean
+  harga_po: number | null
+  po_mulai: string | null
+  po_selesai: string | null
+  po_unlimited: boolean
+  po_stok: number
   gambar_url: string | null
   aktif: boolean
 }

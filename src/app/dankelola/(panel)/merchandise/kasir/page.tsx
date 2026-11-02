@@ -1,10 +1,12 @@
 ﻿'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
+import type { Merchandise } from '@/lib/types'
+import { formatRupiah } from '@/lib/utils'
 
 type KasirTransaksi = {
   id: string
@@ -18,14 +20,20 @@ type KasirTransaksi = {
 
 export default function KasirPage() {
   const [transaksi, setTransaksi] = useState<KasirTransaksi[]>([])
+  const [produk, setProduk] = useState<Merchandise[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ produk: '', qty: 1, metode: 'Tunai', dicatat_oleh: '' })
+  const [form, setForm] = useState({ merchandise_id: '', qty: 1, metode: 'Tunai', dicatat_oleh: '' })
 
   const load = useCallback(async () => {
-    const data = await getJSON<KasirTransaksi[]>('/api/merchandise/kasir')
+    const [data, daftarProduk] = await Promise.all([
+      getJSON<KasirTransaksi[]>('/api/merchandise/kasir'),
+      getJSON<Merchandise[]>('/api/merchandise'),
+    ])
     setTransaksi(data)
+    setProduk(daftarProduk.filter((item) => item.aktif))
+    setForm((f) => ({ ...f, merchandise_id: f.merchandise_id || daftarProduk.find((item) => item.aktif)?.id || '' }))
     setError(null)
   }, [])
 
@@ -39,15 +47,27 @@ export default function KasirPage() {
   }, [load])
   useLiveRefresh(load)
 
+  const dipilih = useMemo(() => produk.find((item) => item.id === form.merchandise_id) ?? null, [produk, form.merchandise_id])
+  const total = Number(dipilih?.harga ?? 0) * Number(form.qty)
+
   async function tambah() {
-    if (!form.produk || !form.dicatat_oleh || !form.qty || form.qty < 1) {
+    if (!form.merchandise_id || !form.dicatat_oleh || !form.qty || form.qty < 1) {
       toast.error('Produk, qty, dan nama kasir harus diisi')
       return
     }
+    if (dipilih && !dipilih.stok_unlimited && form.qty > dipilih.stok) {
+      toast.error(`Stok tersisa ${dipilih.stok}`)
+      return
+    }
     try {
-      await sendJSON('/api/merchandise/kasir', 'POST', { ...form, total: form.qty * 75000 })
+      await sendJSON('/api/merchandise/kasir', 'POST', {
+        merchandise_id: form.merchandise_id,
+        qty: form.qty,
+        metode: form.metode,
+        dicatat_oleh: form.dicatat_oleh,
+      })
       toast.success('Transaksi disimpan')
-      setForm({ produk: '', qty: 1, metode: 'Tunai', dicatat_oleh: '' })
+      setForm({ merchandise_id: form.merchandise_id, qty: 1, metode: 'Tunai', dicatat_oleh: form.dicatat_oleh })
       setShowForm(false)
       await load()
     } catch (e) { toast.error((e as Error).message) }
@@ -94,12 +114,25 @@ export default function KasirPage() {
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
           <h2 className="font-semibold mb-4">Transaksi Baru</h2>
           <div className="grid md:grid-cols-4 gap-3">
-            <input placeholder="Nama Produk" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.produk} onChange={e => setForm({ ...form, produk: e.target.value })} />
-            <input type="number" min="1" placeholder="Qty" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.qty || ''} onChange={e => setForm({ ...form, qty: Number(e.target.value) })} />
+            <select className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.merchandise_id} onChange={e => setForm({ ...form, merchandise_id: e.target.value, qty: 1 })}>
+              <option value="">Pilih produk</option>
+              {produk.map((item) => (
+                <option key={item.id} value={item.id}>{item.nama} · {formatRupiah(Number(item.harga))}</option>
+              ))}
+            </select>
+            <input type="number" min="1" max={dipilih && !dipilih.stok_unlimited ? dipilih.stok : undefined} placeholder="Qty" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.qty || ''} onChange={e => setForm({ ...form, qty: Number(e.target.value) })} />
             <select className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.metode} onChange={e => setForm({ ...form, metode: e.target.value })}>
               <option>Tunai</option><option>QRIS</option><option>Transfer</option>
             </select>
             <input placeholder="Nama Kasir" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.dicatat_oleh} onChange={e => setForm({ ...form, dicatat_oleh: e.target.value })} />
+          </div>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
+            <span className="text-slate-500">
+              {dipilih
+                ? dipilih.stok_unlimited ? 'Stok tak terbatas' : `Stok tersisa ${dipilih.stok}`
+                : 'Pilih produk terlebih dahulu'}
+            </span>
+            <span className="font-semibold text-slate-900">Total: {formatRupiah(total)}</span>
           </div>
           <div className="mt-4 flex justify-end gap-2">
             <button onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl">Batal</button>

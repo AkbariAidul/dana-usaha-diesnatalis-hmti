@@ -84,8 +84,12 @@ export async function POST(request: Request) {
         .from('merch_po_item')
         .select('*')
         .eq('po_id', po.id)
-      const { data: varian } = await supabaseAdmin.from('merch_varian').select('id,nama')
+      const [{ data: varian }, { data: merchandise }] = await Promise.all([
+        supabaseAdmin.from('merch_varian').select('id,nama'),
+        supabaseAdmin.from('merchandise').select('id,nama,gambar_url'),
+      ])
       const varianMap = new Map((varian ?? []).map((v) => [v.id, v.nama]))
+      const merchandiseMap = new Map((merchandise ?? []).map((m) => [m.id, m]))
 
       if (confirm && !po.picked_up_at) {
         const { error } = await supabaseAdmin
@@ -101,6 +105,7 @@ export async function POST(request: Request) {
           ...po,
           items: (items ?? []).map((i) => ({
             ...i,
+            merchandise: i.merchandise_id ? merchandiseMap.get(i.merchandise_id) ?? null : null,
             varian: i.varian_id ? { nama: varianMap.get(i.varian_id) ?? '' } : null,
           })),
         },

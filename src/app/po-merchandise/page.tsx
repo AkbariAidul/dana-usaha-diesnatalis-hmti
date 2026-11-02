@@ -10,16 +10,33 @@ import { buatQrisDinamis } from '@/lib/qris'
 
 type Pengurus = { id: string; nama: string; divisi: string | null; kontak: string | null }
 type Varian = { id: string; nama: string }
-type Katalog = { pengurus: Pengurus[]; varian: Varian[]; harga: number }
+type Produk = {
+  id: string
+  nama: string
+  deskripsi: string | null
+  gambar_url: string | null
+  harga_po: number
+  po_selesai: string
+  po_unlimited: boolean
+  po_stok: number
+  terjual: number
+  sisa: number | null
+}
+type Katalog = { pengurus: Pengurus[]; varian: Varian[]; items: Produk[] }
+
+function tanggalSingkat(value: string) {
+  return new Date(value).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+}
 
 const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
 
 export default function PoMerchandisePage() {
-  const [katalog, setKatalog] = useState<Katalog>({ pengurus: [], varian: [], harga: 75000 })
+  const [katalog, setKatalog] = useState<Katalog>({ pengurus: [], varian: [], items: [] })
   const [qris, setQris] = useState<Record<string, string>>({})
   const [qr, setQr] = useState('')
   const [step, setStep] = useState(1)
   const [form, setForm] = useState({
+    merchandise_id: '',
     tipe_pemesan: 'Pengurus Himpunan' as 'Pengurus Himpunan' | 'Umum',
     pengurus_id: '',
     nama_pengurus: '',
@@ -29,7 +46,7 @@ export default function PoMerchandisePage() {
     varian_id: '',
     qty: 1,
   })
-  const [pesanan, setPesanan] = useState<{ id: string; no_po: string; total: number; t: string } | null>(null)
+  const [pesanan, setPesanan] = useState<{ id: string; no_po: string; total: number; t: string; produk?: { nama: string; gambar_url: string | null } } | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
 
@@ -40,11 +57,19 @@ export default function PoMerchandisePage() {
     ]).then(([k, q]) => {
       setKatalog(k)
       setQris(q)
-      if (k.varian?.[0]) setForm((f) => ({ ...f, varian_id: k.varian[0].id }))
+      setForm((f) => ({
+        ...f,
+        merchandise_id: f.merchandise_id || k.items?.[0]?.id || '',
+        varian_id: f.varian_id || k.varian?.[0]?.id || '',
+      }))
     }).catch(() => toast.error('Gagal memuat katalog PO'))
   }, [])
 
-  const total = useMemo(() => Number(katalog.harga) * Number(form.qty), [katalog.harga, form.qty])
+  const produk = useMemo(
+    () => katalog.items.find((item) => item.id === form.merchandise_id) ?? null,
+    [katalog.items, form.merchandise_id],
+  )
+  const total = useMemo(() => Number(produk?.harga_po ?? 0) * Number(form.qty), [produk, form.qty])
 
   useEffect(() => {
     if (!qris.qris_payload || !total) {
@@ -68,11 +93,17 @@ export default function PoMerchandisePage() {
   }
 
   async function pesan() {
+    if (!form.merchandise_id) {
+      return toast.error('Pilih produk pre-order')
+    }
     if (form.tipe_pemesan === 'Pengurus Himpunan' && !form.pengurus_id) {
       return toast.error('Pilih nama pengurus dari daftar')
     }
-    if (!form.nama_pemesan.trim() || !form.kontak.trim() || !form.varian_id || !form.qty || form.qty < 1) {
-      return toast.error('Lengkapi nama, kontak, ukuran, dan jumlah')
+    if (!form.nama_pemesan.trim() || !form.kontak.trim() || !form.qty || form.qty < 1) {
+      return toast.error('Lengkapi nama, kontak, dan jumlah')
+    }
+    if (katalog.varian.length > 0 && !form.varian_id) {
+      return toast.error('Pilih ukuran')
     }
     try {
       const res = await fetch('/api/public/po', {
@@ -140,11 +171,48 @@ export default function PoMerchandisePage() {
               <div className="mb-3 grid h-11 w-11 place-items-center rounded-2xl bg-violet-600/10 text-violet-600">
                 <Shirt className="h-5 w-5" />
               </div>
-              <h1 className="text-xl font-semibold text-slate-900">Pre-Order Baju Dies Natalis</h1>
-              <p className="text-sm text-slate-500">Harga {formatRupiah(katalog.harga)} per item.</p>
+              <h1 className="text-xl font-semibold text-slate-900">Pre-Order Merchandise Dies Natalis</h1>
+              <p className="text-sm text-slate-500">Pilih produk yang sedang dibuka pre-order.</p>
             </div>
 
             <div className="space-y-5 p-6">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">Pilih Produk</label>
+                {katalog.items.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">
+                    Belum ada produk yang membuka pre-order saat ini.
+                  </div>
+                ) : (
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {katalog.items.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setForm({ ...form, merchandise_id: item.id })}
+                        className={`flex items-center gap-3 rounded-xl border p-3 text-left ${form.merchandise_id === item.id ? 'border-violet-500 bg-violet-50 ring-2 ring-violet-500/10' : 'border-slate-200'}`}
+                      >
+                        {item.gambar_url ? (
+                          <img src={item.gambar_url} alt={item.nama} className="h-14 w-14 rounded-lg object-cover" />
+                        ) : (
+                          <span className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-violet-100 text-violet-600">
+                            <Shirt className="h-6 w-6" />
+                          </span>
+                        )}
+                        <span className="min-w-0">
+                          <span className="block truncate font-medium text-slate-900">{item.nama}</span>
+                          <span className="block text-xs text-violet-600">{formatRupiah(item.harga_po)}</span>
+                          <span className="block text-xs text-slate-400">
+                            {item.sisa === null ? 'Slot tak terbatas' : `Sisa ${item.sisa} slot`} · s/d {tanggalSingkat(item.po_selesai)}
+                          </span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {produk?.deskripsi && <p className="rounded-xl bg-slate-50 p-3 text-sm text-slate-600">{produk.deskripsi}</p>}
+
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">Kategori Pemesan</label>
                 <div className="grid gap-2 sm:grid-cols-2">
@@ -197,12 +265,14 @@ export default function PoMerchandisePage() {
                   <label className="mb-1 block text-sm font-medium text-slate-700">Email (opsional)</label>
                   <input className={input} placeholder="nama@email.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
                 </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">Ukuran</label>
-                  <select className={input} value={form.varian_id} onChange={(e) => setForm({ ...form, varian_id: e.target.value })}>
-                    {katalog.varian.map((v) => <option key={v.id} value={v.id}>{v.nama}</option>)}
-                  </select>
-                </div>
+                {katalog.varian.length > 0 && (
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">Ukuran</label>
+                    <select className={input} value={form.varian_id} onChange={(e) => setForm({ ...form, varian_id: e.target.value })}>
+                      {katalog.varian.map((v) => <option key={v.id} value={v.id}>{v.nama}</option>)}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">Jumlah</label>
                   <input type="number" min={1} max={20} className={input} placeholder="1" value={form.qty || ''} onChange={(e) => setForm({ ...form, qty: Number(e.target.value) })} />
@@ -215,7 +285,7 @@ export default function PoMerchandisePage() {
               </div>
 
               <div className="flex justify-end">
-                <button onClick={pesan} className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-medium text-white">
+                <button onClick={pesan} disabled={!produk} className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50">
                   Buat Pesanan
                 </button>
               </div>
@@ -228,6 +298,7 @@ export default function PoMerchandisePage() {
             <div className="space-y-2 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
               <h2 className="text-lg font-semibold text-slate-900">Detail Pesanan</h2>
               <p className="text-sm"><span className="text-slate-500">No. PO</span> : {pesanan.no_po}</p>
+              <p className="text-sm"><span className="text-slate-500">Produk</span> : {pesanan.produk?.nama ?? produk?.nama ?? '-'}</p>
               <p className="text-sm"><span className="text-slate-500">Nama</span> : {form.nama_pemesan}</p>
               <p className="text-sm"><span className="text-slate-500">Jumlah</span> : {form.qty}</p>
               <p className="text-sm"><span className="text-slate-500">Total</span> : {formatRupiah(Number(pesanan.total))}</p>

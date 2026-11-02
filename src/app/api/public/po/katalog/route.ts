@@ -1,17 +1,46 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { hitungTerjual } from '@/lib/merch-po'
 
 export async function GET() {
   try {
-    const [pengurus, varian, harga] = await Promise.all([
+    const [pengurus, varian, produk] = await Promise.all([
       supabaseAdmin.from('pengurus').select('id,nama,divisi,kontak').eq('aktif', true).order('nama'),
       supabaseAdmin.from('merch_varian').select('*').eq('aktif', true).order('urutan'),
-      supabaseAdmin.from('pengaturan_umum').select('value').eq('key', 'po_harga').maybeSingle(),
+      supabaseAdmin
+        .from('merchandise')
+        .select('id,nama,deskripsi,gambar_url,harga_po,po_mulai,po_selesai,po_unlimited,po_stok')
+        .eq('aktif', true)
+        .order('nama'),
     ])
+
+    const now = Date.now()
+    const aktif = (produk.data ?? []).filter((item) => {
+      if (!item.harga_po || !item.po_mulai || !item.po_selesai) return false
+      const mulai = new Date(item.po_mulai).getTime()
+      const selesai = new Date(item.po_selesai).getTime()
+      return Number.isFinite(mulai) && Number.isFinite(selesai) && now >= mulai && now <= selesai
+    })
+
+    const terjual = await hitungTerjual(aktif.map((item) => item.id as string))
+    const items = aktif
+      .map((item) => {
+        const total = terjual.get(item.id) ?? 0
+        const sisa = item.po_unlimited ? null : Math.max(0, Number(item.po_stok) - total)
+        return {
+          ...item,
+          harga_po: Number(item.harga_po),
+          po_stok: Number(item.po_stok),
+          terjual: total,
+          sisa,
+        }
+      })
+      .filter((item) => item.sisa === null || item.sisa > 0)
+
     return NextResponse.json({
       pengurus: pengurus.data ?? [],
       varian: varian.data ?? [],
-      harga: Number(harga.data?.value ?? 75000),
+      items,
     })
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })

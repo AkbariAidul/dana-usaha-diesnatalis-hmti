@@ -123,7 +123,10 @@ export default function ProdukPage() {
                   <td className="max-w-[320px] px-5 py-3 text-slate-500">
                     <span className="line-clamp-2">{item.deskripsi || '-'}</span>
                   </td>
-                  <td className="px-5 py-3 text-right font-medium tabular-nums text-slate-900">{formatRupiah(Number(item.harga))}</td>
+                  <td className="px-5 py-3 text-right tabular-nums">
+                    <div className="font-medium text-slate-900">{formatRupiah(Number(item.harga))}</div>
+                    {item.harga_po ? <div className="text-xs text-slate-400">PO: {formatRupiah(Number(item.harga_po))}</div> : null}
+                  </td>
                   <td className={`px-5 py-3 text-right font-medium tabular-nums ${item.stok_unlimited || item.stok > 0 ? 'text-slate-700' : 'text-red-600'}`}>
                     {item.stok_unlimited ? 'Tak terbatas' : item.stok}
                   </td>

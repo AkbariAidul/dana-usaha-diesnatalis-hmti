@@ -93,6 +93,7 @@ type MerchItem = {
   qty: number
   harga_satuan: number
   subtotal: number
+  merchandise: { nama: string; gambar_url: string | null } | null
   varian: { nama: string } | null
 }
 
@@ -607,8 +608,8 @@ function PoView({ data, token, reload }: { data: Extract<StatusResponse, { tipe:
             <tbody className="divide-y divide-slate-100">
               {items.map((item) => (
                 <tr key={item.id}>
-                  <td className="py-2">{item.varian?.nama || 'Merchandise'}</td>
-                  <td className="py-2">{item.ukuran || '-'}</td>
+                  <td className="py-2">{item.merchandise?.nama || 'Merchandise'}</td>
+                  <td className="py-2">{item.varian?.nama || item.ukuran || '-'}</td>
                   <td className="py-2">{item.qty}</td>
                   <td className="py-2 font-medium">{formatRupiah(Number(item.subtotal))}</td>
                 </tr>

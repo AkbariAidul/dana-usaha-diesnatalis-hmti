@@ -13,7 +13,7 @@ const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm tex
 
 export default function ProdukForm({ id }: { id?: string }) {
   const router = useRouter()
-  const [form, setForm] = useState({ nama: '', deskripsi: '', harga: 0, stok: 0, stok_unlimited: false, gambar_url: '', aktif: true })
+  const [form, setForm] = useState({ nama: '', deskripsi: '', harga: 0, harga_po: 0, stok: 0, stok_unlimited: false, gambar_url: '', aktif: true })
   const [foto, setFoto] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(Boolean(id))
@@ -35,6 +35,7 @@ export default function ProdukForm({ id }: { id?: string }) {
           nama: found.nama,
           deskripsi: found.deskripsi ?? '',
           harga: Number(found.harga),
+          harga_po: Number(found.harga_po ?? 0),
           stok: Number(found.stok),
           stok_unlimited: Boolean(found.stok_unlimited),
           gambar_url: found.gambar_url ?? '',
@@ -83,6 +84,7 @@ export default function ProdukForm({ id }: { id?: string }) {
         nama: form.nama.trim(),
         deskripsi: form.deskripsi.trim() || null,
         harga: Number(form.harga),
+        harga_po: Number(form.harga_po) || null,
         stok: form.stok_unlimited ? 0 : Number(form.stok) || 0,
         stok_unlimited: form.stok_unlimited,
         gambar_url: gambarUrl,
@@ -167,7 +169,7 @@ export default function ProdukForm({ id }: { id?: string }) {
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor="harga" className="mb-1 block text-xs font-medium text-slate-500">Harga (Rp)</label>
+            <label htmlFor="harga" className="mb-1 block text-xs font-medium text-slate-500">Harga Hari H (Rp)</label>
             <input
               id="harga"
               type="number"
@@ -176,6 +178,18 @@ export default function ProdukForm({ id }: { id?: string }) {
               placeholder="cth: 75000"
               value={form.harga || ''}
               onChange={(e) => setForm({ ...form, harga: Number(e.target.value) })}
+            />
+          </div>
+          <div>
+            <label htmlFor="harga_po" className="mb-1 block text-xs font-medium text-slate-500">Harga Pre-Order (Rp)</label>
+            <input
+              id="harga_po"
+              type="number"
+              min={0}
+              className={input}
+              placeholder="Kosongkan jika tidak ada PO"
+              value={form.harga_po || ''}
+              onChange={(e) => setForm({ ...form, harga_po: Number(e.target.value) })}
             />
           </div>
           <div>

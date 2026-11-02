@@ -1,16 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 
-type KasirTransaksi = {
-  id: string
-  tanggal: string
-  produk: string
-  qty: number
-  total: number
-  metode: string
-  dicatat_oleh: string
-}
-
 export async function GET() {
   try {
     const { data, error } = await supabaseAdmin
@@ -41,20 +31,60 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    
+    const merchandiseId = String(body.merchandise_id ?? '')
+    const qty = Math.max(1, Math.min(999, Number(body.qty) || 1))
+    if (!merchandiseId) {
+      return NextResponse.json({ error: 'Produk wajib dipilih' }, { status: 400 })
+    }
+
+    const { data: produk, error: produkError } = await supabaseAdmin
+      .from('merchandise')
+      .select('id,nama,harga,stok,stok_unlimited')
+      .eq('id', merchandiseId)
+      .eq('aktif', true)
+      .maybeSingle()
+    if (produkError) throw produkError
+    if (!produk) return NextResponse.json({ error: 'Produk tidak ditemukan' }, { status: 404 })
+
+    const stokAwal = Number(produk.stok)
+    if (!produk.stok_unlimited) {
+      if (qty > stokAwal) {
+        return NextResponse.json({ error: `Stok tersisa ${stokAwal}` }, { status: 400 })
+      }
+      const { data: updated, error } = await supabaseAdmin
+        .from('merchandise')
+        .update({ stok: stokAwal - qty })
+        .eq('id', merchandiseId)
+        .eq('stok', stokAwal)
+        .select('id')
+      if (error) throw error
+      if (!updated?.length) {
+        return NextResponse.json({ error: 'Stok berubah, coba lagi' }, { status: 409 })
+      }
+    }
+
+    const total = Number(produk.harga) * qty
     const { data, error } = await supabaseAdmin
       .from('kasir_transaksi')
       .insert({
-        produk: body.produk,
-        qty: body.qty || 1,
-        total: body.total || (body.qty || 1) * 75000,
+        merchandise_id: merchandiseId,
+        produk: produk.nama,
+        produk_nama: produk.nama,
+        qty,
+        total,
         metode: body.metode || 'Tunai',
         dicatat_oleh: body.dicatat_oleh || 'Admin',
       })
       .select()
       .single()
-    
-    if (error) throw error
+
+    if (error) {
+      // ponytail: compensating update, not a DB transaction.
+      if (!produk.stok_unlimited) {
+        await supabaseAdmin.from('merchandise').update({ stok: stokAwal }).eq('id', merchandiseId)
+      }
+      throw error
+    }
     return NextResponse.json(data, { status: 201 })
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })

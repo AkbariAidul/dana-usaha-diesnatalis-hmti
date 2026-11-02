@@ -13,6 +13,7 @@ type Item = {
   ukuran: string | null
   qty: number
   subtotal: number
+  merchandise: { nama: string } | null
   varian: { nama: string } | null
 }
 
@@ -37,17 +38,11 @@ export default function PreorderPage() {
   const [items, setItems] = useState<PreOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [harga, setHarga] = useState(75000)
-  const [savingHarga, setSavingHarga] = useState(false)
 
   async function load() {
     try {
-      const [list, setting] = await Promise.all([
-        getJSON<PreOrder[]>('/api/merchandise/preorder'),
-        getJSON<{ harga: number }>('/api/pengaturan/po'),
-      ])
+      const list = await getJSON<PreOrder[]>('/api/merchandise/preorder')
       setItems(list)
-      setHarga(setting.harga)
       setError(null)
     } catch (e) {
       setError('Gagal memuat data pre-order')
@@ -66,19 +61,6 @@ export default function PreorderPage() {
       toast.success(`Status diubah ke ${status.replace(/_/g, ' ')}`)
       await load()
     } catch (e) { toast.error((e as Error).message) }
-  }
-
-  async function simpanHarga() {
-    if (!harga || harga < 1) { toast.error('Harga PO minimal 1'); return }
-    setSavingHarga(true)
-    try {
-      await sendJSON('/api/pengaturan/po', 'PATCH', { harga })
-      toast.success('Harga PO disimpan')
-    } catch (e) {
-      toast.error((e as Error).message)
-    } finally {
-      setSavingHarga(false)
-    }
   }
 
   if (loading) return <PageSkeleton />
@@ -102,20 +84,10 @@ export default function PreorderPage() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Pre-Order</h1>
         <div className="flex gap-2">
+          <Link href="/dankelola/merchandise/jadwal" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">Jadwal PO</Link>
           <Link href="/dankelola/merchandise/pengurus" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">Data Pengurus</Link>
           <Link href="/dankelola/scan" className="rounded-xl bg-primary-600 px-3 py-2 text-sm font-medium text-white">Scan Pickup</Link>
         </div>
-      </div>
-
-      <div className="flex flex-wrap items-end gap-2 rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-500">Harga PO per item</label>
-          <input type="number" min={1} placeholder="cth: 75000" value={harga || ''} onChange={(e) => setHarga(Number(e.target.value))} className="w-40 rounded-xl border border-slate-200 px-3 py-2 text-sm" />
-        </div>
-        <button onClick={simpanHarga} disabled={savingHarga} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-          {savingHarga ? 'Menyimpan...' : 'Simpan Harga'}
-        </button>
-        <p className="text-xs text-slate-400">Berlaku untuk pesanan PO publik berikutnya.</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -162,7 +134,10 @@ export default function PreorderPage() {
                 </td>
                 <td className="px-3 py-2">
                   {item.items?.map((i) => (
-                    <div key={i.id} className="text-xs">{i.varian?.nama || i.ukuran || 'Item'} × {i.qty}</div>
+                    <div key={i.id} className="text-xs">
+                      {i.merchandise?.nama ?? 'Item'}
+                      {(i.varian?.nama || i.ukuran) ? ` (${i.varian?.nama || i.ukuran})` : ''} × {i.qty}
+                    </div>
                   ))}
                 </td>
                 <td className="px-3 py-2 font-medium">{formatRupiah(Number(item.total))}</td>
