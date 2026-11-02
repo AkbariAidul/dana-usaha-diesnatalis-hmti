@@ -9,10 +9,35 @@ import { menuConfig } from '@/lib/menu'
 import { useConfirm } from '@/components/confirm-dialog'
 import type { DashboardRole, DashboardUser } from '@/lib/auth'
 
-function isPathActive(pathname: string, href: string) {
+const MENU_HREFS = menuConfig.flatMap((group) =>
+  group.children ? group.children.map((child) => child.href) : group.href ? [group.href] : []
+)
+
+const MENU_ALIASES: Record<string, string[]> = {
+  '/dankelola/ticket/tahap': ['/dankelola/ticket/tipe', '/dankelola/ticket/periode'],
+}
+
+function matchesPath(pathname: string, href: string, prefix: string) {
   if (href === '/dankelola') return pathname === '/dankelola'
-  if (href === '/dankelola/tenants') return pathname === '/dankelola/tenants'
-  return pathname.startsWith(href)
+  return pathname === prefix || pathname.startsWith(`${prefix}/`)
+}
+
+function bestActiveHref(pathname: string) {
+  let best: string | null = null
+  let bestLength = -1
+  for (const href of MENU_HREFS) {
+    for (const prefix of [href, ...(MENU_ALIASES[href] ?? [])]) {
+      if (matchesPath(pathname, href, prefix) && prefix.length > bestLength) {
+        best = href
+        bestLength = prefix.length
+      }
+    }
+  }
+  return best
+}
+
+function isPathActive(pathname: string, href: string) {
+  return bestActiveHref(pathname) === href
 }
 
 function findActiveGroup(pathname: string) {
