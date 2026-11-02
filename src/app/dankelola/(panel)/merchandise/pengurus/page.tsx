@@ -7,7 +7,7 @@ import { getJSON, sendJSON } from '../../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
 import { useConfirm } from '@/components/confirm-dialog'
-import { ChevronLeft, ChevronRight, Pencil, Plus, Power, Search, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 
 type Pengurus = {
   id: string
@@ -126,10 +126,22 @@ export default function PengurusPage() {
                   <td className="px-5 py-3 font-medium text-slate-900">{item.nama}</td>
                   <td className="px-5 py-3 text-slate-500">{item.divisi || '-'}</td>
                   <td className="px-5 py-3">
-                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${item.aktif ? 'bg-green-100 text-green-800 ring-green-200' : 'bg-slate-100 text-slate-500 ring-slate-200'}`}>
-                      <span className={`h-1.5 w-1.5 rounded-full ${item.aktif ? 'bg-green-600' : 'bg-slate-400'}`} />
-                      {item.aktif ? 'Aktif' : 'Nonaktif'}
-                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={item.aktif}
+                      aria-label={item.aktif ? `Nonaktifkan ${item.nama}` : `Aktifkan ${item.nama}`}
+                      title={item.aktif ? 'Nonaktifkan' : 'Aktifkan'}
+                      onClick={() => toggle(item)}
+                      className="group inline-flex items-center gap-2"
+                    >
+                      <span className={`relative h-5 w-9 rounded-full transition-colors ${item.aktif ? 'bg-green-500' : 'bg-slate-300'}`}>
+                        <span className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${item.aktif ? 'translate-x-4' : 'translate-x-0'}`} />
+                      </span>
+                      <span className={`text-xs font-medium ${item.aktif ? 'text-green-700' : 'text-slate-500'}`}>
+                        {item.aktif ? 'Aktif' : 'Nonaktif'}
+                      </span>
+                    </button>
                   </td>
                   <td className="px-5 py-3">
                     <div className="flex items-center justify-end gap-1">
@@ -141,15 +153,6 @@ export default function PengurusPage() {
                       >
                         <Pencil className="h-4 w-4" />
                       </Link>
-                      <button
-                        type="button"
-                        onClick={() => toggle(item)}
-                        aria-label={item.aktif ? `Nonaktifkan ${item.nama}` : `Aktifkan ${item.nama}`}
-                        title={item.aktif ? 'Nonaktifkan' : 'Aktifkan'}
-                        className={`rounded-lg p-1.5 transition ${item.aktif ? 'text-amber-600 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50'}`}
-                      >
-                        <Power className="h-4 w-4" />
-                      </button>
                       <button
                         type="button"
                         onClick={() => hapus(item)}
