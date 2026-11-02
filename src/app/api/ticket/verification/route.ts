@@ -1,40 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 
-export async function GET() {
-  try {
-    const { data, error } = await supabaseAdmin
-      .from('pesanan_tiket')
-      .select(`
-        id,
-        no_pesanan,
-        nama_pembeli,
-        kontak,
-        email,
-        jumlah,
-        harga_satuan,
-        total,
-        status,
-        bukti_url,
-        catatan_admin,
-        created_at,
-        tiket_tipe:tiket_tipe_id (nama)
-      `)
-      .order('created_at', { ascending: false })
-
-    if (error) throw error
-    
-    const transformed = (data ?? []).map(item => ({
-      ...item,
-      tiket_nama: ((item as Record<string, unknown>).tiket_tipe as { nama: string } | null | undefined)?.nama || '-',
-    }))
-
-    return NextResponse.json(transformed)
-  } catch (err: unknown) {
-    return NextResponse.json({ error: String(err) }, { status: 500 })
-  }
-}
-
 export async function POST(request: Request) {
   try {
     const body = await request.json()

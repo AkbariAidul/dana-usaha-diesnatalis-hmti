@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { Inbox, Ticket } from 'lucide-react'
-import { getJSON } from '../../../api'
+import { toast } from 'sonner'
+import { getJSON, sendJSON } from '../../../api'
 import { PageSkeleton } from '../../ui'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { formatRupiah } from '@/lib/utils'
@@ -19,6 +20,7 @@ export default function PenjualanPage() {
   const [pesanan, setPesanan] = useState<PesananTiket[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [busyId, setBusyId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     const data = await getJSON<PesananTiket[]>('/api/ticket/penjualan')
@@ -32,6 +34,19 @@ export default function PenjualanPage() {
       .finally(() => setLoading(false))
   }, [load])
   useLiveRefresh(load)
+
+  async function verifikasi(id: string, status: 'lunas' | 'ditolak') {
+    setBusyId(id)
+    try {
+      await sendJSON('/api/ticket/verification', 'POST', { id, status, catatan_admin: null })
+      toast.success(status === 'lunas' ? 'Pesanan diverifikasi' : 'Pesanan ditolak')
+      await load()
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setBusyId(null)
+    }
+  }
 
   if (loading) return <PageSkeleton />
   if (error) return (
@@ -70,13 +85,6 @@ export default function PenjualanPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-400 opacity-75" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary-500" />
-            </span>
-            Live
-          </div>
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Penjualan Tiket</h1>
           <p className="text-sm text-slate-500">Ringkasan modal, harga jual, dan keuntungan dari semua tipe & periode.</p>
         </div>
@@ -158,7 +166,7 @@ export default function PenjualanPage() {
           </span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[980px] text-sm">
+          <table className="w-full min-w-[1040px] text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/70 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                 <th className="px-5 py-3">No. Pesanan</th>
@@ -170,13 +178,14 @@ export default function PenjualanPage() {
                 <th className="px-5 py-3 text-right">Harga Jual</th>
                 <th className="px-5 py-3 text-right">Modal</th>
                 <th className="px-5 py-3 text-right">Keuntungan</th>
+                <th className="px-5 py-3">Bukti</th>
                 <th className="px-5 py-3">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100/80">
               {pesanan.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-5 py-12 text-center">
+                  <td colSpan={11} className="px-5 py-12 text-center">
                     <Inbox className="mx-auto mb-2 h-8 w-8 text-slate-300" />
                     <p className="text-sm text-slate-400">Belum ada penjualan.</p>
                   </td>
@@ -195,7 +204,10 @@ export default function PenjualanPage() {
                         <span className="font-medium text-slate-900">{p.nama_pembeli}</span>
                       </div>
                     </td>
-                    <td className="px-5 py-3 text-slate-500">{p.kontak}</td>
+                    <td className="px-5 py-3">
+                      <p className="text-slate-700">{p.kontak}</p>
+                      {p.email && <p className="text-xs text-slate-400">{p.email}</p>}
+                    </td>
                     <td className="px-5 py-3 text-slate-700">{p.tiket_nama || '-'}</td>
                     <td className="px-5 py-3 text-slate-500">{p.periode_nama || 'Harga dasar'}</td>
                     <td className="px-5 py-3 text-right tabular-nums text-slate-700">{p.jumlah}</td>
@@ -205,10 +217,38 @@ export default function PenjualanPage() {
                       {formatRupiah(Number(p.keuntungan))}
                     </td>
                     <td className="px-5 py-3">
-                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${status.className}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />
-                        {status.label}
-                      </span>
+                      {p.bukti_url ? (
+                        <a href={p.bukti_url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary-600 hover:underline">
+                          Lihat
+                        </a>
+                      ) : (
+                        <span className="text-xs text-slate-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3">
+                      {p.status === 'menunggu_verifikasi' ? (
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => verifikasi(p.id, 'lunas')}
+                            disabled={busyId === p.id}
+                            className="rounded-lg bg-green-600 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-green-700 disabled:opacity-50"
+                          >
+                            Verifikasi
+                          </button>
+                          <button
+                            onClick={() => verifikasi(p.id, 'ditolak')}
+                            disabled={busyId === p.id}
+                            className="rounded-lg bg-red-600 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-red-700 disabled:opacity-50"
+                          >
+                            Tolak
+                          </button>
+                        </div>
+                      ) : (
+                        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${status.className}`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />
+                          {status.label}
+                        </span>
+                      )}
                     </td>
                   </tr>
                 )

@@ -1,20 +1,9 @@
 import {
   LayoutDashboard,
   Users,
-  CreditCard,
-  Package,
   Ticket,
-  FileText,
-  Settings,
-  ScrollText,
   Briefcase,
-  Boxes,
   ShoppingCart,
-  ClipboardList,
-  UserCheck,
-  Gift,
-  Wallet,
-  CheckSquare,
   QrCode,
   type LucideIcon,
 } from 'lucide-react'
@@ -77,7 +66,6 @@ export const menuConfig: MenuGroup[] = [
     children: [
       { label: 'Tipe & Harga', href: '/dankelola/ticket/tahap' },
       { label: 'Penjualan', href: '/dankelola/ticket/penjualan' },
-      { label: 'Verifikasi Tiket', href: '/dankelola/ticket/verifikasi' },
       { label: 'Check-in', href: '/dankelola/ticket/checkin' },
     ],
   },

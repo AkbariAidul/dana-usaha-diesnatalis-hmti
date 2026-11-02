@@ -152,11 +152,13 @@ export interface PesananTiket {
   no_pesanan: string
   nama_pembeli: string
   kontak: string
+  email: string | null
   tiket_nama: string | null
   periode_nama: string | null
   jumlah: number
   total: number
   status: 'menunggu_verifikasi' | 'lunas' | 'ditolak' | 'batal'
+  bukti_url: string | null
   created_at: string
   modal_satuan: number
   modal_total: number
