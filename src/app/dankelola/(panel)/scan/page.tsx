@@ -127,7 +127,7 @@ export default function ScanPage() {
           <div
             role="dialog"
             aria-modal="true"
-            className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-5 shadow-xl"
+            className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-5"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-start justify-between gap-3">
@@ -176,7 +176,7 @@ export default function ScanPage() {
             )}
 
             {result.tipe === 'tiket' && (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h3 className="text-lg font-semibold text-slate-900">
@@ -190,7 +190,7 @@ export default function ScanPage() {
                 </div>
 
                 {result.pesanan ? (
-                  <dl className="grid grid-cols-1 gap-x-4 gap-y-3 rounded-xl border border-slate-200 bg-slate-50/70 p-4 text-sm sm:grid-cols-2">
+                  <dl className="grid grid-cols-2 gap-x-3 gap-y-2 rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-xs [&_dd]:break-words sm:gap-x-4 sm:gap-y-3 sm:p-4 sm:text-sm">
                     <div>
                       <dt className="text-xs text-slate-500">No. Pesanan</dt>
                       <dd className="font-medium text-slate-900">{result.pesanan.no_pesanan}</dd>
@@ -244,7 +244,7 @@ export default function ScanPage() {
                       <dd className="text-slate-900">{result.tiket.status === 'terpakai' ? 'Sudah check-in' : 'Belum check-in'}</dd>
                     </div>
                     {result.tiket.digunakan_pada && (
-                      <div className="sm:col-span-2">
+                      <div className="col-span-2">
                         <dt className="text-xs text-slate-500">Waktu Check-in</dt>
                         <dd className="text-slate-900">{formatDateTime(result.tiket.digunakan_pada)}</dd>
                       </div>
