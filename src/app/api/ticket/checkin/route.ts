@@ -8,22 +8,38 @@ export async function GET() {
       .from('tiket_issued')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(100)
-    
+      .limit(10000)
+
     if (error) throw error
-    
-    const transformed = (data ?? []).map(item => ({
-      id: item.id,
-      pesanan_id: item.pesanan_id,
-      kode_qr: item.kode_qr,
-      kode_tampil: item.kode_tampil,
-      status: item.status || 'belum_divalidasi',
-      digunakan_oleh: item.digunakan_oleh
-        ? findUserByPIN(String(item.digunakan_oleh))?.name ?? item.digunakan_oleh
-        : null,
-      digunakan_pada: item.digunakan_pada,
-    }))
-    
+
+    const rows = data ?? []
+    const groups = new Map<string, { id: string; kode_tampil: string }[]>()
+    for (const item of rows) {
+      const list = groups.get(item.pesanan_id) ?? []
+      list.push({ id: item.id, kode_tampil: item.kode_tampil })
+      groups.set(item.pesanan_id, list)
+    }
+    for (const list of groups.values()) {
+      list.sort((a, b) => String(a.kode_tampil).localeCompare(String(b.kode_tampil)))
+    }
+
+    const transformed = rows.map(item => {
+      const list = groups.get(item.pesanan_id) ?? []
+      return {
+        id: item.id,
+        pesanan_id: item.pesanan_id,
+        kode_qr: item.kode_qr,
+        kode_tampil: item.kode_tampil,
+        status: item.status || 'belum_divalidasi',
+        nomor: list.findIndex((x) => x.id === item.id) + 1,
+        total: list.length,
+        digunakan_oleh: item.digunakan_oleh
+          ? findUserByPIN(String(item.digunakan_oleh))?.name ?? item.digunakan_oleh
+          : null,
+        digunakan_pada: item.digunakan_pada,
+      }
+    })
+
     return NextResponse.json(transformed)
   } catch (err: unknown) {
     console.error('Checkin error:', err)

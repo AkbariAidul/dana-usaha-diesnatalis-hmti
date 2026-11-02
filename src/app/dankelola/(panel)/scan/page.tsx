@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { QrCode, X } from 'lucide-react'
 import { QrScanner } from '@/components/qr-scanner'
 import { beep } from '@/lib/beep'
-import { formatRupiah } from '@/lib/utils'
+import { formatDateTime, formatRupiah } from '@/lib/utils'
 
 type TenantResult = {
   tipe: 'tenant'
@@ -31,14 +31,25 @@ type PoResult = {
 
 type TiketResult = {
   tipe: 'tiket'
-  tiket: { kode_tampil: string; kode_qr: string; status: string; digunakan_pada: string | null }
-  pesanan: { no_pesanan: string; nama_pembeli: string; jumlah: number; tiket_tipe: { nama: string } | null } | null
+  tiket: { kode_tampil: string; kode_qr: string; status: string; digunakan_pada: string | null; nomor: number; total: number }
+  pesanan: { no_pesanan: string; nama_pembeli: string; kontak: string; email: string | null; jumlah: number; harga_satuan: number; diskon_persen: number | null; total: number; status: string; created_at: string; tiket_tipe: { nama: string } | null; periode_nama?: string | null } | null
   sudahCheckin: boolean
 }
 
 type Result = TenantResult | PoResult | TiketResult
 
 const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
+
+const PESANAN_STATUS: Record<string, string> = {
+  menunggu_verifikasi: 'Menunggu Verifikasi',
+  lunas: 'Lunas',
+  ditolak: 'Ditolak',
+  batal: 'Batal',
+}
+
+function statusPesananLabel(status: string) {
+  return PESANAN_STATUS[status] ?? status.replace(/_/g, ' ')
+}
 
 export default function ScanPage() {
   const [manual, setManual] = useState('')
@@ -165,12 +176,85 @@ export default function ScanPage() {
             )}
 
             {result.tipe === 'tiket' && (
-              <div className="space-y-2">
-                <h3 className="text-lg font-semibold text-slate-900">{result.tiket.kode_tampil}</h3>
-                <p className="text-sm text-slate-500">{result.pesanan?.nama_pembeli} · {result.pesanan?.tiket_tipe?.nama}</p>
-                <p className="text-sm">Jumlah: {result.pesanan?.jumlah}</p>
-                <p className="text-sm">Status: {result.tiket.status === 'terpakai' ? 'Sudah check-in' : 'Belum check-in'}</p>
-                <button onClick={() => void lookup(payload, 'confirm')} disabled={result.sudahCheckin} className="mt-2 rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+              <div className="space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900">
+                      {result.pesanan?.nama_pembeli || result.tiket.kode_tampil}
+                    </h3>
+                    <p className="font-mono text-xs text-slate-500">{result.tiket.kode_tampil}</p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
+                    Tiket {result.tiket.nomor} / {result.tiket.total}
+                  </span>
+                </div>
+
+                {result.pesanan ? (
+                  <dl className="grid grid-cols-1 gap-x-4 gap-y-3 rounded-xl border border-slate-200 bg-slate-50/70 p-4 text-sm sm:grid-cols-2">
+                    <div>
+                      <dt className="text-xs text-slate-500">No. Pesanan</dt>
+                      <dd className="font-medium text-slate-900">{result.pesanan.no_pesanan}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Tipe Tiket</dt>
+                      <dd className="font-medium text-slate-900">{result.pesanan.tiket_tipe?.nama || '-'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Kontak</dt>
+                      <dd className="text-slate-900">{result.pesanan.kontak}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Email</dt>
+                      <dd className="text-slate-900">{result.pesanan.email || '-'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Jumlah</dt>
+                      <dd className="text-slate-900">{result.pesanan.jumlah} tiket</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Harga Satuan</dt>
+                      <dd className="text-slate-900">{formatRupiah(Number(result.pesanan.harga_satuan))}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Diskon Bundle</dt>
+                      <dd className="text-slate-900">
+                        {Number(result.pesanan.diskon_persen) > 0
+                          ? `${result.pesanan.diskon_persen}% (${result.pesanan.jumlah} tiket)`
+                          : '-'}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Total Bayar</dt>
+                      <dd className="font-semibold text-slate-900">{formatRupiah(Number(result.pesanan.total))}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Periode</dt>
+                      <dd className="text-slate-900">{result.pesanan.periode_nama || 'Harga dasar'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Waktu Pembelian</dt>
+                      <dd className="text-slate-900">{formatDateTime(result.pesanan.created_at)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Status Pesanan</dt>
+                      <dd className="text-slate-900">{statusPesananLabel(result.pesanan.status)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Status Tiket</dt>
+                      <dd className="text-slate-900">{result.tiket.status === 'terpakai' ? 'Sudah check-in' : 'Belum check-in'}</dd>
+                    </div>
+                    {result.tiket.digunakan_pada && (
+                      <div className="sm:col-span-2">
+                        <dt className="text-xs text-slate-500">Waktu Check-in</dt>
+                        <dd className="text-slate-900">{formatDateTime(result.tiket.digunakan_pada)}</dd>
+                      </div>
+                    )}
+                  </dl>
+                ) : (
+                  <p className="text-sm text-slate-500">Detail pembeli tidak ditemukan.</p>
+                )}
+
+                <button onClick={() => void lookup(payload, 'confirm')} disabled={result.sudahCheckin} className="rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
                   Check-in
                 </button>
               </div>

@@ -125,12 +125,27 @@ export async function POST(request: Request) {
 
     const { data: pesanan } = await supabaseAdmin
       .from('pesanan_tiket')
-      .select('no_pesanan,nama_pembeli,jumlah,tiket_tipe_id')
+      .select('*')
       .eq('id', tiket.pesanan_id)
       .maybeSingle()
     const { data: tipeTiket } = pesanan?.tiket_tipe_id
       ? await supabaseAdmin.from('tiket_tipe').select('nama').eq('id', pesanan.tiket_tipe_id).maybeSingle()
       : { data: null }
+    const { data: periods } = pesanan?.tiket_tipe_id
+      ? await supabaseAdmin.from('tiket_periode').select('*').eq('tiket_tipe_id', pesanan.tiket_tipe_id)
+      : { data: [] }
+    const createdAt = pesanan?.created_at ? new Date(String(pesanan.created_at)) : null
+    const tanggal = createdAt && !Number.isNaN(createdAt.getTime())
+      ? createdAt.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' })
+      : ''
+    const periode = periods?.find((p) => tanggal >= p.tanggal_mulai && tanggal <= p.tanggal_selesai)
+    const { data: issuedList } = await supabaseAdmin
+      .from('tiket_issued')
+      .select('id,kode_tampil')
+      .eq('pesanan_id', tiket.pesanan_id)
+      .order('kode_tampil')
+    const nomor = (issuedList ?? []).findIndex((x) => x.id === tiket.id) + 1
+    const totalTiket = issuedList?.length || 1
 
     if (confirm && tiket.status !== 'terpakai') {
       const { error } = await supabaseAdmin
@@ -153,8 +168,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       tipe: 'tiket',
-      tiket,
-      pesanan: pesanan ? { ...pesanan, tiket_tipe: tipeTiket ?? null } : null,
+      tiket: { ...tiket, nomor: nomor || 1, total: totalTiket },
+      pesanan: pesanan
+        ? { ...pesanan, tiket_tipe: tipeTiket ?? null, periode_nama: periode?.nama ?? null }
+        : null,
       sudahCheckin: tiket.status === 'terpakai' || confirm,
       confirmed: confirm,
     })

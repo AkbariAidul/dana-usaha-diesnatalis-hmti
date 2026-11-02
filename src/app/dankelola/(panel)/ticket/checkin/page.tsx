@@ -13,6 +13,8 @@ type TiketIssued = {
   kode_qr: string
   kode_tampil: string
   status: 'belum_divalidasi' | 'terpakai'
+  nomor: number
+  total: number
   digunakan_oleh: string | null
   digunakan_pada: string | null
 }
@@ -95,10 +97,10 @@ export default function CheckinPage() {
           <thead className="border-b border-slate-200 bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
             <tr>
               <th className="px-4 py-3">Kode QR</th>
-              <th className="px-4 py-3">Kode Tampil</th>
+              <th className="px-4 py-3">Kode Tampil / Tiket</th>
               <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Digunakan Oleh</th>
-              <th className="px-4 py-3">Waktu</th>
+              <th className="px-4 py-3">Divalidasi Oleh</th>
+              <th className="px-4 py-3">Waktu Check-in</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100/80">
@@ -106,7 +108,10 @@ export default function CheckinPage() {
             {tikets.map((t) => (
               <tr key={t.id} className="transition-colors hover:bg-slate-50">
                 <td className="px-4 py-3"><QrThumb value={t.kode_qr} /></td>
-                <td className="px-4 py-3 font-mono text-xs">{t.kode_tampil}</td>
+                <td className="px-4 py-3">
+                  <p className="font-mono text-xs">{t.kode_tampil}</p>
+                  <p className="mt-0.5 text-[11px] text-slate-400">Tiket {t.nomor} dari {t.total}</p>
+                </td>
                 <td className="px-4 py-3">
                   <span className={`px-2 py-0.5 rounded text-xs ${t.status === 'belum_divalidasi' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>
                     {t.status === 'belum_divalidasi' ? 'Belum Validasi' : 'Sudah Validasi'}

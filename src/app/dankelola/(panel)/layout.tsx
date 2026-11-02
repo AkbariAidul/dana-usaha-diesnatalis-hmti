@@ -143,11 +143,19 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const [currentUser, setCurrentUser] = useState<DashboardUser | null>(null)
   const [welcome, setWelcome] = useState<DashboardUser | null>(null)
   const [tiketTerjual, setTiketTerjual] = useState<number | null>(null)
+  const [checkinStats, setCheckinStats] = useState<{ terpakai: number; total: number } | null>(null)
   const breadcrumbs = getBreadcrumbs(pathname)
 
-  const loadTiketTerjual = useCallback(async () => {
-    const tipe = await getJSON<{ terjual: number | null }[]>('/api/ticket')
+  const loadBadges = useCallback(async () => {
+    const [tipe, checkin] = await Promise.all([
+      getJSON<{ terjual: number | null }[]>('/api/ticket'),
+      getJSON<{ status: string }[]>('/api/ticket/checkin'),
+    ])
     setTiketTerjual(tipe.reduce((sum, t) => sum + Number(t.terjual ?? 0), 0))
+    setCheckinStats({
+      terpakai: checkin.filter((t) => t.status === 'terpakai').length,
+      total: checkin.length,
+    })
   }, [])
   const welcomeCopy = welcome ? WELCOME_COPY[welcome.role](welcome.name) : null
 
@@ -171,9 +179,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   }, [])
 
   useEffect(() => {
-    loadTiketTerjual().catch(() => {})
-  }, [loadTiketTerjual])
-  useLiveRefresh(loadTiketTerjual, 15000)
+    loadBadges().catch(() => {})
+  }, [loadBadges])
+  useLiveRefresh(loadBadges, 15000)
 
   useEffect(() => {
     const match = document.cookie.match(/(?:^|; )dashboard_user=([^;]+)/)
@@ -283,6 +291,14 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                       {child.href === '/dankelola/ticket/penjualan' && tiketTerjual !== null && (
                         <span className="ml-auto min-w-[1.5rem] shrink-0 rounded-full bg-white/20 px-2 py-0.5 text-center text-[10px] font-semibold tabular-nums text-white">
                           {tiketTerjual}
+                        </span>
+                      )}
+                      {child.href === '/dankelola/ticket/checkin' && checkinStats && (
+                        <span
+                          title={`${checkinStats.terpakai} sudah check-in dari ${checkinStats.total} tiket`}
+                          className="ml-auto min-w-[1.5rem] shrink-0 rounded-full bg-white/20 px-2 py-0.5 text-center text-[10px] font-semibold tabular-nums text-white"
+                        >
+                          {checkinStats.terpakai}/{checkinStats.total}
                         </span>
                       )}
                     </Link>
