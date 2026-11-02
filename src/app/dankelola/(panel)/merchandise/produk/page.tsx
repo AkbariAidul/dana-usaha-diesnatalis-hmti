@@ -33,6 +33,17 @@ export default function ProdukPage() {
   }, [load])
   useLiveRefresh(load)
 
+  async function toggle(item: Merchandise) {
+    const aktif = !item.aktif
+    setItems((prev) => prev.map((p) => (p.id === item.id ? { ...p, aktif } : p)))
+    try {
+      await sendJSON('/api/merchandise', 'POST', { id: item.id, aktif })
+    } catch (e) {
+      setItems((prev) => prev.map((p) => (p.id === item.id ? { ...p, aktif: item.aktif } : p)))
+      toast.error((e as Error).message)
+    }
+  }
+
   async function hapus(item: Merchandise) {
     const ok = await confirm({
       title: 'Hapus produk?',
@@ -117,10 +128,19 @@ export default function ProdukPage() {
                     {item.stok_unlimited ? 'Tak terbatas' : item.stok}
                   </td>
                   <td className="px-5 py-3">
-                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${item.aktif ? 'bg-green-100 text-green-800 ring-green-200' : 'bg-slate-100 text-slate-500 ring-slate-200'}`}>
-                      <span className={`h-1.5 w-1.5 rounded-full ${item.aktif ? 'bg-green-600' : 'bg-slate-400'}`} />
-                      {item.aktif ? 'Aktif' : 'Nonaktif'}
-                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={item.aktif}
+                      aria-label={item.aktif ? `Nonaktifkan ${item.nama}` : `Aktifkan ${item.nama}`}
+                      title={item.aktif ? 'Nonaktifkan' : 'Aktifkan'}
+                      onClick={() => toggle(item)}
+                      className="group inline-flex items-center gap-2"
+                    >
+                      <span className={`relative h-5 w-9 rounded-full transition-colors ${item.aktif ? 'bg-green-500' : 'bg-slate-300'}`}>
+                        <span className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${item.aktif ? 'translate-x-4' : 'translate-x-0'}`} />
+                      </span>
+                    </button>
                   </td>
                   <td className="px-5 py-3">
                     <div className="flex items-center justify-end gap-1">
