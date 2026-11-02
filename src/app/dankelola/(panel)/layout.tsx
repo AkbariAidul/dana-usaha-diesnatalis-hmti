@@ -281,7 +281,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                     >
                       <span>{child.label}</span>
                       {child.href === '/dankelola/ticket/penjualan' && tiketTerjual !== null && (
-                        <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-white">
+                        <span className="ml-auto min-w-[1.5rem] shrink-0 rounded-full bg-white/20 px-2 py-0.5 text-center text-[10px] font-semibold tabular-nums text-white">
                           {tiketTerjual}
                         </span>
                       )}

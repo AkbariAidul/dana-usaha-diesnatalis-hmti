@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Inbox, Ticket } from 'lucide-react'
+import { Inbox, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
 import { PageSkeleton } from '../../ui'
@@ -21,6 +21,9 @@ export default function PenjualanPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [periodeFilter, setPeriodeFilter] = useState('')
+  const [page, setPage] = useState(1)
 
   const load = useCallback(async () => {
     const data = await getJSON<PesananTiket[]>('/api/ticket/penjualan')
@@ -34,6 +37,10 @@ export default function PenjualanPage() {
       .finally(() => setLoading(false))
   }, [load])
   useLiveRefresh(load)
+
+  useEffect(() => {
+    setPage(1)
+  }, [search, periodeFilter])
 
   async function verifikasi(id: string, status: 'lunas' | 'ditolak') {
     setBusyId(id)
@@ -59,9 +66,21 @@ export default function PenjualanPage() {
     </div>
   )
 
-  const totalTiket = pesanan
-    .filter((p) => p.status === 'lunas')
-    .reduce((s, p) => s + Number(p.jumlah), 0)
+  const PER_PAGE = 10
+  const periodeOptions = Array.from(
+    new Set(pesanan.map((p) => p.periode_nama ?? 'Harga dasar'))
+  ).sort()
+  const q = search.trim().toLowerCase()
+  const filtered = pesanan.filter((p) => {
+    const periode = p.periode_nama ?? 'Harga dasar'
+    if (periodeFilter && periode !== periodeFilter) return false
+    if (!q) return true
+    return [p.nama_pembeli, p.no_pesanan, p.kontak, p.email, p.tiket_nama]
+      .some((v) => v?.toLowerCase().includes(q))
+  })
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE))
+  const currentPage = Math.min(page, totalPages)
+  const paginated = filtered.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE)
 
   return (
     <div className="space-y-6">
@@ -70,9 +89,27 @@ export default function PenjualanPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Penjualan Tiket</h1>
           <p className="text-sm text-slate-500">Ringkasan modal, harga jual, dan keuntungan dari semua tipe & periode.</p>
         </div>
-        <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
-          <Ticket className="h-4 w-4 text-primary-500" />
-          <span className="font-semibold text-slate-900">{totalTiket}</span> tiket terjual
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <select
+            value={periodeFilter}
+            onChange={(e) => setPeriodeFilter(e.target.value)}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
+          >
+            <option value="">Semua periode</option>
+            {periodeOptions.map((periode) => (
+              <option key={periode} value={periode}>{periode}</option>
+            ))}
+          </select>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari pembeli..."
+              className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-primary-400 focus:ring-2 focus:ring-primary-100 sm:w-64"
+            />
+          </div>
         </div>
       </div>
 
@@ -95,27 +132,22 @@ export default function PenjualanPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100/80">
-              {pesanan.length === 0 && (
+              {filtered.length === 0 && (
                 <tr>
                   <td colSpan={11} className="px-5 py-12 text-center">
                     <Inbox className="mx-auto mb-2 h-8 w-8 text-slate-300" />
-                    <p className="text-sm text-slate-400">Belum ada penjualan.</p>
+                    <p className="text-sm text-slate-400">
+                      {pesanan.length === 0 ? 'Belum ada penjualan.' : 'Tidak ada pesanan yang cocok.'}
+                    </p>
                   </td>
                 </tr>
               )}
-              {pesanan.map((p) => {
+              {paginated.map((p) => {
                 const status = STATUS[p.status]
                 return (
                   <tr key={p.id} className="transition-colors hover:bg-slate-50/70">
                     <td className="px-5 py-3 font-mono text-xs text-slate-500">{p.no_pesanan}</td>
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-2">
-                        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary-50 text-[11px] font-semibold text-primary-700">
-                          {p.nama_pembeli.charAt(0).toUpperCase()}
-                        </span>
-                        <span className="font-medium text-slate-900">{p.nama_pembeli}</span>
-                      </div>
-                    </td>
+                    <td className="px-5 py-3 font-medium text-slate-900">{p.nama_pembeli}</td>
                     <td className="px-5 py-3">
                       <p className="text-slate-700">{p.kontak}</p>
                       {p.email && <p className="text-xs text-slate-400">{p.email}</p>}
@@ -167,6 +199,28 @@ export default function PenjualanPage() {
               })}
             </tbody>
           </table>
+        </div>
+        <div className="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-slate-500">
+            Menampilkan {filtered.length === 0 ? 0 : (currentPage - 1) * PER_PAGE + 1}–{Math.min(currentPage * PER_PAGE, filtered.length)} dari {filtered.length} pesanan
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Sebelumnya
+            </button>
+            <span className="text-xs font-medium text-slate-600">{currentPage} / {totalPages}</span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Berikutnya
+            </button>
+          </div>
         </div>
       </section>
     </div>
