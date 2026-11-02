@@ -59,14 +59,26 @@ function QrThumb({ value }: { value: string }) {
 
 export default function CheckinPage() {
   const [tikets, setTikets] = useState<TiketIssued[]>([])
+  const [validators, setValidators] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [validatorFilter, setValidatorFilter] = useState('')
   const [page, setPage] = useState(1)
 
   const load = useCallback(async () => {
-    const data = await getJSON<TiketIssued[]>('/api/ticket/checkin')
+    const [data, users] = await Promise.all([
+      getJSON<TiketIssued[]>('/api/ticket/checkin'),
+      getJSON<{ name: string }[]>('/api/auth/users').catch(() => []),
+    ])
     setTikets(data)
+    setValidators(
+      Array.from(
+        new Set([
+          ...users.map((user) => user.name),
+          ...data.map((t) => t.digunakan_oleh).filter((v): v is string => Boolean(v)),
+        ])
+      ).sort()
+    )
     setError(null)
   }, [])
 
@@ -85,9 +97,6 @@ export default function CheckinPage() {
   }, [validatorFilter])
 
   const PER_PAGE = 10
-  const validatorOptions = Array.from(
-    new Set(tikets.map((t) => t.digunakan_oleh).filter((v): v is string => Boolean(v)))
-  ).sort()
   const filtered = validatorFilter
     ? tikets.filter((t) => t.digunakan_oleh === validatorFilter)
     : tikets
@@ -113,17 +122,20 @@ export default function CheckinPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Check-in</h1>
           <p className="text-sm text-slate-500">Daftar tiket dan status validasinya.</p>
         </div>
-        <select
-          value={validatorFilter}
-          onChange={(e) => setValidatorFilter(e.target.value)}
-          aria-label="Filter divalidasi oleh"
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
-        >
-          <option value="">Semua petugas</option>
-          {validatorOptions.map((validator) => (
-            <option key={validator} value={validator}>{validator}</option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2">
+          <span className="shrink-0 text-xs font-medium text-slate-500">Divalidasi oleh</span>
+          <select
+            value={validatorFilter}
+            onChange={(e) => setValidatorFilter(e.target.value)}
+            aria-label="Filter divalidasi oleh"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-primary-400 focus:ring-2 focus:ring-primary-100 sm:w-auto"
+          >
+            <option value="">Semua petugas</option>
+            {validators.map((validator) => (
+              <option key={validator} value={validator}>{validator}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="overflow-hidden border-y border-slate-200">

@@ -18,3 +18,18 @@ export function findUserByPIN(inputPin: string): DashboardUser | null {
 export function findPINByUser(name: string): string | null {
   return USERS.find((entry) => entry.user.name === name)?.pin ?? null
 }
+
+export function listDashboardUsers(): DashboardUser[] {
+  return USERS.map((entry) => entry.user)
+}
+
+export function normalizeDashboardUserName(value: string): string {
+  const byPin = findUserByPIN(value.trim())
+  if (byPin) return byPin.name
+  const query = value.trim().toLowerCase()
+  const match = USERS.find(({ user }) => {
+    const name = user.name.toLowerCase()
+    return name === query || name.split(' ')[0] === query
+  })
+  return match?.user.name ?? value
+}

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { findUserByPIN } from '@/lib/auth'
+import { normalizeDashboardUserName } from '@/lib/auth'
 
 export async function GET() {
   try {
@@ -34,7 +34,7 @@ export async function GET() {
         nomor: list.findIndex((x) => x.id === item.id) + 1,
         total: list.length,
         digunakan_oleh: item.digunakan_oleh
-          ? findUserByPIN(String(item.digunakan_oleh))?.name ?? item.digunakan_oleh
+          ? normalizeDashboardUserName(String(item.digunakan_oleh))
           : null,
         digunakan_pada: item.digunakan_pada,
       }

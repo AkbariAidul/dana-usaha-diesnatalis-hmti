@@ -10,6 +10,38 @@ import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { formatRupiah } from '@/lib/utils'
 import type { PesananTiket, TicketPeriode } from '@/lib/types'
 
+function BuktiThumb({ url, noPesanan, onPreview }: { url: string; noPesanan: string; onPreview: () => void }) {
+  const [failed, setFailed] = useState(false)
+
+  if (failed) {
+    return (
+      <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary-600 hover:underline">
+        Lihat
+      </a>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onPreview}
+      className="group relative block h-16 w-16 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 transition hover:ring-2 hover:ring-primary-200"
+      title="Lihat bukti pembayaran"
+    >
+      <img
+        src={url}
+        alt={`Bukti ${noPesanan}`}
+        decoding="async"
+        className="h-full w-full object-cover"
+        onError={() => setFailed(true)}
+      />
+      <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-slate-900/0 text-[10px] font-semibold text-white opacity-0 transition group-hover:bg-slate-900/50 group-hover:opacity-100">
+        Lihat
+      </span>
+    </button>
+  )
+}
+
 const STATUS: Record<PesananTiket['status'], { label: string; className: string; dot: string }> = {
   menunggu_verifikasi: { label: 'Menunggu', className: 'bg-amber-50 text-amber-700 ring-amber-200', dot: 'bg-amber-500' },
   lunas: { label: 'Lunas', className: 'bg-green-50 text-green-700 ring-green-200', dot: 'bg-green-500' },
@@ -205,14 +237,7 @@ export default function PenjualanPage() {
                     </td>
                     <td className="px-5 py-3">
                       {p.bukti_url ? (
-                        <button
-                          type="button"
-                          onClick={() => setPreview(p.bukti_url)}
-                          className="block h-12 w-12 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 transition hover:ring-2 hover:ring-primary-200"
-                          title="Lihat bukti pembayaran"
-                        >
-                          <img src={p.bukti_url} alt={`Bukti ${p.no_pesanan}`} loading="lazy" className="h-full w-full object-cover" />
-                        </button>
+                        <BuktiThumb url={p.bukti_url} noPesanan={p.no_pesanan} onPreview={() => setPreview(p.bukti_url)} />
                       ) : (
                         <span className="text-xs text-slate-400">—</span>
                       )}
@@ -276,23 +301,39 @@ export default function PenjualanPage() {
 
       {preview && (
         <div
-          className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-900/80 p-4"
+          className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-900/70 p-4"
           onClick={() => setPreview(null)}
         >
-          <button
-            type="button"
-            onClick={() => setPreview(null)}
-            aria-label="Tutup"
-            className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20"
-          >
-            <X className="h-5 w-5" />
-          </button>
-          <img
-            src={preview}
-            alt="Bukti pembayaran"
-            className="max-h-[90dvh] max-w-full rounded-xl object-contain"
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl"
             onClick={(e) => e.stopPropagation()}
-          />
+          >
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+              <p className="text-sm font-semibold text-slate-900">Bukti Pembayaran</p>
+              <button
+                type="button"
+                onClick={() => setPreview(null)}
+                aria-label="Tutup"
+                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="bg-slate-50 p-3">
+              <img
+                src={preview}
+                alt="Bukti pembayaran"
+                className="mx-auto max-h-[65dvh] w-auto max-w-full rounded-lg object-contain"
+              />
+            </div>
+            <div className="flex justify-end border-t border-slate-200 px-4 py-3">
+              <a href={preview} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary-600 hover:underline">
+                Buka di tab baru
+              </a>
+            </div>
+          </div>
         </div>
       )}
 
