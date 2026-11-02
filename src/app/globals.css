@@ -178,10 +178,13 @@ body {
 
 .sidebar-tree-item {
   position: relative;
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
   width: 100%;
   box-sizing: border-box;
-  padding-left: 0.75rem; /* 12px — jarak dari garis vertikal ke teks */
+  padding-left: 0.75rem; /* 12px - jarak dari garis vertikal ke teks */
 }
 
 /* Garis horizontal dari spine ke teks — center vertikal */

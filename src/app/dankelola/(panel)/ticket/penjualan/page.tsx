@@ -1,13 +1,13 @@
 ﻿'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Inbox, Search } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Inbox, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
 import { PageSkeleton } from '../../ui'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { formatRupiah } from '@/lib/utils'
-import type { PesananTiket } from '@/lib/types'
+import type { PesananTiket, TicketPeriode } from '@/lib/types'
 
 const STATUS: Record<PesananTiket['status'], { label: string; className: string; dot: string }> = {
   menunggu_verifikasi: { label: 'Menunggu', className: 'bg-amber-50 text-amber-700 ring-amber-200', dot: 'bg-amber-500' },
@@ -18,6 +18,7 @@ const STATUS: Record<PesananTiket['status'], { label: string; className: string;
 
 export default function PenjualanPage() {
   const [pesanan, setPesanan] = useState<PesananTiket[]>([])
+  const [periodeList, setPeriodeList] = useState<TicketPeriode[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -26,8 +27,12 @@ export default function PenjualanPage() {
   const [page, setPage] = useState(1)
 
   const load = useCallback(async () => {
-    const data = await getJSON<PesananTiket[]>('/api/ticket/penjualan')
+    const [data, periode] = await Promise.all([
+      getJSON<PesananTiket[]>('/api/ticket/penjualan'),
+      getJSON<TicketPeriode[]>('/api/ticket/periode'),
+    ])
     setPesanan(data)
+    setPeriodeList(periode)
     setError(null)
   }, [])
 
@@ -68,7 +73,11 @@ export default function PenjualanPage() {
 
   const PER_PAGE = 10
   const periodeOptions = Array.from(
-    new Set(pesanan.map((p) => p.periode_nama ?? 'Harga dasar'))
+    new Set([
+      'Harga dasar',
+      ...periodeList.map((p) => p.nama ?? 'Harga dasar'),
+      ...pesanan.map((p) => p.periode_nama ?? 'Harga dasar'),
+    ])
   ).sort()
   const q = search.trim().toLowerCase()
   const filtered = pesanan.filter((p) => {
@@ -208,17 +217,19 @@ export default function PenjualanPage() {
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label="Halaman sebelumnya"
+              className="rounded-lg border border-slate-200 p-1.5 text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Sebelumnya
+              <ChevronLeft className="h-4 w-4" />
             </button>
             <span className="text-xs font-medium text-slate-600">{currentPage} / {totalPages}</span>
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label="Halaman berikutnya"
+              className="rounded-lg border border-slate-200 p-1.5 text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Berikutnya
+              <ChevronRight className="h-4 w-4" />
             </button>
           </div>
         </div>
