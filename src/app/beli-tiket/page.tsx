@@ -474,18 +474,17 @@ export default function BeliTiketPublik() {
                       <div>
                         <label className="mb-1.5 block text-sm font-medium text-slate-700">Jumlah Tiket</label>
                         <input
-                          type="number"
-                          min={1}
-                          max={tipe.is_hari_h && tipe.sisa !== null ? tipe.sisa : undefined}
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          maxLength={5}
                           className={input}
                           placeholder="1"
                           value={form.jumlah || ''}
-                          onChange={(e) =>
-                            setForm({
-                              ...form,
-                              jumlah: e.target.value === '' ? 0 : Math.max(0, Number(e.target.value) || 0),
-                            })
-                          }
+                          onChange={(e) => {
+                            const digits = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
+                            setForm({ ...form, jumlah: digits === '' ? 0 : Number(digits) })
+                          }}
                         />
                         <p className="mt-1 text-xs text-slate-400">
                           Berlaku untuk {Number(form.jumlah) * Number(tipe.jumlah_orang)} orang.
