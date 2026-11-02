@@ -27,13 +27,7 @@ export default function JadwalPoEditPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const [produk, setProduk] = useState<Merchandise | null>(null)
-  const [form, setForm] = useState({
-    harga_po: 0,
-    po_mulai: '',
-    po_selesai: '',
-    po_unlimited: true,
-    po_stok: 0,
-  })
+  const [form, setForm] = useState({ po_mulai: '', po_selesai: '' })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -50,11 +44,8 @@ export default function JadwalPoEditPage() {
         }
         setProduk(found)
         setForm({
-          harga_po: Number(found.harga_po ?? 0),
           po_mulai: toLocalInput(found.po_mulai),
           po_selesai: toLocalInput(found.po_selesai),
-          po_unlimited: found.po_unlimited ?? true,
-          po_stok: Number(found.po_stok ?? 0),
         })
       })
       .catch((e) => toast.error((e as Error).message))
@@ -68,28 +59,21 @@ export default function JadwalPoEditPage() {
 
   async function simpan(e: FormEvent) {
     e.preventDefault()
-    const aktif = Boolean(form.harga_po || form.po_mulai || form.po_selesai)
-    if (aktif && (!form.harga_po || !form.po_mulai || !form.po_selesai)) {
-      toast.error('Harga, tanggal mulai, dan tanggal selesai wajib diisi')
+    const aktif = Boolean(form.po_mulai || form.po_selesai)
+    if (aktif && (!form.po_mulai || !form.po_selesai)) {
+      toast.error('Tanggal mulai dan selesai wajib diisi')
       return
     }
     if (aktif && new Date(form.po_selesai).getTime() <= new Date(form.po_mulai).getTime()) {
       toast.error('Tanggal selesai harus setelah tanggal mulai')
       return
     }
-    if (aktif && !form.po_unlimited && form.po_stok < 1) {
-      toast.error('Jumlah slot minimal 1')
-      return
-    }
     setSaving(true)
     try {
       await sendJSON('/api/merchandise', 'POST', {
         id,
-        harga_po: aktif ? Number(form.harga_po) : null,
         po_mulai: aktif ? toIso(form.po_mulai) : null,
         po_selesai: aktif ? toIso(form.po_selesai) : null,
-        po_unlimited: form.po_unlimited,
-        po_stok: form.po_unlimited ? 0 : Number(form.po_stok) || 0,
       })
       toast.success(aktif ? 'Jadwal PO disimpan' : 'Jadwal PO dinonaktifkan')
       router.push('/dankelola/merchandise/jadwal')
@@ -107,26 +91,28 @@ export default function JadwalPoEditPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Atur Jadwal PO</h1>
-        <p className="text-sm text-slate-500">{produk.nama} · Harga hari H {formatRupiah(Number(produk.harga))}</p>
+        <p className="text-sm text-slate-500">{produk.nama}</p>
       </div>
 
       <form onSubmit={simpan} className="max-w-4xl space-y-5 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
         <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
-          Kosongkan harga dan tanggal untuk menonaktifkan pre-order produk ini. Slot tak terbatas tidak memakai stok hari H.
+          Jadwal hanya mengatur rentang tanggal pre-order. Harga dan slot mengikuti menu Produk &amp; Harga.
+          Kosongkan tanggal untuk menonaktifkan pre-order produk ini.
         </div>
 
-        <div>
-          <label htmlFor="harga_po" className="mb-1 block text-xs font-medium text-slate-500">Harga Pre-Order (Rp)</label>
-          <input
-            id="harga_po"
-            type="number"
-            min={0}
-            className={input}
-            placeholder="cth: 75000"
-            value={form.harga_po || ''}
-            onChange={(e) => setForm({ ...form, harga_po: Number(e.target.value) })}
-          />
-        </div>
+        {!produk.harga_po && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            Harga pre-order belum diisi. Atur di{' '}
+            <Link href={`/dankelola/merchandise/produk/${id}/edit`} className="font-medium underline">
+              Produk &amp; Harga
+            </Link>{' '}
+            agar PO tampil di halaman publik.
+          </div>
+        )}
+
+        <p className="text-sm text-slate-500">
+          Harga PO saat ini: <span className="font-medium text-slate-900">{produk.harga_po ? formatRupiah(Number(produk.harga_po)) : '-'}</span>
+        </p>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
@@ -150,31 +136,6 @@ export default function JadwalPoEditPage() {
             />
           </div>
         </div>
-
-        <label className="flex items-center gap-2 text-sm text-slate-700">
-          <input
-            type="checkbox"
-            checked={form.po_unlimited}
-            onChange={(e) => setForm({ ...form, po_unlimited: e.target.checked })}
-            className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
-          />
-          Slot pre-order tidak terbatas
-        </label>
-
-        {!form.po_unlimited && (
-          <div>
-            <label htmlFor="po_stok" className="mb-1 block text-xs font-medium text-slate-500">Batas Slot PO</label>
-            <input
-              id="po_stok"
-              type="number"
-              min={1}
-              className={input}
-              placeholder="cth: 100"
-              value={form.po_stok || ''}
-              onChange={(e) => setForm({ ...form, po_stok: Number(e.target.value) })}
-            />
-          </div>
-        )}
 
         <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
           <Link

@@ -13,7 +13,7 @@ const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm tex
 
 export default function ProdukForm({ id }: { id?: string }) {
   const router = useRouter()
-  const [form, setForm] = useState({ nama: '', deskripsi: '', harga: 0, harga_po: 0, stok: 0, stok_unlimited: false, gambar_url: '', aktif: true })
+  const [form, setForm] = useState({ nama: '', deskripsi: '', harga: 0, harga_po: 0, po_unlimited: true, po_stok: 0, stok: 0, stok_unlimited: false, gambar_url: '', aktif: true })
   const [foto, setFoto] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(Boolean(id))
@@ -36,6 +36,8 @@ export default function ProdukForm({ id }: { id?: string }) {
           deskripsi: found.deskripsi ?? '',
           harga: Number(found.harga),
           harga_po: Number(found.harga_po ?? 0),
+          po_unlimited: found.po_unlimited ?? true,
+          po_stok: Number(found.po_stok ?? 0),
           stok: Number(found.stok),
           stok_unlimited: Boolean(found.stok_unlimited),
           gambar_url: found.gambar_url ?? '',
@@ -66,6 +68,10 @@ export default function ProdukForm({ id }: { id?: string }) {
       toast.error('Nama dan harga wajib diisi')
       return
     }
+    if (!form.po_unlimited && form.po_stok < 1) {
+      toast.error('Slot pre-order minimal 1')
+      return
+    }
     setSaving(true)
     try {
       let gambarUrl = form.gambar_url.trim() || null
@@ -85,6 +91,8 @@ export default function ProdukForm({ id }: { id?: string }) {
         deskripsi: form.deskripsi.trim() || null,
         harga: Number(form.harga),
         harga_po: Number(form.harga_po) || null,
+        po_unlimited: form.po_unlimited,
+        po_stok: form.po_unlimited ? 0 : Number(form.po_stok) || 0,
         stok: form.stok_unlimited ? 0 : Number(form.stok) || 0,
         stok_unlimited: form.stok_unlimited,
         gambar_url: gambarUrl,
@@ -214,6 +222,32 @@ export default function ProdukForm({ id }: { id?: string }) {
               Stok tidak terbatas
             </label>
           </div>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+          <p className="text-sm font-medium text-slate-700">Slot Pre-Order</p>
+          <label className="mt-2 flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={form.po_unlimited}
+              onChange={(e) => setForm({ ...form, po_unlimited: e.target.checked })}
+              className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+            />
+            Slot tidak terbatas
+          </label>
+          {!form.po_unlimited && (
+            <div className="mt-3 max-w-xs">
+              <label htmlFor="po_stok" className="mb-1 block text-xs font-medium text-slate-500">Batas Slot</label>
+              <input
+                id="po_stok"
+                type="number"
+                min={1}
+                className={input}
+                placeholder="cth: 100"
+                value={form.po_stok || ''}
+                onChange={(e) => setForm({ ...form, po_stok: Number(e.target.value) })}
+              />
+            </div>
+          )}
         </div>
         <label className="flex items-center gap-2 text-sm text-slate-700">
           <input

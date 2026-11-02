@@ -7,7 +7,7 @@ import { getJSON } from '../../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
 import type { Merchandise } from '@/lib/types'
-import { formatDateTime, formatRupiah } from '@/lib/utils'
+import { formatDateTime } from '@/lib/utils'
 
 function jadwalStatus(item: Merchandise) {
   if (!item.harga_po || !item.po_mulai || !item.po_selesai) {
@@ -55,21 +55,24 @@ export default function JadwalPoPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Jadwal PO</h1>
-        <p className="text-sm text-slate-500">Atur harga pre-order, rentang tanggal, dan batas slot per produk.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Jadwal PO</h1>
+          <p className="text-sm text-slate-500">Atur rentang tanggal pre-order. Harga dan slot mengikuti Produk &amp; Harga.</p>
+        </div>
+        <Link href="/dankelola/merchandise/preorder" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
+          Kembali ke Pre-Order
+        </Link>
       </div>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-sm">
+          <table className="w-full min-w-[700px] text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/70 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                 <th className="px-5 py-3">Produk</th>
-                <th className="px-5 py-3 text-right">Harga PO</th>
                 <th className="px-5 py-3">Mulai</th>
                 <th className="px-5 py-3">Selesai</th>
-                <th className="px-5 py-3">Slot</th>
                 <th className="px-5 py-3">Status</th>
                 <th className="px-5 py-3 text-right">Aksi</th>
               </tr>
@@ -77,7 +80,7 @@ export default function JadwalPoPage() {
             <tbody className="divide-y divide-slate-100/80">
               {items.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-5 py-12 text-center text-sm text-slate-400">
+                  <td colSpan={5} className="px-5 py-12 text-center text-sm text-slate-400">
                     Belum ada produk. Tambahkan produk di menu Produk & Harga.
                   </td>
                 </tr>
@@ -90,12 +93,8 @@ export default function JadwalPoPage() {
                       <div className="font-medium text-slate-900">{item.nama}</div>
                       {!item.aktif && <div className="text-xs text-slate-400">Produk nonaktif</div>}
                     </td>
-                    <td className="px-5 py-3 text-right font-medium tabular-nums text-slate-900">
-                      {item.harga_po ? formatRupiah(Number(item.harga_po)) : '-'}
-                    </td>
                     <td className="px-5 py-3 text-slate-600">{item.po_mulai ? formatDateTime(item.po_mulai) : '-'}</td>
                     <td className="px-5 py-3 text-slate-600">{item.po_selesai ? formatDateTime(item.po_selesai) : '-'}</td>
-                    <td className="px-5 py-3 text-slate-600">{item.po_unlimited ? 'Tak terbatas' : item.po_stok}</td>
                     <td className="px-5 py-3">
                       <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${status.className}`}>{status.label}</span>
                     </td>
