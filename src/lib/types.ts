@@ -102,6 +102,7 @@ export interface Ticket {
   id: string
   nama: string
   deskripsi: string | null
+  thumbnail_url: string | null
   harga: number
   jumlah_orang: number
   kuota: number

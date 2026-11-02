@@ -311,7 +311,7 @@ export async function deleteMerchandise(id: string) {
 
 // ─── Ticket ──────────────────────────────────────────────────────────────────
 
-const TICKET_FIELDS = ['nama', 'deskripsi', 'harga', 'jumlah_orang', 'kuota', 'urutan', 'aktif', 'is_hari_h', 'mulai_jual', 'selesai_jual'] as const
+const TICKET_FIELDS = ['nama', 'deskripsi', 'thumbnail_url', 'harga', 'jumlah_orang', 'kuota', 'urutan', 'aktif', 'is_hari_h', 'mulai_jual', 'selesai_jual'] as const
 const TICKET_PERIODE_FIELDS = ['tiket_tipe_id', 'nama', 'tanggal_mulai', 'tanggal_selesai', 'harga', 'urutan'] as const
 const TICKET_BUNDLE_FIELDS = ['tiket_tipe_id', 'jumlah_min', 'diskon_persen', 'urutan'] as const
 const TICKET_MODAL_FIELDS = ['nama', 'harga', 'urutan'] as const

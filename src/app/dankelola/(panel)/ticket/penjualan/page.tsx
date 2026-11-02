@@ -307,7 +307,7 @@ export default function PenjualanPage() {
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl"
+            className="max-h-[calc(100dvh-2rem)] w-full max-w-sm overflow-y-auto rounded-2xl bg-white shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
@@ -322,16 +322,13 @@ export default function PenjualanPage() {
               </button>
             </div>
             <div className="bg-slate-50 p-3">
-              <img
-                src={preview}
-                alt="Bukti pembayaran"
-                className="mx-auto max-h-[65dvh] w-auto max-w-full rounded-lg object-contain"
-              />
-            </div>
-            <div className="flex justify-end border-t border-slate-200 px-4 py-3">
-              <a href={preview} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary-600 hover:underline">
-                Buka di tab baru
-              </a>
+              <div className="mx-auto aspect-[4/5] w-full overflow-hidden rounded-lg bg-slate-100">
+                <img
+                  src={preview}
+                  alt="Bukti pembayaran"
+                  className="h-full w-full object-contain"
+                />
+              </div>
             </div>
           </div>
         </div>

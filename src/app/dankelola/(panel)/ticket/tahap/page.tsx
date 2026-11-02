@@ -88,9 +88,11 @@ export default function TahapPage() {
       </div>
 
       <div className="rounded-2xl border border-slate-200/70 bg-white shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[960px] text-sm">
           <thead className="bg-slate-50 text-left border-b border-slate-200">
             <tr>
+              <th className="px-4 py-3 font-medium text-slate-600">Thumbnail</th>
               <th className="px-4 py-3 font-medium text-slate-600">Nama</th>
               <th className="px-4 py-3 font-medium text-slate-600">Untuk</th>
               <th className="px-4 py-3 font-medium text-slate-600">Harga</th>
@@ -104,7 +106,7 @@ export default function TahapPage() {
           <tbody className="divide-y divide-slate-100">
             {tiket.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
+                <td colSpan={9} className="px-4 py-12 text-center text-slate-400">
                   Belum ada tipe tiket.
                   <Link href="/dankelola/ticket/tipe/new" className="block mt-2 text-primary-600 hover:underline">+ Tambah Tipe Pertama</Link>
                 </td>
@@ -115,6 +117,19 @@ export default function TahapPage() {
               const tBundles = bundles.filter((b) => b.tiket_tipe_id === t.id)
               return (
                 <tr key={t.id} className="group hover:bg-slate-50 transition-colors">
+                  {/* Thumbnail */}
+                  <td className="px-4 py-3">
+                    {t.thumbnail_url ? (
+                      <img
+                        src={t.thumbnail_url}
+                        alt={t.nama}
+                        className="h-16 w-[52px] rounded-lg border border-slate-200 object-cover"
+                      />
+                    ) : (
+                      <span className="text-xs text-slate-400">—</span>
+                    )}
+                  </td>
+
                   {/* Nama */}
                   <td className="px-4 py-3">
                     <p className="font-semibold text-slate-900">{t.nama}</p>
@@ -226,6 +241,7 @@ export default function TahapPage() {
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   )

@@ -47,7 +47,13 @@ export default async function TicketPage() {
                   key={t.id}
                   className={`bg-white rounded-xl shadow p-6 transition-shadow hover:shadow-md ${!t.buka ? "opacity-60" : ""}`}
                 >
-                  <div className="flex justify-between items-start gap-4">
+                  <div className="flex items-start gap-4">
+                    {t.thumbnail_url && (
+                      <div className="h-28 w-[88px] shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                        <img src={t.thumbnail_url} alt={t.nama} className="h-full w-full object-cover" />
+                      </div>
+                    )}
+                    <div className="flex min-w-0 flex-1 justify-between items-start gap-4">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="font-semibold text-lg">{t.nama}</h3>
@@ -85,6 +91,7 @@ export default async function TicketPage() {
                       {t.periode_aktif && Number(t.periode_aktif.harga) !== Number(t.harga) && (
                         <p className="text-xs text-gray-400 line-through">{formatRupiah(t.harga)}</p>
                       )}
+                    </div>
                     </div>
                   </div>
 

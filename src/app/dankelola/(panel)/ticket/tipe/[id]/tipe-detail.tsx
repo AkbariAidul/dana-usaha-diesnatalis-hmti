@@ -13,6 +13,7 @@ import { useConfirm } from '@/components/confirm-dialog'
 type FormState = {
   nama: string
   deskripsi: string
+  thumbnail_url: string
   harga: number
   jumlah_orang: number
   aktif: boolean
@@ -42,7 +43,9 @@ export default function TipeDetail({
   const [ticket, setTicket] = useState<TicketKatalogItem | null>(null)
   const [periods, setPeriods] = useState<TicketPeriode[]>([])
   const [bundles, setBundles] = useState<TicketBundleDiscount[]>([])
-  const [form, setForm] = useState<FormState>({ nama: '', deskripsi: '', harga: 0, jumlah_orang: 1, aktif: true, is_hari_h: false, kuota: 10, selesai_jual: '' })
+  const [form, setForm] = useState<FormState>({ nama: '', deskripsi: '', thumbnail_url: '', harga: 0, jumlah_orang: 1, aktif: true, is_hari_h: false, kuota: 10, selesai_jual: '' })
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null)
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [loading, setLoading] = useState(!create)
   const [bundleMin, setBundleMin] = useState(2)
@@ -74,6 +77,7 @@ export default function TipeDetail({
       setForm({
         nama: found.nama,
         deskripsi: found.deskripsi ?? '',
+        thumbnail_url: found.thumbnail_url ?? '',
         harga: Number(found.harga),
         jumlah_orang: Number(found.jumlah_orang ?? 1),
         aktif: found.aktif,
@@ -85,14 +89,36 @@ export default function TipeDetail({
     })()
   }, [params, router, create])
 
+  useEffect(() => {
+    if (!thumbnailFile) {
+      setThumbnailPreview(form.thumbnail_url || null)
+      return
+    }
+    const url = URL.createObjectURL(thumbnailFile)
+    setThumbnailPreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [thumbnailFile, form.thumbnail_url])
+
   async function simpan() {
     if (!form.nama.trim() || !form.harga) { toast.error('Nama dan harga wajib diisi'); return }
     setSubmitting(true)
     try {
+      let thumbnailUrl = form.thumbnail_url.trim() || null
+      if (thumbnailFile) {
+        const fd = new FormData()
+        fd.append('file', thumbnailFile)
+        fd.append('folder', 'ticket-thumbnail')
+        const res = await fetch('/api/upload', { method: 'POST', body: fd })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'Gagal upload thumbnail')
+        thumbnailUrl = data.url || null
+      }
+
       const saved = await sendJSON('/api/ticket', 'POST', {
         ...(ticket ? { id: ticket.id } : {}),
         nama: form.nama.trim(),
         deskripsi: form.deskripsi.trim() || null,
+        thumbnail_url: thumbnailUrl,
         harga: Number(form.harga),
         jumlah_orang: Number(form.jumlah_orang) || 1,
         aktif: form.aktif,
@@ -102,10 +128,14 @@ export default function TipeDetail({
       }) as TicketKatalogItem
       if (!ticket) {
         setTicket(saved)
+        setForm((prev) => ({ ...prev, thumbnail_url: saved.thumbnail_url ?? '' }))
+        setThumbnailFile(null)
         await Promise.all([reloadPeriods(), reloadBundles()])
         toast.success('Tipe tiket dibuat. Tambahkan periode harga & diskon bundle di bawah.')
         return
       }
+      setForm((prev) => ({ ...prev, thumbnail_url: saved.thumbnail_url ?? '' }))
+      setThumbnailFile(null)
       toast.success('Tipe tiket diperbarui')
       router.push('/dankelola/ticket/tahap')
     } catch (e) { toast.error(String(e)) } finally { setSubmitting(false) }
@@ -267,6 +297,26 @@ export default function TipeDetail({
           <div><label className={label}>Berlaku untuk (orang)</label><input disabled={readOnly} type="number" min={1} className={input} placeholder="cth: 1" value={form.jumlah_orang || ''} onChange={e => setForm({ ...form, jumlah_orang: Number(e.target.value) })} /></div>
         </div>
         <div><label className={label}>Deskripsi</label><textarea disabled={readOnly} className={input} rows={2} placeholder="Deskripsi singkat tipe tiket" value={form.deskripsi} onChange={e => setForm({ ...form, deskripsi: e.target.value })} /></div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="h-24 w-[76px] shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+            {thumbnailPreview ? (
+              <img src={thumbnailPreview} alt="Thumbnail tiket" className="h-full w-full object-cover" />
+            ) : (
+              <div className="grid h-full w-full place-items-center text-[10px] text-slate-400">4:5</div>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <label className={label}>Thumbnail</label>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              disabled={readOnly}
+              onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)}
+              className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-slate-700"
+            />
+            <p className="mt-1 text-xs text-slate-400">JPG/PNG/WebP maks. 5MB. Tampil di halaman publik tiket.</p>
+          </div>
+        </div>
         <div className="flex flex-wrap items-center gap-4">
           <label className="flex items-center gap-2 text-sm"><input disabled={readOnly} type="checkbox" checked={form.aktif} onChange={e => setForm({ ...form, aktif: e.target.checked })} /> <span>Buka order</span></label>
           <label className="flex items-center gap-2 text-sm"><input disabled={readOnly} type="checkbox" checked={form.is_hari_h} onChange={e => setForm({ ...form, is_hari_h: e.target.checked, kuota: e.target.checked ? form.kuota || 10 : 0 })} /> <span>Tiket Hari H (kuota terbatas)</span></label>

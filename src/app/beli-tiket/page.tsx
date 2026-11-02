@@ -75,7 +75,15 @@ export default function BeliTiketPublik() {
             <div className="p-6 grid md:grid-cols-2 gap-4">
               {katalog.tiket.map((t)=>(
                 <button key={t.id} disabled={!t.buka} onClick={()=>setForm({...form,tiket_tipe_id:t.id})} className={`text-left rounded-2xl border p-5 transition-all disabled:cursor-not-allowed disabled:opacity-60 ${form.tiket_tipe_id===t.id?'border-primary-500 ring-2 ring-primary-500/10':'border-slate-200/70 hover:border-primary-200'}`}>
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    {t.thumbnail_url && (
+                      <img
+                        src={t.thumbnail_url}
+                        alt={t.nama}
+                        className="h-24 w-[76px] shrink-0 rounded-xl border border-slate-200 object-cover"
+                      />
+                    )}
+                    <div className="flex min-w-0 flex-1 items-start justify-between gap-3">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="font-semibold text-slate-900">{t.nama}</h3>
@@ -87,6 +95,7 @@ export default function BeliTiketPublik() {
                       {t.is_hari_h && t.sisa !== null && <p className="mt-1 text-xs text-orange-600">Sisa {t.sisa} tiket</p>}
                     </div>
                     <p className="font-semibold text-primary-600">{formatRupiah(t.harga_aktif)}</p>
+                    </div>
                   </div>
                 </button>
               ))}
