@@ -197,20 +197,19 @@ export default function BeliTiketPublik() {
       <main className="mx-auto max-w-6xl px-4 pb-16 pt-6 sm:px-6 sm:pt-10">
         {step === 1 && (
           <>
-            <section>
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-600">Alur pembelian</p>
-                  <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
-                    Dari pilih tiket sampai scan di hari H
-                  </h2>
-                </div>
-                <p className="max-w-md text-sm text-slate-500">
+            <div className="grid items-start gap-8 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[360px_minmax(0,1fr)]">
+            <section className="lg:sticky lg:top-24 lg:self-start">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-600">Alur pembelian</p>
+                <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">
+                  Dari pilih tiket sampai scan di hari H
+                </h2>
+                <p className="mt-2 text-sm leading-relaxed text-slate-500">
                   Enam langkah singkat. QR tiket baru aktif setelah pembayaran diverifikasi admin.
                 </p>
               </div>
 
-              <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="mt-5 space-y-2.5">
                 {alur.map((item, index) => {
                   const Icon = item.icon
                   return (
@@ -236,7 +235,7 @@ export default function BeliTiketPublik() {
               </div>
             </section>
 
-            <section id="tipe-tiket" className="mt-12 scroll-mt-24">
+            <section id="tipe-tiket" className="scroll-mt-24">
               <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-600">Tipe & periode</p>
@@ -247,7 +246,7 @@ export default function BeliTiketPublik() {
                 </p>
               </div>
 
-              <div className="mt-5 grid gap-5 lg:grid-cols-2">
+              <div className="mt-5 grid gap-5 xl:grid-cols-2">
                 {katalog.tiket.map((t) => {
                   const periods = t.periode ?? []
                   const habis = t.sisa === 0
@@ -414,6 +413,7 @@ export default function BeliTiketPublik() {
                 </div>
               )}
             </section>
+            </div>
 
             {tipe && (
               <section id="form-pembeli" className="mt-10 scroll-mt-24">
