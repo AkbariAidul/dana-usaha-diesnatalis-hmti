@@ -32,7 +32,7 @@ export default async function Home() {
               priority
               className="h-auto w-20 shrink-0 rounded-lg sm:w-28"
             />
-            <div className="min-w-0">
+            <div className="hidden min-w-0 sm:block">
               <p className="truncate text-sm font-semibold leading-tight text-[#111827] sm:text-base">Dana Usaha HMTI</p>
               <p className="truncate text-[11px] leading-tight text-[#64748B]">In4Days XI · Campus Festival</p>
             </div>
