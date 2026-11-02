@@ -164,7 +164,7 @@ export default function TahapPage() {
                       <div className="flex flex-wrap gap-1">
                         {tBundles.map((b) => (
                           <span key={b.id} className="inline-flex items-center rounded-md bg-primary-50 px-1.5 py-0.5 text-xs font-medium text-primary-700">
-                            {b.jumlah_min}+ → {b.diskon_persen}%
+                            {b.jumlah_min} → {b.diskon_persen}%
                           </span>
                         ))}
                       </div>

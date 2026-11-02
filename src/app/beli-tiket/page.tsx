@@ -23,7 +23,7 @@ export default function BeliTiketPublik() {
   useEffect(() => { if (qris.qris_payload) QRCode.toDataURL(qris.qris_payload,{width:320,margin:2,errorCorrectionLevel:'H'}).then(setQr).catch(()=>{}) }, [qris])
 
   const tipe = katalog.tiket.find((t)=>t.id===form.tiket_tipe_id)
-  const bundle = tipe ? [...tipe.bundle_discounts].sort((a,b)=>b.jumlah_min-a.jumlah_min).find(b=>Number(form.jumlah)>=b.jumlah_min) : null
+  const bundle = tipe ? tipe.bundle_discounts.find((b)=>Number(form.jumlah)===Number(b.jumlah_min)) : null
   const diskon = bundle ? Number(bundle.diskon_persen) : 0
   const subtotal = tipe ? Number(tipe.harga_aktif) * Number(form.jumlah) : 0
   const total = Math.round(subtotal * (1 - diskon / 100))

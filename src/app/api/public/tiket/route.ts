@@ -15,9 +15,9 @@ export async function POST(request: Request) {
     const jumlah = Math.max(1, Math.floor(Number(body.jumlah || 1)))
     if (tipe.sisa !== null && jumlah > tipe.sisa) throw new Error(`Sisa tiket ${tipe.sisa}`)
 
-    // Apply bundle discount if applicable
+    // Apply bundle discount if quantity matches exactly
     const hargaSatuan = Number(tipe.harga_aktif)
-    const bundle = [...tipe.bundle_discounts].sort((a, b) => b.jumlah_min - a.jumlah_min).find((b) => jumlah >= b.jumlah_min)
+    const bundle = tipe.bundle_discounts.find((b) => Number(b.jumlah_min) === jumlah)
     const diskon = bundle ? Number(bundle.diskon_persen) : 0
     const subtotal = hargaSatuan * jumlah
     const total = Math.round(subtotal * (1 - diskon / 100))

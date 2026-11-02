@@ -133,7 +133,7 @@ export default function TipeDetail({
 
   async function simpanBundle() {
     if (!ticket) return
-    if (bundleMin < 2) { toast.error('Jumlah minimum minimal 2'); return }
+    if (bundleMin < 2) { toast.error('Jumlah tiket minimal 2'); return }
     if (bundleDiskon <= 0 || bundleDiskon > 100) { toast.error('Diskon harus 1-100%'); return }
     setBundleSubmitting(true)
     try {
@@ -375,7 +375,7 @@ export default function TipeDetail({
                   <tbody className="divide-y divide-slate-100/80">
                     {tipeBundles.map((b) => (
                       <tr key={b.id} className="hover:bg-slate-50">
-                        <td className="px-3 py-2">Beli {b.jumlah_min}+ tiket</td>
+                        <td className="px-3 py-2">Beli {b.jumlah_min} tiket</td>
                         <td className="px-3 py-2 font-semibold text-green-600">{b.diskon_persen}%</td>
                         <td className="px-3 py-2">
                           <div className="flex gap-1">
@@ -395,7 +395,7 @@ export default function TipeDetail({
             )}
             <div className="flex flex-wrap items-end gap-3 border-t border-slate-100 pt-3">
               <div>
-                <label className={label}>Beli minimal (tiket)</label>
+                <label className={label}>Jumlah tiket</label>
                 <input type="number" min={2} className={input} placeholder="cth: 5" value={bundleMin || ''} onChange={e => setBundleMin(Number(e.target.value))} />
               </div>
               <div>

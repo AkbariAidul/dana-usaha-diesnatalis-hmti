@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     if (!body.tiket_tipe_id) throw new Error('Tipe tiket wajib dipilih')
-    if (!body.jumlah_min || body.jumlah_min < 2) throw new Error('Jumlah minimum minimal 2')
+    if (!body.jumlah_min || body.jumlah_min < 2) throw new Error('Jumlah tiket minimal 2')
     if (body.diskon_persen === undefined || Number(body.diskon_persen) < 0) throw new Error('Diskon tidak valid')
 
     const data = await upsertTicketBundleDiscount(body)
