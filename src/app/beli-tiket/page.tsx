@@ -253,7 +253,7 @@ export default function BeliTiketPublik() {
                 </p>
               </div>
 
-              <div className="mt-5 grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
+              <div className="mt-5 grid gap-4 xl:grid-cols-2">
                 {katalog.tiket.map((t) => {
                   const periods = t.periode ?? []
                   const habis = t.sisa === 0
@@ -355,8 +355,8 @@ export default function BeliTiketPublik() {
                         </div>
                       )}
 
-                      {t.bundle_discounts.length > 0 && (
-                        <div className="mt-3 flex flex-wrap gap-2">
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2.5">
+                        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
                           {t.bundle_discounts.map((b) => (
                             <span
                               key={b.id}
@@ -365,48 +365,46 @@ export default function BeliTiketPublik() {
                               <Sparkles className="h-3 w-3" /> Beli {b.jumlah_min} hemat {b.diskon_persen}%
                             </span>
                           ))}
+                          {t.kuota > 0 && (
+                            <div className="min-w-[140px] flex-1">
+                              <div className="mb-1 flex justify-between text-[10px] text-slate-500">
+                                <span>
+                                  {terpakai}/{t.kuota} terjual
+                                </span>
+                                <span>{pct}%</span>
+                              </div>
+                              <div className="h-1 w-full overflow-hidden rounded-full bg-slate-100">
+                                <div
+                                  className={`h-full rounded-full transition-all ${habis ? 'bg-rose-400' : 'bg-primary-500'}`}
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      )}
-
-                      {t.kuota > 0 && (
-                        <div className="mt-3">
-                          <div className="mb-1 flex justify-between text-[11px] text-slate-500">
-                            <span>
-                              {terpakai} terjual dari {t.kuota} tiket
-                            </span>
-                            <span>{pct}%</span>
-                          </div>
-                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                            <div
-                              className={`h-full rounded-full transition-all ${habis ? 'bg-rose-400' : 'bg-primary-500'}`}
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                        </div>
-                      )}
-
                         <button
                           type="button"
                           disabled={!t.buka}
                           onClick={() => pilihTipe(t)}
-                          className={`mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                          className={`inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl px-3.5 py-2 text-sm font-semibold transition ${
                             selected
                               ? 'bg-primary-600 text-white hover:bg-primary-700'
                               : 'border border-slate-200 bg-white text-slate-700 hover:border-primary-200 hover:text-primary-700'
                           } disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-400`}
                         >
-                        {selected ? (
-                          <>
-                            <CheckCircle2 className="h-4 w-4" /> Tipe dipilih
-                          </>
-                        ) : t.buka ? (
-                          <>
-                            Pilih tipe ini <ArrowRight className="h-4 w-4" />
-                          </>
-                        ) : (
-                          'Tidak tersedia'
-                        )}
-                      </button>
+                          {selected ? (
+                            <>
+                              <CheckCircle2 className="h-4 w-4" /> Tipe dipilih
+                            </>
+                          ) : t.buka ? (
+                            <>
+                              Pilih tipe ini <ArrowRight className="h-4 w-4" />
+                            </>
+                          ) : (
+                            'Tidak tersedia'
+                          )}
+                        </button>
+                      </div>
                     </article>
                   )
                 })}
