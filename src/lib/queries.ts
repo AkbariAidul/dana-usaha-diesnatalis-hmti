@@ -464,6 +464,7 @@ export async function getTicketKatalog(): Promise<TicketKatalogItem[]> {
       ...t,
       harga_aktif: Number(periode?.harga ?? t.harga),
       periode_aktif: periode,
+      periode: periods.filter((p) => p.tiket_tipe_id === t.id),
       pending: pendingQty,
       sisa,
       buka,

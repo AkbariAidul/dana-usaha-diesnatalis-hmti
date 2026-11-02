@@ -1,4 +1,5 @@
 ﻿'use client'
+
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -6,169 +7,746 @@ import { getJSON, sendJSON } from '@/app/dankelola/api'
 import { formatRupiah } from '@/lib/utils'
 import type { TicketKatalogItem } from '@/lib/types'
 import QRCode from 'qrcode'
+import {
+  ArrowLeft,
+  ArrowRight,
+  BadgeCheck,
+  CalendarDays,
+  CheckCircle2,
+  Clock3,
+  Info,
+  Loader2,
+  QrCode,
+  ScanLine,
+  ShieldCheck,
+  Smartphone,
+  Sparkles,
+  Ticket,
+  TicketCheck,
+  Upload,
+  Wallet,
+} from 'lucide-react'
+
+const alur = [
+  { icon: Ticket, title: 'Pilih tipe tiket', desc: 'Tentukan tipe dan periode yang sesuai.' },
+  { icon: Smartphone, title: 'Isi data pembeli', desc: 'Nama, kontak WA, dan jumlah tiket.' },
+  { icon: QrCode, title: 'Bayar via QRIS', desc: 'Scan QRIS lewat e-wallet atau m-banking.' },
+  { icon: Upload, title: 'Upload bukti', desc: 'Kirim bukti pembayaran untuk diverifikasi.' },
+  { icon: BadgeCheck, title: 'Terima QR tiket', desc: 'QR aktif setelah pembayaran diverifikasi.' },
+  { icon: ScanLine, title: 'Scan di hari H', desc: 'Tunjukkan QR ke petugas saat masuk acara.' },
+]
+
+const input =
+  'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm shadow-slate-200/40 outline-none transition placeholder:text-slate-400 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10'
+
+function formatTanggal(value: string) {
+  return new Date(`${value}T00:00:00`).toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+function statusTiket(t: TicketKatalogItem) {
+  if (t.buka) return t.is_hari_h ? 'Hari H' : 'Dibuka'
+  if (t.sisa === 0) return 'Habis'
+  if (!t.aktif) return 'Belum Dibuka'
+  return 'Ditutup'
+}
 
 export default function BeliTiketPublik() {
-  const [katalog, setKatalog] = useState<{ tiket: TicketKatalogItem[]; varian: Array<Record<string, unknown>> }>({ tiket: [], varian: [] })
+  const [katalog, setKatalog] = useState<{ tiket: TicketKatalogItem[]; varian: Array<Record<string, unknown>> }>({
+    tiket: [],
+    varian: [],
+  })
   const [qris, setQris] = useState<Record<string, string>>({})
   const [form, setForm] = useState({ tiket_tipe_id: '', nama_pembeli: '', kontak: '', email: '', jumlah: 1 })
-  const [pesanan, setPesanan] = useState<{ id: string; no_pesanan?: string; nama_pembeli?: string; jumlah?: number; total?: number; t?: string } | null>(null)
+  const [pesanan, setPesanan] = useState<{
+    id: string
+    no_pesanan?: string
+    nama_pembeli?: string
+    jumlah?: number
+    total?: number
+    t?: string
+  } | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [qr, setQr] = useState('')
   const [step, setStep] = useState(1)
 
   useEffect(() => {
-    Promise.all([getJSON<{ tiket: TicketKatalogItem[]; varian: Array<Record<string, unknown>> }>('/api/public/katalog'), getJSON<Record<string, string>>('/api/pengaturan/qris')]).then(([k,q])=>{setKatalog({ tiket: k.tiket || [], varian: k.varian || [] }); setQris(q)})
+    Promise.all([
+      getJSON<{ tiket: TicketKatalogItem[]; varian: Array<Record<string, unknown>> }>('/api/public/katalog'),
+      getJSON<Record<string, string>>('/api/pengaturan/qris'),
+    ]).then(([k, q]) => {
+      setKatalog({ tiket: k.tiket || [], varian: k.varian || [] })
+      setQris(q)
+    })
   }, [])
-  useEffect(() => { if (qris.qris_payload) QRCode.toDataURL(qris.qris_payload,{width:320,margin:2,errorCorrectionLevel:'H'}).then(setQr).catch(()=>{}) }, [qris])
 
-  const tipe = katalog.tiket.find((t)=>t.id===form.tiket_tipe_id)
-  const bundle = tipe ? tipe.bundle_discounts.find((b)=>Number(form.jumlah)===Number(b.jumlah_min)) : null
+  useEffect(() => {
+    if (!qris.qris_payload) return
+    QRCode.toDataURL(qris.qris_payload, { width: 320, margin: 2, errorCorrectionLevel: 'H' })
+      .then(setQr)
+      .catch(() => {})
+  }, [qris])
+
+  const tipe = katalog.tiket.find((t) => t.id === form.tiket_tipe_id)
+  const bundle = tipe ? tipe.bundle_discounts.find((b) => Number(form.jumlah) === Number(b.jumlah_min)) : null
   const diskon = bundle ? Number(bundle.diskon_persen) : 0
   const subtotal = tipe ? Number(tipe.harga_aktif) * Number(form.jumlah) : 0
   const total = Math.round(subtotal * (1 - diskon / 100))
+  const tersedia = katalog.tiket.filter((t) => t.buka)
+  const hargaMulai = tersedia.length ? Math.min(...tersedia.map((t) => Number(t.harga_aktif))) : 0
+
+  function pilihTipe(t: TicketKatalogItem) {
+    if (!t.buka) return
+    setForm((prev) => ({ ...prev, tiket_tipe_id: t.id }))
+    window.setTimeout(() => {
+      document.getElementById('form-pembeli')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 80)
+  }
 
   async function beli() {
-    if (!tipe) { toast.error('Pilih tipe tiket'); return }
-    if (!tipe.buka) { toast.error('Tiket sedang ditutup atau sudah habis'); return }
+    if (!tipe) {
+      toast.error('Pilih tipe tiket')
+      return
+    }
+    if (!tipe.buka) {
+      toast.error('Tiket sedang ditutup atau sudah habis')
+      return
+    }
     if (tipe.sisa !== null && Number(form.jumlah) > tipe.sisa) {
       toast.error(`Sisa tiket ${tipe.sisa}`)
       return
     }
     try {
-      const res = await sendJSON('/api/public/tiket', 'POST', { ...form, jumlah: Math.max(1, Number(form.jumlah) || 1) })
-      setPesanan(res as { id: string; no_pesanan?: string; nama_pembeli?: string; jumlah?: number; total?: number; t?: string })
+      const res = await sendJSON('/api/public/tiket', 'POST', {
+        ...form,
+        jumlah: Math.max(1, Number(form.jumlah) || 1),
+      })
+      setPesanan(
+        res as {
+          id: string
+          no_pesanan?: string
+          nama_pembeli?: string
+          jumlah?: number
+          total?: number
+          t?: string
+        }
+      )
       setStep(2)
       toast.success('Pesanan dibuat, silakan bayar')
-    } catch(e: unknown){ toast.error((e as Error).message) }
+    } catch (e: unknown) {
+      toast.error((e as Error).message)
+    }
   }
 
   async function upload() {
     if (!file || !pesanan) return
     setUploading(true)
     try {
-      const fd = new FormData(); fd.append('file',file); fd.append('folder','bukti-tiket')
-      const up = await fetch('/api/upload',{method:'POST',body:fd}).then(r=>r.json())
-      await sendJSON(`/api/public/tiket/${pesanan.id}/bukti`,'POST',{bukti_url:up.url})
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('folder', 'bukti-tiket')
+      const up = await fetch('/api/upload', { method: 'POST', body: fd }).then((r) => r.json())
+      if (!up.url) throw new Error(up.error || 'Gagal upload bukti')
+      await sendJSON(`/api/public/tiket/${pesanan.id}/bukti`, 'POST', { bukti_url: up.url })
       toast.success('Bukti terkirim, menunggu verifikasi')
       setStep(3)
-    } catch(e: unknown){ toast.error((e as Error).message) } finally { setUploading(false) }
+    } catch (e: unknown) {
+      toast.error((e as Error).message)
+    } finally {
+      setUploading(false)
+    }
   }
 
-  const input='w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
-
   return (
-    <div className="min-h-screen bg-[#f7f9fc]">
-      <header className="border-b border-slate-200/70 bg-white/90 backdrop-blur-xl">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary-600 text-sm font-semibold text-white">DU</span>
-            <div><p className="text-sm font-semibold text-slate-900">Beli Tiket</p><p className="text-xs text-slate-500">Dies Natalis HMTI</p></div>
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,#f5f3ff,transparent_38%),radial-gradient(circle_at_top_right,#ecfeff,transparent_32%),#f8fafc]">
+      <header className="sticky top-0 z-30 border-b border-white/70 bg-white/80 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
+          <Link href="/" className="flex min-w-0 items-center gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-slate-950 text-sm font-semibold text-white shadow-lg shadow-slate-900/20">
+              DU
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-slate-950">Beli Tiket</p>
+              <p className="truncate text-xs text-slate-500">In4Days XI · Dies Natalis HMTI</p>
+            </div>
           </Link>
-          <Link href="/" className="text-sm text-slate-500 hover:text-slate-900">Kembali</Link>
+          <div className="flex shrink-0 items-center gap-2">
+            <Link
+              href="/lacak"
+              className="inline-flex rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-sm transition hover:border-primary-200 hover:text-primary-700 sm:px-3.5 sm:text-sm"
+            >
+              Lacak Pesanan
+            </Link>
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-2 text-sm font-medium text-slate-500 transition hover:bg-white hover:text-slate-900 sm:px-3"
+            >
+              <ArrowLeft className="h-4 w-4" /> <span className="hidden sm:inline">Kembali</span>
+            </Link>
+          </div>
         </div>
       </header>
-      <main className="max-w-4xl mx-auto px-4 py-8 space-y-6">
-        {step===1 && (
-          <div className="rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
-            <div className="p-6 border-b border-slate-100"><h1 className="text-xl font-semibold text-slate-900">Pilih Tiket</h1><p className="text-sm text-slate-500">Pilih tipe tiket yang tersedia</p></div>
-            <div className="p-6 grid md:grid-cols-2 gap-4">
-              {katalog.tiket.map((t)=>(
-                <button key={t.id} disabled={!t.buka} onClick={()=>setForm({...form,tiket_tipe_id:t.id})} className={`text-left rounded-2xl border p-5 transition-all disabled:cursor-not-allowed disabled:opacity-60 ${form.tiket_tipe_id===t.id?'border-primary-500 ring-2 ring-primary-500/10':'border-slate-200/70 hover:border-primary-200'}`}>
-                  <div className="flex items-start gap-3">
-                    {t.thumbnail_url && (
-                      <img
-                        src={t.thumbnail_url}
-                        alt={t.nama}
-                        className="h-24 w-[76px] shrink-0 rounded-xl border border-slate-200 object-cover"
-                      />
-                    )}
-                    <div className="flex min-w-0 flex-1 items-start justify-between gap-3">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-semibold text-slate-900">{t.nama}</h3>
-                        <span className={`rounded-full px-2 py-0.5 text-xs ${t.buka ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>{t.buka ? (t.is_hari_h ? 'Hari H' : 'Dibuka') : 'Ditutup'}</span>
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{t.jumlah_orang} orang</span>
-                      </div>
-                      <p className="mt-1 text-sm text-slate-500">{t.deskripsi||'-'}</p>
-                      {t.periode_aktif && <p className="mt-1 text-xs text-slate-400">Periode {t.periode_aktif.nama || 'aktif'}</p>}
-                      {t.is_hari_h && t.sisa !== null && <p className="mt-1 text-xs text-orange-600">Sisa {t.sisa} tiket</p>}
-                    </div>
-                    <p className="font-semibold text-primary-600">{formatRupiah(t.harga_aktif)}</p>
-                    </div>
+
+      <main className="mx-auto max-w-6xl px-4 pb-16 pt-6 sm:px-6 sm:pt-10">
+        {step === 1 && (
+          <>
+            <section className="relative overflow-hidden rounded-[2rem] bg-slate-950 px-6 py-10 text-white shadow-2xl shadow-slate-900/20 sm:px-10 sm:py-12">
+              <div className="pointer-events-none absolute -right-24 -top-28 h-80 w-80 rounded-full bg-primary-500/30 blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-36 -left-24 h-80 w-80 rounded-full bg-cyan-400/20 blur-3xl" />
+              <div className="pointer-events-none absolute inset-0 opacity-[0.08] [background-image:linear-gradient(to_right,white_1px,transparent_1px),linear-gradient(to_bottom,white_1px,transparent_1px)] [background-size:48px_48px]" />
+
+              <div className="relative max-w-2xl">
+                <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-100 backdrop-blur">
+                  <Sparkles className="h-3.5 w-3.5" /> Tiket Resmi In4Days XI
+                </span>
+                <h1 className="mt-5 text-balance text-4xl font-semibold leading-[1.05] tracking-tight sm:text-5xl">
+                  Amankan tiketmu, nikmati hari-H tanpa antre.
+                </h1>
+                <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-300 sm:text-base">
+                  Beli tiket secara online, bayar lewat QRIS, lalu tunjukkan QR tiket saat scan di pintu masuk.
+                  Semua prosesnya transparan dan bisa dilacak.
+                </p>
+                <div className="mt-7 flex flex-wrap gap-3">
+                  <a
+                    href="#tipe-tiket"
+                    className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-black/10 transition hover:bg-primary-50"
+                  >
+                    Lihat Tipe Tiket <ArrowRight className="h-4 w-4" />
+                  </a>
+                  <Link
+                    href="/lacak"
+                    className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-5 py-2.5 text-sm font-medium text-white backdrop-blur transition hover:bg-white/10"
+                  >
+                    <ShieldCheck className="h-4 w-4" /> Cek Status Pesanan
+                  </Link>
+                </div>
+
+                <div className="mt-8 grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <p className="text-2xl font-semibold">{tersedia.length}</p>
+                    <p className="mt-0.5 text-xs text-slate-400">Tipe tiket tersedia</p>
                   </div>
-                </button>
-              ))}
-              {katalog.tiket.length===0 && <p className="text-slate-400">Belum ada tiket yang aktif.</p>}
-            </div>
-            {form.tiket_tipe_id && tipe && (
-              <div className="p-6 border-t border-slate-100 grid md:grid-cols-2 gap-4">
-                <div><label className="mb-1 block text-sm font-medium">Nama Pembeli</label><input className={input} placeholder="Nama lengkap" value={form.nama_pembeli} onChange={e=>setForm({...form,nama_pembeli:e.target.value})}/></div>
-                <div><label className="mb-1 block text-sm font-medium">Kontak WA</label><input className={input} placeholder="08xxxxxxxxxx" value={form.kontak} onChange={e=>setForm({...form,kontak:e.target.value})}/></div>
-                <div><label className="mb-1 block text-sm font-medium">Email (opsional)</label><input className={input} placeholder="nama@email.com" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <p className="text-2xl font-semibold">{hargaMulai ? formatRupiah(hargaMulai) : '—'}</p>
+                    <p className="mt-0.5 text-xs text-slate-400">Harga mulai dari</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <p className="text-2xl font-semibold">QRIS</p>
+                    <p className="mt-0.5 text-xs text-slate-400">Bayar dari e-wallet / m-banking</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="mt-10">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Jumlah Tiket</label>
-                  <input type="number" min={1} max={tipe.is_hari_h && tipe.sisa !== null ? tipe.sisa : undefined} className={input} placeholder="1" value={form.jumlah || ''} onChange={e=>setForm({...form,jumlah:Number(e.target.value)})}/>
-                  <p className="mt-1 text-xs text-slate-500">Berlaku untuk {Number(form.jumlah) * Number(tipe.jumlah_orang)} orang</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-600">Alur pembelian</p>
+                  <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
+                    Dari pilih tiket sampai scan di hari H
+                  </h2>
                 </div>
-                <div className="md:col-span-2 flex items-center justify-between rounded-xl bg-slate-50 p-4">
-                  <div>
-                    <p className="text-sm text-slate-500">
-                      {diskon > 0
-                        ? `${formatRupiah(subtotal)} - ${diskon}% bundle discount`
-                        : 'Total Pembayaran'}
-                    </p>
-                    {diskon > 0 && (
-                      <p className="text-xs text-green-600">Hemat {formatRupiah(subtotal - total)}</p>
-                    )}
-                  </div>
-                  <p className="text-lg font-semibold text-primary-600">{formatRupiah(total)}</p>
-                </div>
-                <div className="md:col-span-2 flex justify-end"><button onClick={beli} disabled={!form.nama_pembeli||!form.kontak||!tipe.buka} className="rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50">{tipe.buka ? 'Buat Pesanan' : 'Tiket Ditutup'}</button></div>
+                <p className="max-w-md text-sm text-slate-500">
+                  Enam langkah singkat. QR tiket baru aktif setelah pembayaran diverifikasi admin.
+                </p>
               </div>
-            )}
-          </div>
-        )}
-        {step===2 && pesanan && (
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40 space-y-2">
-              <h2 className="text-lg font-semibold text-slate-900">Detail Pesanan</h2>
-              <p className="text-sm"><span className="text-slate-500">No. Pesanan</span> : {pesanan.no_pesanan}</p>
-              <p className="text-sm"><span className="text-slate-500">Nama</span> : {pesanan.nama_pembeli}</p>
-              <p className="text-sm"><span className="text-slate-500">Jumlah</span> : {pesanan.jumlah}</p>
-              <p className="text-sm"><span className="text-slate-500">Total</span> : {formatRupiah(pesanan.total || 0)}</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40 text-center space-y-4">
-              <h2 className="text-lg font-semibold text-slate-900">Scan QRIS</h2>
-              <div className="mx-auto w-fit rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-                {qr ? (
-                  <div className="relative h-80 w-80">
-                    <img src={qr} alt="QRIS" className="h-full w-full rounded-lg" />
-                    <span className="pointer-events-none absolute inset-0 grid place-items-center">
-                      <span className="grid h-16 w-16 place-items-center rounded-full border border-slate-200 bg-white p-1 shadow-sm">
-                        <img src="/favicon.png" alt="Logo" className="h-full w-full object-contain" />
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {alur.map((item, index) => {
+                  const Icon = item.icon
+                  return (
+                    <div
+                      key={item.title}
+                      className="group relative overflow-hidden rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm shadow-slate-200/40 transition hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-lg hover:shadow-primary-600/5"
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary-50 text-primary-600 transition group-hover:bg-primary-600 group-hover:text-white">
+                          <Icon className="h-5 w-5" />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                            Langkah {index + 1}
+                          </p>
+                          <p className="mt-0.5 text-sm font-semibold text-slate-900">{item.title}</p>
+                          <p className="mt-1 text-xs leading-relaxed text-slate-500">{item.desc}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
+
+            <section id="tipe-tiket" className="mt-12 scroll-mt-24">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-600">Tipe & periode</p>
+                  <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">Pilih tiket yang paling cocok</h2>
+                </div>
+                <p className="max-w-md text-sm text-slate-500">
+                  Harga bisa berubah sesuai periode. Periode aktif ditandai dan otomatis dipakai saat checkout.
+                </p>
+              </div>
+
+              <div className="mt-5 grid gap-5 lg:grid-cols-2">
+                {katalog.tiket.map((t) => {
+                  const periods = t.periode ?? []
+                  const habis = t.sisa === 0
+                  const selected = form.tiket_tipe_id === t.id
+                  const terpakai = t.kuota > 0 ? Math.max(0, t.kuota - Number(t.sisa ?? 0)) : 0
+                  const pct = t.kuota > 0 ? Math.min(100, Math.round((terpakai / t.kuota) * 100)) : 0
+                  return (
+                    <article
+                      key={t.id}
+                      className={`relative overflow-hidden rounded-3xl border bg-white p-5 shadow-sm transition-all ${
+                        selected
+                          ? 'border-primary-400 ring-2 ring-primary-500/15 shadow-lg shadow-primary-600/10'
+                          : 'border-slate-200/70 hover:border-primary-200 hover:shadow-lg hover:shadow-slate-200/50'
+                      } ${!t.buka ? 'opacity-70' : ''}`}
+                    >
+                      <div className="flex items-start gap-4">
+                        {t.thumbnail_url ? (
+                          <div className="h-32 w-[102px] shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                            <img src={t.thumbnail_url} alt={t.nama} className="h-full w-full object-cover" />
+                          </div>
+                        ) : (
+                          <div className="grid h-32 w-[102px] shrink-0 place-items-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-300">
+                            <Ticket className="h-8 w-8" />
+                          </div>
+                        )}
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="text-base font-semibold text-slate-950">{t.nama}</h3>
+                            <span
+                              className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
+                                t.buka
+                                  ? t.is_hari_h
+                                    ? 'bg-orange-100 text-orange-700'
+                                    : 'bg-emerald-100 text-emerald-700'
+                                  : 'bg-slate-100 text-slate-500'
+                              }`}
+                            >
+                              {statusTiket(t)}
+                            </span>
+                            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] text-slate-600">
+                              {t.jumlah_orang} orang
+                            </span>
+                          </div>
+                          <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-slate-500">
+                            {t.deskripsi || 'Tiket masuk In4Days XI.'}
+                          </p>
+                          <div className="mt-3 flex items-end justify-between gap-3">
+                            <div>
+                              <p className="text-[11px] text-slate-400">Harga periode aktif</p>
+                              <p className="text-xl font-semibold text-primary-600">{formatRupiah(t.harga_aktif)}</p>
+                              {t.periode_aktif && Number(t.periode_aktif.harga) !== Number(t.harga) && (
+                                <p className="text-xs text-slate-400 line-through">{formatRupiah(t.harga)}</p>
+                              )}
+                            </div>
+                            {t.is_hari_h && t.sisa !== null && (
+                              <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[11px] font-medium text-orange-700">
+                                Sisa {t.sisa}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {periods.length > 0 && (
+                        <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50/70 p-3">
+                          <div className="flex items-center gap-1.5">
+                            <CalendarDays className="h-3.5 w-3.5 text-slate-400" />
+                            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Periode harga</p>
+                          </div>
+                          <div className="mt-2 space-y-1.5">
+                            {periods.map((p) => {
+                              const aktif = t.periode_aktif?.id === p.id
+                              return (
+                                <div
+                                  key={p.id}
+                                  className={`flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl px-2.5 py-1.5 text-xs ${
+                                    aktif ? 'bg-white text-slate-900 shadow-sm ring-1 ring-primary-100' : 'text-slate-500'
+                                  }`}
+                                >
+                                  <span className="inline-flex items-center gap-1.5 font-medium">
+                                    {p.nama || 'Periode'}
+                                    {aktif && (
+                                      <span className="rounded-full bg-primary-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-primary-700">
+                                        Aktif
+                                      </span>
+                                    )}
+                                  </span>
+                                  <span className="text-[11px] text-slate-400">
+                                    {formatTanggal(p.tanggal_mulai)} – {formatTanggal(p.tanggal_selesai)}
+                                  </span>
+                                  <span className={aktif ? 'font-semibold text-primary-700' : 'font-medium'}>
+                                    {formatRupiah(p.harga)}
+                                  </span>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {t.bundle_discounts.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {t.bundle_discounts.map((b) => (
+                            <span
+                              key={b.id}
+                              className="inline-flex items-center gap-1 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700"
+                            >
+                              <Sparkles className="h-3 w-3" /> Beli {b.jumlah_min} hemat {b.diskon_persen}%
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {t.kuota > 0 && (
+                        <div className="mt-4">
+                          <div className="mb-1 flex justify-between text-[11px] text-slate-500">
+                            <span>
+                              {terpakai} terjual dari {t.kuota} tiket
+                            </span>
+                            <span>{pct}%</span>
+                          </div>
+                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                            <div
+                              className={`h-full rounded-full transition-all ${habis ? 'bg-rose-400' : 'bg-primary-500'}`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      <button
+                        type="button"
+                        disabled={!t.buka}
+                        onClick={() => pilihTipe(t)}
+                        className={`mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
+                          selected
+                            ? 'bg-primary-600 text-white hover:bg-primary-700'
+                            : 'border border-slate-200 bg-white text-slate-700 hover:border-primary-200 hover:text-primary-700'
+                        } disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-400`}
+                      >
+                        {selected ? (
+                          <>
+                            <CheckCircle2 className="h-4 w-4" /> Tipe dipilih
+                          </>
+                        ) : t.buka ? (
+                          <>
+                            Pilih tipe ini <ArrowRight className="h-4 w-4" />
+                          </>
+                        ) : (
+                          'Tidak tersedia'
+                        )}
+                      </button>
+                    </article>
+                  )
+                })}
+              </div>
+
+              {katalog.tiket.length === 0 && (
+                <div className="mt-5 rounded-3xl border border-dashed border-slate-200 bg-white/70 p-10 text-center">
+                  <Ticket className="mx-auto h-10 w-10 text-slate-300" />
+                  <p className="mt-3 text-sm font-medium text-slate-700">Belum ada tiket yang dibuka.</p>
+                  <p className="mt-1 text-sm text-slate-400">Cek lagi nanti atau hubungi panitia.</p>
+                </div>
+              )}
+            </section>
+
+            {tipe && (
+              <section id="form-pembeli" className="mt-10 scroll-mt-24">
+                <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+                  <div className="rounded-3xl border border-slate-200/70 bg-white p-5 shadow-sm shadow-slate-200/40 sm:p-6">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-600">Data pembeli</p>
+                        <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">Lengkapi data pemesanan</h2>
+                        <p className="mt-1 text-sm text-slate-500">
+                          Pastikan kontak aktif. Link QR dan status pesanan akan dicek lewat halaman Lacak Pesanan.
+                        </p>
+                      </div>
+                      <span className="hidden shrink-0 rounded-full bg-slate-100 p-2 text-slate-400 sm:grid">
+                        <TicketCheck className="h-5 w-5" />
                       </span>
-                    </span>
+                    </div>
+
+                    <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className="mb-1.5 block text-sm font-medium text-slate-700">Nama Pembeli</label>
+                        <input
+                          className={input}
+                          placeholder="Nama lengkap"
+                          value={form.nama_pembeli}
+                          onChange={(e) => setForm({ ...form, nama_pembeli: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-sm font-medium text-slate-700">Kontak WA</label>
+                        <input
+                          className={input}
+                          placeholder="08xxxxxxxxxx"
+                          value={form.kontak}
+                          onChange={(e) => setForm({ ...form, kontak: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-sm font-medium text-slate-700">Email (opsional)</label>
+                        <input
+                          className={input}
+                          placeholder="nama@email.com"
+                          value={form.email}
+                          onChange={(e) => setForm({ ...form, email: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-sm font-medium text-slate-700">Jumlah Tiket</label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={tipe.is_hari_h && tipe.sisa !== null ? tipe.sisa : undefined}
+                          className={input}
+                          placeholder="1"
+                          value={form.jumlah || ''}
+                          onChange={(e) => setForm({ ...form, jumlah: Math.max(1, Number(e.target.value) || 1) })}
+                        />
+                        <p className="mt-1 text-xs text-slate-400">
+                          Berlaku untuk {Number(form.jumlah) * Number(tipe.jumlah_orang)} orang.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 flex items-start gap-2.5 rounded-2xl border border-primary-100 bg-primary-50/70 p-3.5 text-primary-800">
+                      <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                      <p className="text-xs leading-relaxed">
+                        Satu QR tiket berlaku untuk {tipe.jumlah_orang} orang. Simpan nomor pesanan setelah checkout
+                        untuk mengecek status pembayaran dan membuka QR.
+                      </p>
+                    </div>
                   </div>
-                ) : <div className="h-80 w-80 skeleton" />}
-              </div>
-              <input type="file" accept="image/*,application/pdf" onChange={e=>setFile(e.target.files?.[0]||null)} className="block w-full text-sm" />
-              <button onClick={upload} disabled={uploading||!file} className="w-full rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">{uploading?'Mengupload...':'Upload Bukti Bayar'}</button>
-            </div>
-          </div>
-        )}
-        {step===3 && (
-          <div className="rounded-2xl border border-slate-200/70 bg-white p-10 text-center shadow-sm shadow-slate-200/40 space-y-3">
-            <h2 className="text-xl font-semibold text-slate-900">Menunggu Verifikasi</h2>
-            <p className="text-slate-500">Setelah diverifikasi, QR tiket akan muncul. Simpan link berikut untuk melihat status dan QR.</p>
-            {pesanan?.no_pesanan && pesanan.t && (
-              <Link href={`/lacak/${pesanan.no_pesanan}?t=${encodeURIComponent(pesanan.t)}`} className="inline-flex rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-medium text-white">
-                Buka Riwayat Tiket
-              </Link>
+
+                  <aside className="lg:sticky lg:top-24 lg:self-start">
+                    <div className="overflow-hidden rounded-3xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
+                      <div className="border-b border-slate-100 px-5 py-4">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Ringkasan</p>
+                        <h3 className="mt-0.5 text-base font-semibold text-slate-950">Pesanan kamu</h3>
+                      </div>
+                      <div className="space-y-4 p-5">
+                        <div className="flex gap-3">
+                          {tipe.thumbnail_url ? (
+                            <div className="h-16 w-[52px] shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                              <img src={tipe.thumbnail_url} alt={tipe.nama} className="h-full w-full object-cover" />
+                            </div>
+                          ) : (
+                            <div className="grid h-16 w-[52px] shrink-0 place-items-center rounded-xl border border-slate-200 bg-slate-50 text-slate-300">
+                              <Ticket className="h-5 w-5" />
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-slate-950">{tipe.nama}</p>
+                            <p className="mt-0.5 text-xs text-slate-500">
+                              {tipe.jumlah_orang} orang · {form.jumlah} tiket
+                            </p>
+                            {tipe.periode_aktif && (
+                              <p className="mt-1 inline-flex items-center gap-1 text-[11px] text-primary-600">
+                                <CalendarDays className="h-3 w-3" /> {tipe.periode_aktif.nama || 'Periode aktif'}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <dl className="space-y-2 text-sm">
+                          <div className="flex items-center justify-between gap-3">
+                            <dt className="text-slate-500">Harga satuan</dt>
+                            <dd className="font-medium text-slate-900">{formatRupiah(tipe.harga_aktif)}</dd>
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <dt className="text-slate-500">Jumlah</dt>
+                            <dd className="font-medium text-slate-900">x{form.jumlah || 0}</dd>
+                          </div>
+                          {diskon > 0 && (
+                            <div className="flex items-center justify-between gap-3 text-emerald-600">
+                              <dt>Diskon bundle</dt>
+                              <dd className="font-medium">-{diskon}%</dd>
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
+                            <dt className="font-semibold text-slate-900">Total</dt>
+                            <dd className="text-lg font-semibold text-primary-600">{formatRupiah(total)}</dd>
+                          </div>
+                        </dl>
+
+                        <button
+                          type="button"
+                          onClick={beli}
+                          disabled={!form.nama_pembeli || !form.kontak || !tipe.buka}
+                          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-600/20 transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none"
+                        >
+                          {tipe.buka ? 'Buat Pesanan' : 'Tiket Ditutup'}
+                          {tipe.buka && <ArrowRight className="h-4 w-4" />}
+                        </button>
+                        <p className="text-center text-[11px] leading-relaxed text-slate-400">
+                          Pembayaran via QRIS. QR tiket aktif setelah bukti diverifikasi.
+                        </p>
+                      </div>
+                    </div>
+                  </aside>
+                </div>
+              </section>
             )}
-            <p className="text-xs text-slate-400">No. Pesanan: {pesanan?.no_pesanan}</p>
-            <Link href="/" className="inline-flex text-sm font-medium text-primary-600">Kembali ke Beranda</Link>
-          </div>
+          </>
+        )}
+
+        {step === 2 && pesanan && (
+          <section>
+            <div className="mx-auto max-w-3xl text-center">
+              <span className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
+                <Clock3 className="h-3.5 w-3.5" /> Menunggu pembayaran
+              </span>
+              <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950">Selesaikan pembayaran</h1>
+              <p className="mt-2 text-sm text-slate-500">
+                Pesanan <span className="font-semibold text-slate-800">{pesanan.no_pesanan}</span> berhasil dibuat.
+                Scan QRIS di bawah, lalu upload bukti bayar.
+              </p>
+            </div>
+
+            <div className="mt-8 grid gap-5 md:grid-cols-2">
+              <div className="rounded-3xl border border-slate-200/70 bg-white p-5 shadow-sm shadow-slate-200/40">
+                <div className="flex items-center gap-2">
+                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-600">
+                    <TicketCheck className="h-4 w-4" />
+                  </span>
+                  <h2 className="text-base font-semibold text-slate-950">Detail Pesanan</h2>
+                </div>
+                <dl className="mt-5 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <dt className="text-sm text-slate-500">No. Pesanan</dt>
+                    <dd className="text-sm font-semibold text-slate-900">{pesanan.no_pesanan}</dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <dt className="text-sm text-slate-500">Nama</dt>
+                    <dd className="text-sm font-medium text-slate-900">{pesanan.nama_pembeli}</dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <dt className="text-sm text-slate-500">Jumlah</dt>
+                    <dd className="text-sm font-medium text-slate-900">{pesanan.jumlah} tiket</dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
+                    <dt className="text-sm font-semibold text-slate-900">Total bayar</dt>
+                    <dd className="text-lg font-semibold text-primary-600">{formatRupiah(pesanan.total || 0)}</dd>
+                  </div>
+                </dl>
+
+                <div className="mt-5 space-y-2 rounded-2xl bg-slate-50 p-4 text-xs text-slate-500">
+                  <p className="flex items-start gap-2">
+                    <Wallet className="mt-0.5 h-3.5 w-3.5 shrink-0" /> Bayar sesuai nominal tanpa membulatkan.
+                  </p>
+                  <p className="flex items-start gap-2">
+                    <Smartphone className="mt-0.5 h-3.5 w-3.5 shrink-0" /> Scan QRIS lewat e-wallet atau m-banking.
+                  </p>
+                  <p className="flex items-start gap-2">
+                    <Upload className="mt-0.5 h-3.5 w-3.5 shrink-0" /> Upload bukti yang jelas agar cepat diverifikasi.
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-slate-200/70 bg-white p-5 text-center shadow-sm shadow-slate-200/40">
+                <div className="flex items-center justify-center gap-2">
+                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary-50 text-primary-600">
+                    <QrCode className="h-4 w-4" />
+                  </span>
+                  <h2 className="text-base font-semibold text-slate-950">Scan QRIS</h2>
+                </div>
+
+                <div className="mx-auto mt-5 w-full max-w-[280px] rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                  {qr ? (
+                    <div className="relative aspect-square w-full">
+                      <img src={qr} alt="QRIS" className="h-full w-full rounded-xl object-contain" />
+                      <span className="pointer-events-none absolute inset-0 grid place-items-center">
+                        <span className="grid h-14 w-14 place-items-center rounded-full border border-slate-200 bg-white p-1 shadow-sm">
+                          <img src="/favicon.png" alt="Logo" className="h-full w-full object-contain" />
+                        </span>
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="aspect-square w-full animate-pulse rounded-xl bg-slate-100" />
+                  )}
+                </div>
+
+                <div className="mt-5 text-left">
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">Bukti Pembayaran</label>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(e) => setFile(e.target.files?.[0] || null)}
+                    className="block w-full cursor-pointer rounded-xl border border-slate-200 bg-white text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-xs file:font-medium file:text-slate-700"
+                  />
+                  <p className="mt-1 text-[11px] text-slate-400">JPG/PNG/WebP, maksimal 5MB.</p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={upload}
+                  disabled={uploading || !file}
+                  className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-600/20 transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none"
+                >
+                  {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  {uploading ? 'Mengupload...' : 'Upload Bukti Bayar'}
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {step === 3 && (
+          <section className="mx-auto max-w-xl">
+            <div className="rounded-3xl border border-slate-200/70 bg-white p-8 text-center shadow-sm shadow-slate-200/40 sm:p-10">
+              <span className="mx-auto grid h-16 w-16 place-items-center rounded-3xl bg-amber-100 text-amber-600">
+                <Clock3 className="h-7 w-7" />
+              </span>
+              <h1 className="mt-5 text-2xl font-semibold tracking-tight text-slate-950">Menunggu verifikasi</h1>
+              <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-slate-500">
+                Bukti pembayaran sudah terkirim. Setelah diverifikasi admin, QR tiket akan muncul di halaman Lacak
+                Pesanan.
+              </p>
+
+              <div className="mt-6 space-y-2 rounded-2xl bg-slate-50 p-4 text-left text-xs text-slate-500">
+                <p className="flex items-start gap-2">
+                  <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" /> Simpan nomor pesanan:{' '}
+                  <span className="font-semibold text-slate-800">{pesanan?.no_pesanan}</span>
+                </p>
+                <p className="flex items-start gap-2">
+                  <Clock3 className="mt-0.5 h-3.5 w-3.5 shrink-0" /> Verifikasi biasanya selesai dalam 1×24 jam.
+                </p>
+                <p className="flex items-start gap-2">
+                  <ScanLine className="mt-0.5 h-3.5 w-3.5 shrink-0" /> Tunjukkan QR tiket ke petugas saat scan di hari H.
+                </p>
+              </div>
+
+              <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
+                {pesanan?.no_pesanan && pesanan.t && (
+                  <Link
+                    href={`/lacak/${pesanan.no_pesanan}?t=${encodeURIComponent(pesanan.t)}`}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary-600/20 transition hover:bg-primary-700"
+                  >
+                    Buka Riwayat Tiket <ArrowRight className="h-4 w-4" />
+                  </Link>
+                )}
+                <Link
+                  href="/"
+                  className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:border-primary-200 hover:text-primary-700"
+                >
+                  Kembali ke Beranda
+                </Link>
+              </div>
+            </div>
+          </section>
         )}
       </main>
     </div>

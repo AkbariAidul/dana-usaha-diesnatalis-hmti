@@ -127,6 +127,7 @@ export interface TicketPeriode {
 export interface TicketKatalogItem extends Ticket {
   harga_aktif: number
   periode_aktif: TicketPeriode | null
+  periode: TicketPeriode[]
   pending: number
   sisa: number | null
   buka: boolean

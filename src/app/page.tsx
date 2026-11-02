@@ -9,12 +9,6 @@ const services = [
   { no: '03', title: 'Beli Tiket', desc: 'Jadilah bagian dari kemeriahannya.', href: '/beli-tiket', icon: Ticket },
 ]
 
-const navLinks = [
-  { label: 'Info Tenant', href: '/tenant-info' },
-  { label: 'Merchandise', href: '/merchandise' },
-  { label: 'Ticket', href: '/ticket' },
-]
-
 export default async function Home() {
   const token = process.env.DASHBOARD_SESSION_SECRET || (process.env.NODE_ENV !== 'production' ? 'authenticated' : '')
   const authed = !!token && (await cookies()).get('dashboard_session')?.value === token
@@ -39,17 +33,6 @@ export default async function Home() {
           </Link>
 
           <div className="flex shrink-0 items-center gap-2">
-            <nav className="hidden items-center gap-1 text-sm md:flex">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="rounded-xl px-3 py-2 text-[#64748B] transition-colors hover:bg-[#F5F0FF] hover:text-[#6D28D9]"
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </nav>
             <Link
               href="/lacak"
               className="shrink-0 whitespace-nowrap rounded-xl bg-primary-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700"
