@@ -92,6 +92,7 @@ export default function BeliTiketPublik() {
     t?: string
   } | null>(null)
   const [file, setFile] = useState<File | null>(null)
+  const [preview, setPreview] = useState('')
   const [uploading, setUploading] = useState(false)
   const [qr, setQr] = useState('')
   const [step, setStep] = useState(1)
@@ -112,6 +113,16 @@ export default function BeliTiketPublik() {
       .then(setQr)
       .catch(() => {})
   }, [qris])
+
+  useEffect(() => {
+    if (!file) {
+      setPreview('')
+      return
+    }
+    const url = URL.createObjectURL(file)
+    setPreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [file])
 
   const tipe = katalog.tiket.find((t) => t.id === form.tiket_tipe_id)
   const bundle = tipe ? tipe.bundle_discounts.find((b) => Number(form.jumlah) === Number(b.jumlah_min)) : null
@@ -639,7 +650,7 @@ export default function BeliTiketPublik() {
                     <div className="relative aspect-square w-full">
                       <img src={qr} alt="QRIS" className="h-full w-full rounded-xl object-contain" />
                       <span className="pointer-events-none absolute inset-0 grid place-items-center">
-                        <span className="grid h-14 w-14 place-items-center rounded-full border border-slate-200 bg-white p-1 shadow-sm">
+                        <span className="grid h-20 w-20 place-items-center rounded-full border border-slate-200 bg-white p-1.5 shadow-sm">
                           <img src="/favicon.png" alt="Logo" className="h-full w-full object-contain" />
                         </span>
                       </span>
@@ -658,6 +669,15 @@ export default function BeliTiketPublik() {
                     className="block w-full cursor-pointer rounded-xl border border-slate-200 bg-white text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-xs file:font-medium file:text-slate-700"
                   />
                   <p className="mt-1 text-[11px] text-slate-400">JPG/PNG/WebP, maksimal 5MB.</p>
+                  {preview && (
+                    <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-1.5">
+                      <img
+                        src={preview}
+                        alt="Preview bukti pembayaran"
+                        className="max-h-56 w-full rounded-lg object-contain"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <button
