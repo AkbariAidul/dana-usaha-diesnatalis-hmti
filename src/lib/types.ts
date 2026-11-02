@@ -103,6 +103,7 @@ export interface Ticket {
   nama: string
   deskripsi: string | null
   harga: number
+  modal: number
   jumlah_orang: number
   kuota: number
   terjual: number
@@ -138,6 +139,21 @@ export interface TicketBundleDiscount {
   jumlah_min: number
   diskon_persen: number
   urutan: number
+}
+
+export interface PesananTiket {
+  id: string
+  no_pesanan: string
+  nama_pembeli: string
+  kontak: string
+  tiket_nama: string | null
+  jumlah: number
+  total: number
+  status: 'menunggu_verifikasi' | 'lunas' | 'ditolak' | 'batal'
+  created_at: string
+  modal_satuan: number
+  modal_total: number
+  keuntungan: number
 }
 
 // ─── Business Logic ───────────────────────────────────────────────────────────

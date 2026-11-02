@@ -21,6 +21,11 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
+    if (body.modal !== undefined) {
+      const modal = Number(body.modal)
+      if (!Number.isFinite(modal) || modal < 0) throw new Error('Modal tidak valid')
+      body.modal = modal
+    }
     const data = await upsertTicket(body)
     await createAuditLog({
       aksi: body.id ? 'UPDATE_TICKET' : 'CREATE_TICKET',

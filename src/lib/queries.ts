@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto'
 import { supabase, supabaseAdmin } from './supabase'
 import { todayISO } from './utils'
-import type { Tenant, Pembayaran, KategoriSewa, HargaDasar, FaktorHarga, Acara, Merchandise, Ticket, TicketPeriode, TicketKatalogItem, TicketBundleDiscount, PeriodeHarga } from './types'
+import type { Tenant, Pembayaran, KategoriSewa, HargaDasar, FaktorHarga, Acara, Merchandise, Ticket, TicketPeriode, TicketKatalogItem, TicketBundleDiscount, PesananTiket, PeriodeHarga } from './types'
 
 // ─── Acara ───────────────────────────────────────────────────────────────────
 
@@ -311,7 +311,7 @@ export async function deleteMerchandise(id: string) {
 
 // ─── Ticket ──────────────────────────────────────────────────────────────────
 
-const TICKET_FIELDS = ['nama', 'deskripsi', 'harga', 'jumlah_orang', 'kuota', 'urutan', 'aktif', 'is_hari_h', 'mulai_jual', 'selesai_jual'] as const
+const TICKET_FIELDS = ['nama', 'deskripsi', 'harga', 'modal', 'jumlah_orang', 'kuota', 'urutan', 'aktif', 'is_hari_h', 'mulai_jual', 'selesai_jual'] as const
 const TICKET_PERIODE_FIELDS = ['tiket_tipe_id', 'nama', 'tanggal_mulai', 'tanggal_selesai', 'harga', 'urutan'] as const
 const TICKET_BUNDLE_FIELDS = ['tiket_tipe_id', 'jumlah_min', 'diskon_persen', 'urutan'] as const
 
@@ -444,6 +444,33 @@ export async function getTicketKatalog(): Promise<TicketKatalogItem[]> {
       buka,
       bundle_discounts: bundles.filter((b) => b.tiket_tipe_id === t.id),
     }
+  })
+}
+
+export async function getTicketPenjualan(): Promise<PesananTiket[]> {
+  const [pesananRes, tipeRes] = await Promise.all([
+    supabaseAdmin.from('pesanan_tiket').select('*').order('created_at', { ascending: false }),
+    supabaseAdmin.from('tiket_tipe').select('id,nama,modal'),
+  ])
+  if (pesananRes.error) throw pesananRes.error
+  if (tipeRes.error) throw tipeRes.error
+
+  const tipeById = new Map<string, { nama: string; modal: number }>()
+  for (const t of (tipeRes.data ?? []) as { id: string; nama: string; modal: number | null }[]) {
+    tipeById.set(t.id, { nama: t.nama, modal: Number(t.modal ?? 0) })
+  }
+
+  return ((pesananRes.data ?? []) as Record<string, unknown>[]).map((row) => {
+    const tipe = row.tiket_tipe_id ? tipeById.get(String(row.tiket_tipe_id)) : undefined
+    const jumlah = Number(row.jumlah ?? 0)
+    const modalSatuan = tipe?.modal ?? 0
+    return {
+      ...row,
+      tiket_nama: tipe?.nama ?? null,
+      modal_satuan: modalSatuan,
+      modal_total: modalSatuan * jumlah,
+      keuntungan: Number(row.total ?? 0) - modalSatuan * jumlah,
+    } as PesananTiket
   })
 }
 

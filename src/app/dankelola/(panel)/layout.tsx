@@ -14,7 +14,7 @@ const MENU_HREFS = menuConfig.flatMap((group) =>
 )
 
 const MENU_ALIASES: Record<string, string[]> = {
-  '/dankelola/ticket/tahap': ['/dankelola/ticket/tipe', '/dankelola/ticket/periode'],
+  '/dankelola/ticket/tahap': ['/dankelola/ticket/tipe', '/dankelola/ticket/periode', '/dankelola/ticket/modal'],
 }
 
 function matchesPath(pathname: string, href: string, prefix: string) {

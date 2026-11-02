@@ -8,7 +8,7 @@ import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
 import type { TicketKatalogItem, TicketPeriode, TicketBundleDiscount } from '@/lib/types'
 import { formatRupiah, todayISO } from '@/lib/utils'
-import { Pencil, Trash2, Eye } from 'lucide-react'
+import { Pencil, Trash2, Eye, Wallet } from 'lucide-react'
 import { useConfirm } from '@/components/confirm-dialog'
 
 function formatTanggal(iso: string) {
@@ -80,6 +80,9 @@ export default function TahapPage() {
           <p className="text-sm text-slate-500">Kelola tipe tiket, periode harga, dan diskon bundle.</p>
         </div>
         <div className="flex items-center gap-2">
+          <Link href="/dankelola/ticket/modal" className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-primary-200 hover:text-primary-600">
+            <Wallet className="h-4 w-4" /> Kelola Modal
+          </Link>
           <Link href="/dankelola/ticket/tipe/new" className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">+ Tambah Tipe</Link>
         </div>
       </div>
