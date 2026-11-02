@@ -1,9 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import Link from 'next/link'
 import { toast } from 'sonner'
-import { ArrowLeft, Pencil, Plus, Trash2, Wallet } from 'lucide-react'
+import { Pencil, Plus, Trash2, Wallet } from 'lucide-react'
 import { getJSON, sendJSON } from '../../../api'
 import { PageSkeleton } from '../../ui'
 import { useConfirm } from '@/components/confirm-dialog'
@@ -95,9 +94,6 @@ export default function TicketModalPage() {
   return (
     <div className="space-y-4">
       <div>
-        <Link href="/dankelola/ticket/tahap" className="mb-1 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-primary-600">
-          <ArrowLeft className="h-3.5 w-3.5" /> Tipe & Harga
-        </Link>
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Kelola Modal</h1>
         <p className="text-sm text-slate-500">Daftar komponen biaya per tiket (gelang, sablon, packing, dll). Berlaku untuk semua tipe dan periode.</p>
       </div>
