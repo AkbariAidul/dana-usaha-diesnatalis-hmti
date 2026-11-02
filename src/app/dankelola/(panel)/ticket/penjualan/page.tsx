@@ -59,27 +59,9 @@ export default function PenjualanPage() {
     </div>
   )
 
-  const lunas = pesanan.filter((p) => p.status === 'lunas')
-  const totalTiket = lunas.reduce((s, p) => s + Number(p.jumlah), 0)
-  const totalPenjualan = lunas.reduce((s, p) => s + Number(p.total), 0)
-  const totalModal = lunas.reduce((s, p) => s + Number(p.modal_total), 0)
-  const totalKeuntungan = lunas.reduce((s, p) => s + Number(p.keuntungan), 0)
-
-  const rekap = (() => {
-    const map = new Map<string, { tipe: string; periode: string; jumlah: number; penjualan: number; modal: number; keuntungan: number }>()
-    for (const p of lunas) {
-      const tipe = p.tiket_nama ?? '-'
-      const periode = p.periode_nama ?? 'Harga dasar'
-      const key = `${tipe}|${periode}`
-      const row = map.get(key) ?? { tipe, periode, jumlah: 0, penjualan: 0, modal: 0, keuntungan: 0 }
-      row.jumlah += Number(p.jumlah)
-      row.penjualan += Number(p.total)
-      row.modal += Number(p.modal_total)
-      row.keuntungan += Number(p.keuntungan)
-      map.set(key, row)
-    }
-    return Array.from(map.values()).sort((a, b) => a.tipe.localeCompare(b.tipe) || a.periode.localeCompare(b.periode))
-  })()
+  const totalTiket = pesanan
+    .filter((p) => p.status === 'lunas')
+    .reduce((s, p) => s + Number(p.jumlah), 0)
 
   return (
     <div className="space-y-6">
@@ -95,76 +77,6 @@ export default function PenjualanPage() {
       </div>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
-        <div className="flex flex-col gap-1 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-sm font-semibold text-slate-900">Rekap per Tipe & Periode</h2>
-            <p className="text-xs text-slate-500">Dihitung dari pesanan berstatus lunas.</p>
-          </div>
-          <span className="inline-flex w-fit items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-            {rekap.length} baris
-          </span>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[680px] text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/70 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                <th className="px-5 py-3">Tipe</th>
-                <th className="px-5 py-3">Periode</th>
-                <th className="px-5 py-3 text-right">Tiket</th>
-                <th className="px-5 py-3 text-right">Penjualan</th>
-                <th className="px-5 py-3 text-right">Modal</th>
-                <th className="px-5 py-3 text-right">Keuntungan</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100/80">
-              {rekap.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-5 py-12 text-center">
-                    <Inbox className="mx-auto mb-2 h-8 w-8 text-slate-300" />
-                    <p className="text-sm text-slate-400">Belum ada penjualan lunas.</p>
-                  </td>
-                </tr>
-              )}
-              {rekap.map((r) => (
-                <tr key={`${r.tipe}|${r.periode}`} className="transition-colors hover:bg-slate-50/70">
-                  <td className="px-5 py-3 font-medium text-slate-900">{r.tipe}</td>
-                  <td className="px-5 py-3 text-slate-500">{r.periode}</td>
-                  <td className="px-5 py-3 text-right tabular-nums text-slate-700">{r.jumlah}</td>
-                  <td className="px-5 py-3 text-right font-medium tabular-nums text-slate-900">{formatRupiah(r.penjualan)}</td>
-                  <td className="px-5 py-3 text-right tabular-nums text-orange-600">{formatRupiah(r.modal)}</td>
-                  <td className={`px-5 py-3 text-right font-semibold tabular-nums ${r.keuntungan >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {formatRupiah(r.keuntungan)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            {rekap.length > 0 && (
-              <tfoot className="border-t border-slate-200 bg-slate-50/60">
-                <tr className="text-sm font-semibold text-slate-900">
-                  <td colSpan={2} className="px-5 py-3">Total</td>
-                  <td className="px-5 py-3 text-right tabular-nums">{totalTiket}</td>
-                  <td className="px-5 py-3 text-right tabular-nums">{formatRupiah(totalPenjualan)}</td>
-                  <td className="px-5 py-3 text-right tabular-nums text-orange-600">{formatRupiah(totalModal)}</td>
-                  <td className={`px-5 py-3 text-right tabular-nums ${totalKeuntungan >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {formatRupiah(totalKeuntungan)}
-                  </td>
-                </tr>
-              </tfoot>
-            )}
-          </table>
-        </div>
-      </section>
-
-      <section className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
-        <div className="flex flex-col gap-1 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-sm font-semibold text-slate-900">Semua Pesanan</h2>
-            <p className="text-xs text-slate-500">Modal dan keuntungan memakai modal per tiket saat ini.</p>
-          </div>
-          <span className="inline-flex w-fit items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-            {pesanan.length} pesanan
-          </span>
-        </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1040px] text-sm">
             <thead>

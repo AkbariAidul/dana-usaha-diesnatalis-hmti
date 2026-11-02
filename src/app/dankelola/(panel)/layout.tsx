@@ -2,10 +2,11 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { ChevronRight, Globe, LogOut, Menu, PartyPopper, X } from 'lucide-react'
-import { prefetch } from '../api'
+import { getJSON, prefetch } from '../api'
 import { menuConfig } from '@/lib/menu'
+import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { useConfirm } from '@/components/confirm-dialog'
 import type { DashboardRole, DashboardUser } from '@/lib/auth'
 
@@ -141,7 +142,13 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
   const [currentUser, setCurrentUser] = useState<DashboardUser | null>(null)
   const [welcome, setWelcome] = useState<DashboardUser | null>(null)
+  const [tiketTerjual, setTiketTerjual] = useState<number | null>(null)
   const breadcrumbs = getBreadcrumbs(pathname)
+
+  const loadTiketTerjual = useCallback(async () => {
+    const tipe = await getJSON<{ terjual: number | null }[]>('/api/ticket')
+    setTiketTerjual(tipe.reduce((sum, t) => sum + Number(t.terjual ?? 0), 0))
+  }, [])
   const welcomeCopy = welcome ? WELCOME_COPY[welcome.role](welcome.name) : null
 
   useEffect(() => {
@@ -162,6 +169,11 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     }, 600)
     return () => clearTimeout(t)
   }, [])
+
+  useEffect(() => {
+    loadTiketTerjual().catch(() => {})
+  }, [loadTiketTerjual])
+  useLiveRefresh(loadTiketTerjual, 15000)
 
   useEffect(() => {
     const match = document.cookie.match(/(?:^|; )dashboard_user=([^;]+)/)
@@ -261,13 +273,18 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                       href={child.href}
                       onClick={() => setOpen(false)}
                       aria-current={childActive ? 'page' : undefined}
-                      className={`sidebar-tree-item rounded-md px-2.5 py-1.5 text-sm transition-all duration-150 ${
+                      className={`sidebar-tree-item flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-sm transition-all duration-150 ${
                         childActive
                           ? 'bg-white/20 text-white font-medium'
                           : 'text-white hover:bg-white/10'
                       }`}
                     >
-                      {child.label}
+                      <span>{child.label}</span>
+                      {child.href === '/dankelola/ticket/penjualan' && tiketTerjual !== null && (
+                        <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-white">
+                          {tiketTerjual}
+                        </span>
+                      )}
                     </Link>
                   )
                 })}
