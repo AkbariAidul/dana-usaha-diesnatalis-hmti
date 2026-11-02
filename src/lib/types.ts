@@ -94,6 +94,7 @@ export interface Merchandise {
   deskripsi: string | null
   harga: number
   stok: number
+  stok_unlimited: boolean
   gambar_url: string | null
   aktif: boolean
 }

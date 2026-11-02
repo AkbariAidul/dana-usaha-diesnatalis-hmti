@@ -9,7 +9,7 @@ import { PageSkeleton } from '../../ui'
 import { useConfirm } from '@/components/confirm-dialog'
 import type { Merchandise } from '@/lib/types'
 import { formatRupiah } from '@/lib/utils'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { Image as ImageIcon, Pencil, Plus, Trash2 } from 'lucide-react'
 
 export default function ProdukPage() {
   const confirm = useConfirm()
@@ -80,6 +80,7 @@ export default function ProdukPage() {
           <table className="w-full min-w-[720px] text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/70 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-5 py-3">Foto</th>
                 <th className="px-5 py-3">Nama</th>
                 <th className="px-5 py-3">Deskripsi</th>
                 <th className="px-5 py-3 text-right">Harga</th>
@@ -91,19 +92,30 @@ export default function ProdukPage() {
             <tbody className="divide-y divide-slate-100/80">
               {items.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-5 py-12 text-center text-sm text-slate-400">
+                  <td colSpan={7} className="px-5 py-12 text-center text-sm text-slate-400">
                     Belum ada produk.
                   </td>
                 </tr>
               )}
               {items.map((item) => (
                 <tr key={item.id} className="transition-colors hover:bg-slate-50/70">
+                  <td className="px-5 py-3">
+                    <div className="grid h-10 w-10 place-items-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                      {item.gambar_url ? (
+                        <img src={item.gambar_url} alt={item.nama} className="h-full w-full object-cover" />
+                      ) : (
+                        <ImageIcon className="h-4 w-4 text-slate-300" />
+                      )}
+                    </div>
+                  </td>
                   <td className="px-5 py-3 font-medium text-slate-900">{item.nama}</td>
                   <td className="max-w-[320px] px-5 py-3 text-slate-500">
                     <span className="line-clamp-2">{item.deskripsi || '-'}</span>
                   </td>
                   <td className="px-5 py-3 text-right font-medium tabular-nums text-slate-900">{formatRupiah(Number(item.harga))}</td>
-                  <td className={`px-5 py-3 text-right font-medium tabular-nums ${item.stok > 0 ? 'text-slate-700' : 'text-red-600'}`}>{item.stok}</td>
+                  <td className={`px-5 py-3 text-right font-medium tabular-nums ${item.stok_unlimited || item.stok > 0 ? 'text-slate-700' : 'text-red-600'}`}>
+                    {item.stok_unlimited ? 'Tak terbatas' : item.stok}
+                  </td>
                   <td className="px-5 py-3">
                     <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${item.aktif ? 'bg-green-100 text-green-800 ring-green-200' : 'bg-slate-100 text-slate-500 ring-slate-200'}`}>
                       <span className={`h-1.5 w-1.5 rounded-full ${item.aktif ? 'bg-green-600' : 'bg-slate-400'}`} />

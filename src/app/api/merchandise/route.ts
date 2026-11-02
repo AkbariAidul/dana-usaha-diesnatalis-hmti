@@ -36,6 +36,7 @@ export async function POST(request: Request) {
         deskripsi: (fd.get('deskripsi') as string) || null,
         harga: Number(fd.get('harga')),
         stok: Number(fd.get('stok') || 0),
+        stok_unlimited: fd.get('stok_unlimited') === 'true',
         aktif: fd.get('aktif') === 'true',
         ...(gambarUrl ? { gambar_url: gambarUrl } : {}),
       }

@@ -46,9 +46,9 @@ export default async function MerchandisePage() {
                   <div className="flex justify-between items-center mt-4">
                     <span className="font-bold text-xl text-primary-600">{formatRupiah(item.harga)}</span>
                     <span className={`text-sm px-2 py-1 rounded-full ${
-                      item.stok > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
+                      item.stok_unlimited || item.stok > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
                     }`}>
-                      {item.stok > 0 ? `Stok: ${item.stok}` : 'Habis'}
+                      {item.stok_unlimited ? 'Stok: Tak terbatas' : item.stok > 0 ? `Stok: ${item.stok}` : 'Habis'}
                     </span>
                   </div>
                 </div>
