@@ -5,13 +5,7 @@ import { getTicketKatalog } from '@/lib/queries'
 export async function GET() {
   try {
     const [tiket, varian] = await Promise.all([
-      getTicketKatalog().then((rows) =>
-        rows.map((t) => {
-          const copy = { ...t } as Record<string, unknown>
-          delete copy.modal
-          return copy
-        })
-      ),
+      getTicketKatalog(),
       supabaseAdmin.from('merch_varian').select('*').eq('aktif', true).order('urutan'),
     ])
     return NextResponse.json({ tiket, varian: varian.data || [] })

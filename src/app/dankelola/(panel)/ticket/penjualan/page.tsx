@@ -5,16 +5,21 @@ import { getJSON } from '../../../api'
 import { PageSkeleton } from '../../ui'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { formatRupiah } from '@/lib/utils'
-import type { PesananTiket } from '@/lib/types'
+import type { PesananTiket, TicketModalItem } from '@/lib/types'
 
 export default function PenjualanPage() {
   const [pesanan, setPesanan] = useState<PesananTiket[]>([])
+  const [modalPerTiket, setModalPerTiket] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
-    const data = await getJSON<PesananTiket[]>('/api/ticket/penjualan')
+    const [data, modalItems] = await Promise.all([
+      getJSON<PesananTiket[]>('/api/ticket/penjualan'),
+      getJSON<TicketModalItem[]>('/api/ticket/modal'),
+    ])
     setPesanan(data)
+    setModalPerTiket(modalItems.reduce((sum, item) => sum + Number(item.harga ?? 0), 0))
     setError(null)
   }, [])
 
@@ -43,6 +48,22 @@ export default function PenjualanPage() {
   const totalModal = lunas.reduce((s, p) => s + Number(p.modal_total), 0)
   const totalKeuntungan = lunas.reduce((s, p) => s + Number(p.keuntungan), 0)
 
+  const rekap = (() => {
+    const map = new Map<string, { tipe: string; periode: string; jumlah: number; penjualan: number; modal: number; keuntungan: number }>()
+    for (const p of lunas) {
+      const tipe = p.tiket_nama ?? '-'
+      const periode = p.periode_nama ?? 'Harga dasar'
+      const key = `${tipe}|${periode}`
+      const row = map.get(key) ?? { tipe, periode, jumlah: 0, penjualan: 0, modal: 0, keuntungan: 0 }
+      row.jumlah += Number(p.jumlah)
+      row.penjualan += Number(p.total)
+      row.modal += Number(p.modal_total)
+      row.keuntungan += Number(p.keuntungan)
+      map.set(key, row)
+    }
+    return Array.from(map.values()).sort((a, b) => a.tipe.localeCompare(b.tipe) || a.periode.localeCompare(b.periode))
+  })()
+
   return (
     <div className="space-y-4">
       <div>
@@ -69,10 +90,14 @@ export default function PenjualanPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
           <p className="text-sm text-slate-500">Penjualan Lunas</p>
           <p className="text-2xl font-bold text-slate-900">{formatRupiah(totalPenjualan)}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
+          <p className="text-sm text-slate-500">Modal / Tiket</p>
+          <p className="text-2xl font-bold text-orange-600">{formatRupiah(modalPerTiket)}</p>
         </div>
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
           <p className="text-sm text-slate-500">Modal Terpakai</p>
@@ -87,13 +112,42 @@ export default function PenjualanPage() {
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
-        <table className="w-full min-w-[860px] text-sm">
+        <table className="w-full min-w-[640px] text-sm">
+          <thead className="bg-slate-50 text-left">
+            <tr>
+              <th className="px-3 py-2">Tipe</th>
+              <th className="px-3 py-2">Periode</th>
+              <th className="px-3 py-2">Tiket Terjual</th>
+              <th className="px-3 py-2">Penjualan</th>
+              <th className="px-3 py-2">Modal</th>
+              <th className="px-3 py-2">Keuntungan</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100/80">
+            {rekap.length === 0 && <tr><td colSpan={6} className="px-3 py-6 text-center text-slate-400">Belum ada penjualan lunas.</td></tr>}
+            {rekap.map((r) => (
+              <tr key={`${r.tipe}|${r.periode}`} className="hover:bg-slate-50">
+                <td className="px-3 py-2 font-medium">{r.tipe}</td>
+                <td className="px-3 py-2 text-slate-500">{r.periode}</td>
+                <td className="px-3 py-2">{r.jumlah}</td>
+                <td className="px-3 py-2 font-medium">{formatRupiah(r.penjualan)}</td>
+                <td className="px-3 py-2 text-orange-600">{formatRupiah(r.modal)}</td>
+                <td className={`px-3 py-2 font-medium ${r.keuntungan >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatRupiah(r.keuntungan)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="overflow-x-auto rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
+        <table className="w-full min-w-[920px] text-sm">
           <thead className="bg-slate-50 text-left">
             <tr>
               <th className="px-3 py-2">No. Pesanan</th>
               <th className="px-3 py-2">Pembeli</th>
               <th className="px-3 py-2">Kontak</th>
               <th className="px-3 py-2">Tiket</th>
+              <th className="px-3 py-2">Periode</th>
               <th className="px-3 py-2">Jumlah</th>
               <th className="px-3 py-2">Harga Jual</th>
               <th className="px-3 py-2">Modal</th>
@@ -102,13 +156,14 @@ export default function PenjualanPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100/80">
-            {pesanan.length === 0 && <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-400">Belum ada penjualan.</td></tr>}
+            {pesanan.length === 0 && <tr><td colSpan={10} className="px-3 py-6 text-center text-slate-400">Belum ada penjualan.</td></tr>}
             {pesanan.map((p) => (
               <tr key={p.id} className="hover:bg-slate-50">
                 <td className="px-3 py-2 font-mono text-xs">{p.no_pesanan}</td>
                 <td className="px-3 py-2 font-medium">{p.nama_pembeli}</td>
                 <td className="px-3 py-2 text-slate-500">{p.kontak}</td>
                 <td className="px-3 py-2">{p.tiket_nama || '-'}</td>
+                <td className="px-3 py-2 text-slate-500">{p.periode_nama || 'Harga dasar'}</td>
                 <td className="px-3 py-2">{p.jumlah}</td>
                 <td className="px-3 py-2 font-medium">{formatRupiah(Number(p.total))}</td>
                 <td className="px-3 py-2 text-orange-600">{formatRupiah(Number(p.modal_total))}</td>

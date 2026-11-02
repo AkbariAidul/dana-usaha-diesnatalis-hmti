@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto'
 import { supabase, supabaseAdmin } from './supabase'
 import { todayISO } from './utils'
-import type { Tenant, Pembayaran, KategoriSewa, HargaDasar, FaktorHarga, Acara, Merchandise, Ticket, TicketPeriode, TicketKatalogItem, TicketBundleDiscount, PesananTiket, PeriodeHarga } from './types'
+import type { Tenant, Pembayaran, KategoriSewa, HargaDasar, FaktorHarga, Acara, Merchandise, Ticket, TicketPeriode, TicketKatalogItem, TicketBundleDiscount, TicketModalItem, PesananTiket, PeriodeHarga } from './types'
 
 // ─── Acara ───────────────────────────────────────────────────────────────────
 
@@ -311,9 +311,10 @@ export async function deleteMerchandise(id: string) {
 
 // ─── Ticket ──────────────────────────────────────────────────────────────────
 
-const TICKET_FIELDS = ['nama', 'deskripsi', 'harga', 'modal', 'jumlah_orang', 'kuota', 'urutan', 'aktif', 'is_hari_h', 'mulai_jual', 'selesai_jual'] as const
+const TICKET_FIELDS = ['nama', 'deskripsi', 'harga', 'jumlah_orang', 'kuota', 'urutan', 'aktif', 'is_hari_h', 'mulai_jual', 'selesai_jual'] as const
 const TICKET_PERIODE_FIELDS = ['tiket_tipe_id', 'nama', 'tanggal_mulai', 'tanggal_selesai', 'harga', 'urutan'] as const
 const TICKET_BUNDLE_FIELDS = ['tiket_tipe_id', 'jumlah_min', 'diskon_persen', 'urutan'] as const
+const TICKET_MODAL_FIELDS = ['nama', 'harga', 'urutan'] as const
 
 function pickFields<T extends Record<string, unknown>>(obj: T, fields: readonly string[]) {
   const out: Record<string, unknown> = {}
@@ -401,6 +402,30 @@ export async function deleteTicketBundleDiscount(id: string) {
   if (error) throw error
 }
 
+export async function getTicketModalItem(): Promise<TicketModalItem[]> {
+  const { data, error } = await supabaseAdmin.from('tiket_modal_item').select('*').order('urutan').order('nama')
+  if (error) throw error
+  return (data ?? []) as TicketModalItem[]
+}
+
+export async function upsertTicketModalItem(payload: Partial<TicketModalItem>) {
+  const fields = pickFields(payload as Record<string, unknown>, TICKET_MODAL_FIELDS)
+  if (payload.id) {
+    const { data, error } = await supabaseAdmin
+      .from('tiket_modal_item').update(fields).eq('id', payload.id).select().single()
+    if (error) throw error
+    return data
+  }
+  const { data, error } = await supabaseAdmin.from('tiket_modal_item').insert(fields).select().single()
+  if (error) throw error
+  return data
+}
+
+export async function deleteTicketModalItem(id: string) {
+  const { error } = await supabaseAdmin.from('tiket_modal_item').delete().eq('id', id)
+  if (error) throw error
+}
+
 export async function getTicketKatalog(): Promise<TicketKatalogItem[]> {
   const [tipeRes, periodeRes, pendingRes, bundleRes] = await Promise.all([
     supabaseAdmin.from('tiket_tipe').select('*').order('urutan').order('nama'),
@@ -448,25 +473,41 @@ export async function getTicketKatalog(): Promise<TicketKatalogItem[]> {
 }
 
 export async function getTicketPenjualan(): Promise<PesananTiket[]> {
-  const [pesananRes, tipeRes] = await Promise.all([
+  const [pesananRes, tipeRes, periodeRes, modalRes] = await Promise.all([
     supabaseAdmin.from('pesanan_tiket').select('*').order('created_at', { ascending: false }),
-    supabaseAdmin.from('tiket_tipe').select('id,nama,modal'),
+    supabaseAdmin.from('tiket_tipe').select('id,nama'),
+    supabaseAdmin.from('tiket_periode').select('*').order('tanggal_mulai').order('urutan'),
+    supabaseAdmin.from('tiket_modal_item').select('harga'),
   ])
   if (pesananRes.error) throw pesananRes.error
   if (tipeRes.error) throw tipeRes.error
+  if (periodeRes.error) throw periodeRes.error
+  if (modalRes.error) throw modalRes.error
 
-  const tipeById = new Map<string, { nama: string; modal: number }>()
-  for (const t of (tipeRes.data ?? []) as { id: string; nama: string; modal: number | null }[]) {
-    tipeById.set(t.id, { nama: t.nama, modal: Number(t.modal ?? 0) })
+  const tipeById = new Map<string, string>()
+  for (const t of (tipeRes.data ?? []) as { id: string; nama: string }[]) {
+    tipeById.set(t.id, t.nama)
   }
+  const periods = (periodeRes.data ?? []) as TicketPeriode[]
+  const modalSatuan = ((modalRes.data ?? []) as { harga: number | null }[]).reduce(
+    (sum, item) => sum + Number(item.harga ?? 0),
+    0
+  )
 
   return ((pesananRes.data ?? []) as Record<string, unknown>[]).map((row) => {
-    const tipe = row.tiket_tipe_id ? tipeById.get(String(row.tiket_tipe_id)) : undefined
+    const tipeId = row.tiket_tipe_id ? String(row.tiket_tipe_id) : null
+    const createdAt = row.created_at ? new Date(String(row.created_at)) : null
+    const tanggal = createdAt && !Number.isNaN(createdAt.getTime())
+      ? createdAt.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' })
+      : ''
+    const periode = tipeId
+      ? periods.find((p) => p.tiket_tipe_id === tipeId && tanggal >= p.tanggal_mulai && tanggal <= p.tanggal_selesai)
+      : undefined
     const jumlah = Number(row.jumlah ?? 0)
-    const modalSatuan = tipe?.modal ?? 0
     return {
       ...row,
-      tiket_nama: tipe?.nama ?? null,
+      tiket_nama: tipeId ? tipeById.get(tipeId) ?? null : null,
+      periode_nama: periode?.nama ?? null,
       modal_satuan: modalSatuan,
       modal_total: modalSatuan * jumlah,
       keuntungan: Number(row.total ?? 0) - modalSatuan * jumlah,

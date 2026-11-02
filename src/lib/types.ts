@@ -103,7 +103,6 @@ export interface Ticket {
   nama: string
   deskripsi: string | null
   harga: number
-  modal: number
   jumlah_orang: number
   kuota: number
   terjual: number
@@ -141,12 +140,20 @@ export interface TicketBundleDiscount {
   urutan: number
 }
 
+export interface TicketModalItem {
+  id: string
+  nama: string
+  harga: number
+  urutan: number
+}
+
 export interface PesananTiket {
   id: string
   no_pesanan: string
   nama_pembeli: string
   kontak: string
   tiket_nama: string | null
+  periode_nama: string | null
   jumlah: number
   total: number
   status: 'menunggu_verifikasi' | 'lunas' | 'ditolak' | 'batal'
