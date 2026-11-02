@@ -1,22 +1,30 @@
 import { NextResponse } from 'next/server'
+import { findUserByPIN } from '@/lib/auth'
 
 export async function POST(request: Request) {
   const body = await request.json()
   const pin = body.pin as string
-  const expectedPin = process.env.DASHBOARD_PIN || '079876'
   const session = process.env.DASHBOARD_SESSION_SECRET || (process.env.NODE_ENV !== 'production' ? 'authenticated' : '')
 
   if (!session) {
     return NextResponse.json({ error: 'DASHBOARD_SESSION_SECRET belum diset' }, { status: 500 })
   }
 
-  if (pin !== expectedPin) {
+  const user = findUserByPIN(pin)
+  if (!user) {
     return NextResponse.json({ error: 'PIN salah' }, { status: 401 })
   }
 
-  const response = NextResponse.json({ success: true })
+  const response = NextResponse.json({ success: true, user })
   response.cookies.set('dashboard_session', session, {
     httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 86400,
+    path: '/',
+  })
+  response.cookies.set('dashboard_user', encodeURIComponent(JSON.stringify(user)), {
+    httpOnly: false,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
     maxAge: 86400,

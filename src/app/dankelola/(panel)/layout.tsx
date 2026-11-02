@@ -3,9 +3,11 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { ChevronRight, Globe, LogOut, Menu, X } from 'lucide-react'
+import { ChevronRight, Globe, LogOut, Menu, PartyPopper, X } from 'lucide-react'
 import { prefetch } from '../api'
 import { menuConfig } from '@/lib/menu'
+import { useConfirm } from '@/components/confirm-dialog'
+import type { DashboardRole, DashboardUser } from '@/lib/auth'
 
 function isPathActive(pathname: string, href: string) {
   if (href === '/dankelola') return pathname === '/dankelola'
@@ -73,12 +75,37 @@ function getBreadcrumbs(pathname: string) {
   return breadcrumbs
 }
 
+const ROLE_LABEL: Record<DashboardRole, string> = {
+  tenant: 'tenant',
+  merchandise: 'merchandise',
+  ticket: 'tiket',
+}
+
+const WELCOME_COPY: Record<DashboardRole, (name: string) => { title: string; body: string }> = {
+  tenant: (name) => ({
+    title: `Yo, ${name}!`,
+    body: 'Tenant hari ini udah nungguin nih. Yuk gas kelola biar makin rapi dan cuan.',
+  }),
+  merchandise: (name) => ({
+    title: `Halo, ${name}!`,
+    body: 'Merchandise udah siap diurus. Gas kelola dengan baik biar makin laris.',
+  }),
+  ticket: (name) => ({
+    title: `Halo, ${name}!`,
+    body: 'Tiket-tiketnya udah nungguin. Yuk kelola dengan baik biar makin aman.',
+  }),
+}
+
 export default function PanelLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
+  const confirm = useConfirm()
   const [open, setOpen] = useState(false)
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
+  const [currentUser, setCurrentUser] = useState<DashboardUser | null>(null)
+  const [welcome, setWelcome] = useState<DashboardUser | null>(null)
   const breadcrumbs = getBreadcrumbs(pathname)
+  const welcomeCopy = welcome ? WELCOME_COPY[welcome.role](welcome.name) : null
 
   useEffect(() => {
     const activeKey = findActiveGroup(pathname)
@@ -99,9 +126,40 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     return () => clearTimeout(t)
   }, [])
 
+  useEffect(() => {
+    const match = document.cookie.match(/(?:^|; )dashboard_user=([^;]+)/)
+    if (match) {
+      try {
+        setCurrentUser(JSON.parse(decodeURIComponent(match[1])))
+      } catch {
+        setCurrentUser(null)
+      }
+    }
+    const pending = sessionStorage.getItem('dashboard_welcome')
+    if (pending) {
+      sessionStorage.removeItem('dashboard_welcome')
+      try {
+        setWelcome(JSON.parse(pending))
+      } catch {
+        setWelcome(null)
+      }
+    }
+  }, [])
+
   async function logout() {
+    const done = await confirm({
+      title: 'Cek dulu, ya!',
+      description: currentUser
+        ? `${currentUser.name} udah selesai kelola ${ROLE_LABEL[currentUser.role]} hari ini?`
+        : 'Udah selesai kerja hari ini?',
+      confirmText: 'Udah, cabut!',
+      cancelText: 'Belum nih',
+      danger: false,
+    })
+    if (!done) return
     await fetch('/api/auth/logout', { method: 'POST' } as RequestInit)
     router.push('/')
+    router.refresh()
   }
 
   const toggleGroup = (key: string) => {
@@ -301,6 +359,29 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           </div>
         </main>
       </div>
+
+      {welcome && welcomeCopy && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setWelcome(null)} />
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-slate-200/70 bg-white p-6 shadow-2xl animate-dialog-in"
+          >
+            <div className="mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-primary-50 text-primary-600">
+              <PartyPopper className="h-6 w-6" />
+            </div>
+            <h2 className="text-lg font-semibold text-slate-900">{welcomeCopy.title}</h2>
+            <p className="mt-1 text-sm leading-relaxed text-slate-500">{welcomeCopy.body}</p>
+            <button
+              onClick={() => setWelcome(null)}
+              className="mt-6 w-full rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700"
+            >
+              Gas, mulai!
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

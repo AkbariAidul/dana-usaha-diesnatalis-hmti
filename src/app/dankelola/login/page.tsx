@@ -24,6 +24,8 @@ export default function LoginPage() {
         toast.error('PIN salah')
         return
       }
+      const data = await res.json()
+      sessionStorage.setItem('dashboard_welcome', JSON.stringify(data.user))
       router.replace('/dankelola')
       router.refresh()
     } catch {
