@@ -108,6 +108,8 @@ function getBreadcrumbs(pathname: string) {
   } else if (pathname.startsWith('/dankelola/ticket/periode/')) {
     const action = pathname === '/dankelola/ticket/periode/new' ? 'Tambah Periode' : 'Edit Periode'
     breadcrumbs.push({ label: action, href: pathname })
+  } else if (pathname === '/dankelola/ticket/modal') {
+    breadcrumbs.push({ label: 'Kelola Modal', href: pathname })
   }
 
   return breadcrumbs

@@ -1,10 +1,11 @@
 ﻿'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight, Inbox, Search } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Inbox, Search, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
 import { PageSkeleton } from '../../ui'
+import { useConfirm } from '@/components/confirm-dialog'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { formatRupiah } from '@/lib/utils'
 import type { PesananTiket, TicketPeriode } from '@/lib/types'
@@ -17,6 +18,7 @@ const STATUS: Record<PesananTiket['status'], { label: string; className: string;
 }
 
 export default function PenjualanPage() {
+  const confirm = useConfirm()
   const [pesanan, setPesanan] = useState<PesananTiket[]>([])
   const [periodeList, setPeriodeList] = useState<TicketPeriode[]>([])
   const [loading, setLoading] = useState(true)
@@ -25,6 +27,9 @@ export default function PenjualanPage() {
   const [search, setSearch] = useState('')
   const [periodeFilter, setPeriodeFilter] = useState('')
   const [page, setPage] = useState(1)
+  const [preview, setPreview] = useState<string | null>(null)
+  const [rejectTarget, setRejectTarget] = useState<PesananTiket | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
 
   const load = useCallback(async () => {
     const [data, periode] = await Promise.all([
@@ -47,10 +52,10 @@ export default function PenjualanPage() {
     setPage(1)
   }, [search, periodeFilter])
 
-  async function verifikasi(id: string, status: 'lunas' | 'ditolak') {
+  async function verifikasi(id: string, status: 'lunas' | 'ditolak', catatan: string | null = null) {
     setBusyId(id)
     try {
-      await sendJSON('/api/ticket/verification', 'POST', { id, status, catatan_admin: null })
+      await sendJSON('/api/ticket/verification', 'POST', { id, status, catatan_admin: catatan })
       toast.success(status === 'lunas' ? 'Pesanan diverifikasi' : 'Pesanan ditolak')
       await load()
     } catch (e) {
@@ -58,6 +63,35 @@ export default function PenjualanPage() {
     } finally {
       setBusyId(null)
     }
+  }
+
+  async function handleVerifikasi(p: PesananTiket) {
+    const ok = await confirm({
+      title: 'Verifikasi pesanan?',
+      description: `Pesanan ${p.no_pesanan} atas nama ${p.nama_pembeli} akan ditandai lunas dan tiket otomatis dibuat.`,
+      confirmText: 'Verifikasi',
+      danger: false,
+    })
+    if (!ok) return
+    await verifikasi(p.id, 'lunas')
+  }
+
+  function openReject(p: PesananTiket) {
+    setRejectReason('')
+    setRejectTarget(p)
+  }
+
+  async function submitReject() {
+    if (!rejectTarget) return
+    const reason = rejectReason.trim()
+    if (!reason) {
+      toast.error('Alasan penolakan wajib diisi')
+      return
+    }
+    const target = rejectTarget
+    await verifikasi(target.id, 'ditolak', reason)
+    setRejectTarget(null)
+    setRejectReason('')
   }
 
   if (loading) return <PageSkeleton />
@@ -171,9 +205,14 @@ export default function PenjualanPage() {
                     </td>
                     <td className="px-5 py-3">
                       {p.bukti_url ? (
-                        <a href={p.bukti_url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary-600 hover:underline">
-                          Lihat
-                        </a>
+                        <button
+                          type="button"
+                          onClick={() => setPreview(p.bukti_url)}
+                          className="block h-12 w-12 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 transition hover:ring-2 hover:ring-primary-200"
+                          title="Lihat bukti pembayaran"
+                        >
+                          <img src={p.bukti_url} alt={`Bukti ${p.no_pesanan}`} loading="lazy" className="h-full w-full object-cover" />
+                        </button>
                       ) : (
                         <span className="text-xs text-slate-400">—</span>
                       )}
@@ -182,14 +221,14 @@ export default function PenjualanPage() {
                       {p.status === 'menunggu_verifikasi' ? (
                         <div className="flex items-center gap-1.5">
                           <button
-                            onClick={() => verifikasi(p.id, 'lunas')}
+                            onClick={() => void handleVerifikasi(p)}
                             disabled={busyId === p.id}
                             className="rounded-lg bg-green-600 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-green-700 disabled:opacity-50"
                           >
                             Verifikasi
                           </button>
                           <button
-                            onClick={() => verifikasi(p.id, 'ditolak')}
+                            onClick={() => openReject(p)}
                             disabled={busyId === p.id}
                             className="rounded-lg bg-red-600 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-red-700 disabled:opacity-50"
                           >
@@ -234,6 +273,72 @@ export default function PenjualanPage() {
           </div>
         </div>
       </section>
+
+      {preview && (
+        <div
+          className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-900/80 p-4"
+          onClick={() => setPreview(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setPreview(null)}
+            aria-label="Tutup"
+            className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <img
+            src={preview}
+            alt="Bukti pembayaran"
+            className="max-h-[90dvh] max-w-full rounded-xl object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+
+      {rejectTarget && (
+        <div
+          className="fixed inset-0 z-[95] flex items-center justify-center bg-slate-900/60 p-4"
+          onClick={() => setRejectTarget(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold text-slate-900">Tolak pesanan?</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Pesanan {rejectTarget.no_pesanan} atas nama {rejectTarget.nama_pembeli} akan ditolak.
+            </p>
+            <label className="mb-1 mt-4 block text-xs font-medium text-slate-500">Alasan penolakan</label>
+            <textarea
+              rows={3}
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Contoh: Bukti transfer tidak valid"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
+            />
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setRejectTarget(null)}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => void submitReject()}
+                disabled={busyId === rejectTarget.id}
+                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-50"
+              >
+                Tolak Pesanan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

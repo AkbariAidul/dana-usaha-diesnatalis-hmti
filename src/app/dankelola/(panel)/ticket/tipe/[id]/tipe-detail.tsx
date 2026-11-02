@@ -312,7 +312,7 @@ export default function TipeDetail({
                       <th className="px-3 py-2">Nama</th>
                       <th className="px-3 py-2">Periode</th>
                       <th className="px-3 py-2">Harga</th>
-                      <th className="px-3 py-2">Aksi</th>
+                      {!readOnly && <th className="px-3 py-2">Aksi</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100/80">
@@ -321,34 +321,38 @@ export default function TipeDetail({
                         <td className="px-3 py-2 font-medium">{p.nama || '-'}</td>
                         <td className="px-3 py-2 text-slate-500">{p.tanggal_mulai.slice(0, 10)} — {p.tanggal_selesai.slice(0, 10)}</td>
                         <td className="px-3 py-2 font-semibold text-primary-600">{formatRupiah(Number(p.harga))}</td>
-                        <td className="px-3 py-2">
-                          <div className="flex gap-1">
-                            <button onClick={() => editPeriode(p)} className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-primary-600 transition-colors" title="Edit">
-                              <Pencil className="h-3.5 w-3.5" />
-                            </button>
-                            <button onClick={() => hapusPeriode(p.id)} className="grid h-7 w-7 place-items-center rounded-lg text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors" title="Hapus">
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        </td>
+                        {!readOnly && (
+                          <td className="px-3 py-2">
+                            <div className="flex gap-1">
+                              <button onClick={() => editPeriode(p)} className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-primary-600 transition-colors" title="Edit">
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                              <button onClick={() => hapusPeriode(p.id)} className="grid h-7 w-7 place-items-center rounded-lg text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors" title="Hapus">
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             )}
-            <div className="grid gap-3 border-t border-slate-100 pt-3 md:grid-cols-5 md:items-end">
-              <div><label className={label}>Nama (opsional)</label><input className={input} value={periodeNama} onChange={e => setPeriodeNama(e.target.value)} placeholder="Early Bird" /></div>
-              <div><label className={label}>Mulai</label><input type="date" className={input} value={periodeMulai} onChange={e => setPeriodeMulai(e.target.value)} /></div>
-              <div><label className={label}>Selesai</label><input type="date" className={input} value={periodeSelesai} onChange={e => setPeriodeSelesai(e.target.value)} /></div>
-              <div><label className={label}>Harga (Rp)</label><input type="number" min={0} className={input} placeholder="cth: 50000" value={periodeHarga || ''} onChange={e => setPeriodeHarga(Number(e.target.value))} /></div>
-              <div className="flex gap-2">
-                <button onClick={simpanPeriode} disabled={periodeSubmitting} className="flex-1 rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-                  {periodeSubmitting ? 'Menyimpan...' : editPeriodeId ? 'Simpan' : '+ Tambah Periode'}
-                </button>
-                {editPeriodeId && <button onClick={resetPeriodeForm} className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600">Batal</button>}
+            {!readOnly && (
+              <div className="grid gap-3 border-t border-slate-100 pt-3 md:grid-cols-5 md:items-end">
+                <div><label className={label}>Nama (opsional)</label><input className={input} value={periodeNama} onChange={e => setPeriodeNama(e.target.value)} placeholder="Early Bird" /></div>
+                <div><label className={label}>Mulai</label><input type="date" className={input} value={periodeMulai} onChange={e => setPeriodeMulai(e.target.value)} /></div>
+                <div><label className={label}>Selesai</label><input type="date" className={input} value={periodeSelesai} onChange={e => setPeriodeSelesai(e.target.value)} /></div>
+                <div><label className={label}>Harga (Rp)</label><input type="number" min={0} className={input} placeholder="cth: 50000" value={periodeHarga || ''} onChange={e => setPeriodeHarga(Number(e.target.value))} /></div>
+                <div className="flex gap-2">
+                  <button onClick={simpanPeriode} disabled={periodeSubmitting} className="flex-1 rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+                    {periodeSubmitting ? 'Menyimpan...' : editPeriodeId ? 'Simpan' : '+ Tambah Periode'}
+                  </button>
+                  {editPeriodeId && <button onClick={resetPeriodeForm} className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600">Batal</button>}
+                </div>
               </div>
-            </div>
+            )}
           </>
         )}
       </div>
@@ -369,7 +373,7 @@ export default function TipeDetail({
                     <tr>
                       <th className="px-3 py-2">Syarat</th>
                       <th className="px-3 py-2">Diskon</th>
-                      <th className="px-3 py-2">Aksi</th>
+                      {!readOnly && <th className="px-3 py-2">Aksi</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100/80">
@@ -377,36 +381,40 @@ export default function TipeDetail({
                       <tr key={b.id} className="hover:bg-slate-50">
                         <td className="px-3 py-2">Beli {b.jumlah_min} tiket</td>
                         <td className="px-3 py-2 font-semibold text-green-600">{b.diskon_persen}%</td>
-                        <td className="px-3 py-2">
-                          <div className="flex gap-1">
-                            <button onClick={() => editBundle(b)} className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-primary-600 transition-colors" title="Edit">
-                              <Pencil className="h-3.5 w-3.5" />
-                            </button>
-                            <button onClick={() => hapusBundle(b.id)} className="grid h-7 w-7 place-items-center rounded-lg text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors" title="Hapus">
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        </td>
+                        {!readOnly && (
+                          <td className="px-3 py-2">
+                            <div className="flex gap-1">
+                              <button onClick={() => editBundle(b)} className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-primary-600 transition-colors" title="Edit">
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                              <button onClick={() => hapusBundle(b.id)} className="grid h-7 w-7 place-items-center rounded-lg text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors" title="Hapus">
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             )}
-            <div className="flex flex-wrap items-end gap-3 border-t border-slate-100 pt-3">
-              <div>
-                <label className={label}>Jumlah tiket</label>
-                <input type="number" min={2} className={input} placeholder="cth: 5" value={bundleMin || ''} onChange={e => setBundleMin(Number(e.target.value))} />
+            {!readOnly && (
+              <div className="flex flex-wrap items-end gap-3 border-t border-slate-100 pt-3">
+                <div>
+                  <label className={label}>Jumlah tiket</label>
+                  <input type="number" min={2} className={input} placeholder="cth: 5" value={bundleMin || ''} onChange={e => setBundleMin(Number(e.target.value))} />
+                </div>
+                <div>
+                  <label className={label}>Diskon (%)</label>
+                  <input type="number" min={1} max={100} className={input} placeholder="cth: 10" value={bundleDiskon || ''} onChange={e => setBundleDiskon(Number(e.target.value))} />
+                </div>
+                <button onClick={simpanBundle} disabled={bundleSubmitting} className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+                  {bundleSubmitting ? 'Menyimpan...' : editBundleId ? 'Simpan' : '+ Tambah Diskon'}
+                </button>
+                {editBundleId && <button onClick={resetBundleForm} className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600">Batal</button>}
               </div>
-              <div>
-                <label className={label}>Diskon (%)</label>
-                <input type="number" min={1} max={100} className={input} placeholder="cth: 10" value={bundleDiskon || ''} onChange={e => setBundleDiskon(Number(e.target.value))} />
-              </div>
-              <button onClick={simpanBundle} disabled={bundleSubmitting} className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-                {bundleSubmitting ? 'Menyimpan...' : editBundleId ? 'Simpan' : '+ Tambah Diskon'}
-              </button>
-              {editBundleId && <button onClick={resetBundleForm} className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600">Batal</button>}
-            </div>
+            )}
           </>
         )}
       </div>
