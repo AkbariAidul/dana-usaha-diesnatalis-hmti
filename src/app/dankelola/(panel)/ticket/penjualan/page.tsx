@@ -1,11 +1,54 @@
 ﻿'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import {
+  Banknote,
+  CheckCircle2,
+  Clock,
+  Coins,
+  Inbox,
+  Ticket,
+  TrendingUp,
+  Wallet,
+  XCircle,
+  type LucideIcon,
+} from 'lucide-react'
 import { getJSON } from '../../../api'
 import { PageSkeleton } from '../../ui'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { formatRupiah } from '@/lib/utils'
 import type { PesananTiket, TicketModalItem } from '@/lib/types'
+
+type Tone = 'primary' | 'amber' | 'green' | 'red' | 'orange'
+
+const TONES: Record<Tone, { chip: string; value: string }> = {
+  primary: { chip: 'bg-primary-50 text-primary-600', value: 'text-slate-900' },
+  amber: { chip: 'bg-amber-50 text-amber-600', value: 'text-amber-600' },
+  green: { chip: 'bg-green-50 text-green-600', value: 'text-green-600' },
+  red: { chip: 'bg-red-50 text-red-600', value: 'text-red-600' },
+  orange: { chip: 'bg-orange-50 text-orange-600', value: 'text-orange-600' },
+}
+
+const STATUS: Record<PesananTiket['status'], { label: string; className: string; dot: string }> = {
+  menunggu_verifikasi: { label: 'Menunggu', className: 'bg-amber-50 text-amber-700 ring-amber-200', dot: 'bg-amber-500' },
+  lunas: { label: 'Lunas', className: 'bg-green-50 text-green-700 ring-green-200', dot: 'bg-green-500' },
+  ditolak: { label: 'Ditolak', className: 'bg-red-50 text-red-700 ring-red-200', dot: 'bg-red-500' },
+  batal: { label: 'Batal', className: 'bg-slate-100 text-slate-600 ring-slate-200', dot: 'bg-slate-400' },
+}
+
+function StatCard({ label, value, icon: Icon, tone }: { label: string; value: string | number; icon: LucideIcon; tone: Tone }) {
+  return (
+    <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm shadow-slate-200/40 transition duration-200 hover:-translate-y-0.5 hover:shadow-md">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm text-slate-500">{label}</p>
+        <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${TONES[tone].chip}`}>
+          <Icon className="h-4 w-4" />
+        </span>
+      </div>
+      <p className={`mt-2 text-xl font-bold tracking-tight tabular-nums md:text-2xl ${TONES[tone].value}`}>{value}</p>
+    </div>
+  )
+}
 
 export default function PenjualanPage() {
   const [pesanan, setPesanan] = useState<PesananTiket[]>([])
@@ -44,6 +87,7 @@ export default function PenjualanPage() {
   const menunggu = pesanan.filter((p) => p.status === 'menunggu_verifikasi').length
   const lunas = pesanan.filter((p) => p.status === 'lunas')
   const ditolak = pesanan.filter((p) => p.status === 'ditolak').length
+  const totalTiket = lunas.reduce((s, p) => s + Number(p.jumlah), 0)
   const totalPenjualan = lunas.reduce((s, p) => s + Number(p.total), 0)
   const totalModal = lunas.reduce((s, p) => s + Number(p.modal_total), 0)
   const totalKeuntungan = lunas.reduce((s, p) => s + Number(p.keuntungan), 0)
@@ -65,125 +109,170 @@ export default function PenjualanPage() {
   })()
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Penjualan Tiket</h1>
-        <p className="text-sm text-slate-500">Modal, harga jual, dan keuntungan dihitung per pesanan.</p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-          <p className="text-sm text-slate-500">Total Pesanan</p>
-          <p className="text-3xl font-bold text-primary-600">{pesanan.length}</p>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-400 opacity-75" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary-500" />
+            </span>
+            Live
+          </div>
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Penjualan Tiket</h1>
+          <p className="text-sm text-slate-500">Ringkasan modal, harga jual, dan keuntungan dari semua tipe & periode.</p>
         </div>
-        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-          <p className="text-sm text-slate-500">Menunggu Verifikasi</p>
-          <p className="text-3xl font-bold text-yellow-600">{menunggu}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-          <p className="text-sm text-slate-500">Lunas</p>
-          <p className="text-3xl font-bold text-green-600">{lunas.length}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-          <p className="text-sm text-slate-500">Ditolak</p>
-          <p className="text-3xl font-bold text-red-600">{ditolak}</p>
+        <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
+          <Ticket className="h-4 w-4 text-primary-500" />
+          <span className="font-semibold text-slate-900">{totalTiket}</span> tiket terjual
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-          <p className="text-sm text-slate-500">Penjualan Lunas</p>
-          <p className="text-2xl font-bold text-slate-900">{formatRupiah(totalPenjualan)}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-          <p className="text-sm text-slate-500">Modal / Tiket</p>
-          <p className="text-2xl font-bold text-orange-600">{formatRupiah(modalPerTiket)}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-          <p className="text-sm text-slate-500">Modal Terpakai</p>
-          <p className="text-2xl font-bold text-orange-600">{formatRupiah(totalModal)}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-          <p className="text-sm text-slate-500">Keuntungan</p>
-          <p className={`text-2xl font-bold ${totalKeuntungan >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {formatRupiah(totalKeuntungan)}
-          </p>
-        </div>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+        <StatCard label="Total Pesanan" value={pesanan.length} icon={Ticket} tone="primary" />
+        <StatCard label="Menunggu Verifikasi" value={menunggu} icon={Clock} tone="amber" />
+        <StatCard label="Lunas" value={lunas.length} icon={CheckCircle2} tone="green" />
+        <StatCard label="Ditolak" value={ditolak} icon={XCircle} tone="red" />
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
-        <table className="w-full min-w-[640px] text-sm">
-          <thead className="bg-slate-50 text-left">
-            <tr>
-              <th className="px-3 py-2">Tipe</th>
-              <th className="px-3 py-2">Periode</th>
-              <th className="px-3 py-2">Tiket Terjual</th>
-              <th className="px-3 py-2">Penjualan</th>
-              <th className="px-3 py-2">Modal</th>
-              <th className="px-3 py-2">Keuntungan</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100/80">
-            {rekap.length === 0 && <tr><td colSpan={6} className="px-3 py-6 text-center text-slate-400">Belum ada penjualan lunas.</td></tr>}
-            {rekap.map((r) => (
-              <tr key={`${r.tipe}|${r.periode}`} className="hover:bg-slate-50">
-                <td className="px-3 py-2 font-medium">{r.tipe}</td>
-                <td className="px-3 py-2 text-slate-500">{r.periode}</td>
-                <td className="px-3 py-2">{r.jumlah}</td>
-                <td className="px-3 py-2 font-medium">{formatRupiah(r.penjualan)}</td>
-                <td className="px-3 py-2 text-orange-600">{formatRupiah(r.modal)}</td>
-                <td className={`px-3 py-2 font-medium ${r.keuntungan >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatRupiah(r.keuntungan)}</td>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+        <StatCard label="Penjualan Lunas" value={formatRupiah(totalPenjualan)} icon={Banknote} tone="primary" />
+        <StatCard label="Modal / Tiket" value={formatRupiah(modalPerTiket)} icon={Wallet} tone="orange" />
+        <StatCard label="Modal Terpakai" value={formatRupiah(totalModal)} icon={Coins} tone="orange" />
+        <StatCard label="Keuntungan" value={formatRupiah(totalKeuntungan)} icon={TrendingUp} tone={totalKeuntungan >= 0 ? 'green' : 'red'} />
+      </div>
+
+      <section className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
+        <div className="flex flex-col gap-1 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">Rekap per Tipe & Periode</h2>
+            <p className="text-xs text-slate-500">Dihitung dari pesanan berstatus lunas.</p>
+          </div>
+          <span className="inline-flex w-fit items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+            {rekap.length} baris
+          </span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[680px] text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50/70 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-5 py-3">Tipe</th>
+                <th className="px-5 py-3">Periode</th>
+                <th className="px-5 py-3 text-right">Tiket</th>
+                <th className="px-5 py-3 text-right">Penjualan</th>
+                <th className="px-5 py-3 text-right">Modal</th>
+                <th className="px-5 py-3 text-right">Keuntungan</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-slate-100/80">
+              {rekap.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-5 py-12 text-center">
+                    <Inbox className="mx-auto mb-2 h-8 w-8 text-slate-300" />
+                    <p className="text-sm text-slate-400">Belum ada penjualan lunas.</p>
+                  </td>
+                </tr>
+              )}
+              {rekap.map((r) => (
+                <tr key={`${r.tipe}|${r.periode}`} className="transition-colors hover:bg-slate-50/70">
+                  <td className="px-5 py-3 font-medium text-slate-900">{r.tipe}</td>
+                  <td className="px-5 py-3 text-slate-500">{r.periode}</td>
+                  <td className="px-5 py-3 text-right tabular-nums text-slate-700">{r.jumlah}</td>
+                  <td className="px-5 py-3 text-right font-medium tabular-nums text-slate-900">{formatRupiah(r.penjualan)}</td>
+                  <td className="px-5 py-3 text-right tabular-nums text-orange-600">{formatRupiah(r.modal)}</td>
+                  <td className={`px-5 py-3 text-right font-semibold tabular-nums ${r.keuntungan >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {formatRupiah(r.keuntungan)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            {rekap.length > 0 && (
+              <tfoot className="border-t border-slate-200 bg-slate-50/60">
+                <tr className="text-sm font-semibold text-slate-900">
+                  <td colSpan={2} className="px-5 py-3">Total</td>
+                  <td className="px-5 py-3 text-right tabular-nums">{totalTiket}</td>
+                  <td className="px-5 py-3 text-right tabular-nums">{formatRupiah(totalPenjualan)}</td>
+                  <td className="px-5 py-3 text-right tabular-nums text-orange-600">{formatRupiah(totalModal)}</td>
+                  <td className={`px-5 py-3 text-right tabular-nums ${totalKeuntungan >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {formatRupiah(totalKeuntungan)}
+                  </td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      </section>
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
-        <table className="w-full min-w-[920px] text-sm">
-          <thead className="bg-slate-50 text-left">
-            <tr>
-              <th className="px-3 py-2">No. Pesanan</th>
-              <th className="px-3 py-2">Pembeli</th>
-              <th className="px-3 py-2">Kontak</th>
-              <th className="px-3 py-2">Tiket</th>
-              <th className="px-3 py-2">Periode</th>
-              <th className="px-3 py-2">Jumlah</th>
-              <th className="px-3 py-2">Harga Jual</th>
-              <th className="px-3 py-2">Modal</th>
-              <th className="px-3 py-2">Keuntungan</th>
-              <th className="px-3 py-2">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100/80">
-            {pesanan.length === 0 && <tr><td colSpan={10} className="px-3 py-6 text-center text-slate-400">Belum ada penjualan.</td></tr>}
-            {pesanan.map((p) => (
-              <tr key={p.id} className="hover:bg-slate-50">
-                <td className="px-3 py-2 font-mono text-xs">{p.no_pesanan}</td>
-                <td className="px-3 py-2 font-medium">{p.nama_pembeli}</td>
-                <td className="px-3 py-2 text-slate-500">{p.kontak}</td>
-                <td className="px-3 py-2">{p.tiket_nama || '-'}</td>
-                <td className="px-3 py-2 text-slate-500">{p.periode_nama || 'Harga dasar'}</td>
-                <td className="px-3 py-2">{p.jumlah}</td>
-                <td className="px-3 py-2 font-medium">{formatRupiah(Number(p.total))}</td>
-                <td className="px-3 py-2 text-orange-600">{formatRupiah(Number(p.modal_total))}</td>
-                <td className={`px-3 py-2 font-medium ${Number(p.keuntungan) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatRupiah(Number(p.keuntungan))}
-                </td>
-                <td className="px-3 py-2">
-                  <span className={`px-2 py-0.5 rounded text-xs ${
-                    p.status === 'menunggu_verifikasi' ? 'bg-yellow-100 text-yellow-800' :
-                    p.status === 'lunas' ? 'bg-green-100 text-green-800' :
-                    p.status === 'ditolak' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-600'
-                  }`}>
-                    {p.status.replace(/_/g, ' ')}
-                  </span>
-                </td>
+      <section className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
+        <div className="flex flex-col gap-1 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">Semua Pesanan</h2>
+            <p className="text-xs text-slate-500">Modal dan keuntungan memakai modal per tiket saat ini.</p>
+          </div>
+          <span className="inline-flex w-fit items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+            {pesanan.length} pesanan
+          </span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[980px] text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50/70 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-5 py-3">No. Pesanan</th>
+                <th className="px-5 py-3">Pembeli</th>
+                <th className="px-5 py-3">Kontak</th>
+                <th className="px-5 py-3">Tiket</th>
+                <th className="px-5 py-3">Periode</th>
+                <th className="px-5 py-3 text-right">Jumlah</th>
+                <th className="px-5 py-3 text-right">Harga Jual</th>
+                <th className="px-5 py-3 text-right">Modal</th>
+                <th className="px-5 py-3 text-right">Keuntungan</th>
+                <th className="px-5 py-3">Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-slate-100/80">
+              {pesanan.length === 0 && (
+                <tr>
+                  <td colSpan={10} className="px-5 py-12 text-center">
+                    <Inbox className="mx-auto mb-2 h-8 w-8 text-slate-300" />
+                    <p className="text-sm text-slate-400">Belum ada penjualan.</p>
+                  </td>
+                </tr>
+              )}
+              {pesanan.map((p) => {
+                const status = STATUS[p.status]
+                return (
+                  <tr key={p.id} className="transition-colors hover:bg-slate-50/70">
+                    <td className="px-5 py-3 font-mono text-xs text-slate-500">{p.no_pesanan}</td>
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary-50 text-[11px] font-semibold text-primary-700">
+                          {p.nama_pembeli.charAt(0).toUpperCase()}
+                        </span>
+                        <span className="font-medium text-slate-900">{p.nama_pembeli}</span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3 text-slate-500">{p.kontak}</td>
+                    <td className="px-5 py-3 text-slate-700">{p.tiket_nama || '-'}</td>
+                    <td className="px-5 py-3 text-slate-500">{p.periode_nama || 'Harga dasar'}</td>
+                    <td className="px-5 py-3 text-right tabular-nums text-slate-700">{p.jumlah}</td>
+                    <td className="px-5 py-3 text-right font-medium tabular-nums text-slate-900">{formatRupiah(Number(p.total))}</td>
+                    <td className="px-5 py-3 text-right tabular-nums text-orange-600">{formatRupiah(Number(p.modal_total))}</td>
+                    <td className={`px-5 py-3 text-right font-semibold tabular-nums ${Number(p.keuntungan) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatRupiah(Number(p.keuntungan))}
+                    </td>
+                    <td className="px-5 py-3">
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${status.className}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />
+                        {status.label}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   )
 }

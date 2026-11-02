@@ -383,7 +383,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               pathname.startsWith('/dankelola/ticket/tipe') ||
               pathname.startsWith('/dankelola/ticket/periode') ||
               pathname.startsWith('/dankelola/ticket/tahap') ||
-              pathname.startsWith('/dankelola/ticket/modal')
+              pathname.startsWith('/dankelola/ticket/modal') ||
+              pathname.startsWith('/dankelola/ticket/penjualan')
                 ? 'w-full'
                 : 'mx-auto max-w-6xl'
             }`}
