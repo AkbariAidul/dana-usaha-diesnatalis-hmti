@@ -5,7 +5,7 @@ import Link from 'next/link'
 import QRCode from 'qrcode'
 import { toast } from 'sonner'
 import { ArrowLeft, CheckCircle2, Clock, QrCode, Upload } from 'lucide-react'
-import { formatDate, formatRupiah } from '@/lib/utils'
+import { formatDate, formatDateTime, formatRupiah } from '@/lib/utils'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 
 type Pembayaran = {
@@ -427,7 +427,7 @@ function TiketView({ data, token, reload }: { data: Extract<StatusResponse, { ti
                 <QrImage value={t.kode_qr} size={180} />
                 <p className="mt-2 font-mono text-xs text-slate-600">{t.kode_tampil}</p>
                 <p className={`mt-1 text-xs ${t.status === 'terpakai' ? 'text-green-700' : 'text-slate-500'}`}>
-                  {t.status === 'terpakai' ? `Sudah check-in ${t.digunakan_pada ? formatDate(t.digunakan_pada) : ''}` : 'Belum check-in'}
+                  {t.status === 'terpakai' ? `Sudah check-in ${t.digunakan_pada ? formatDateTime(t.digunakan_pada) : ''}` : 'Belum check-in'}
                 </p>
               </div>
             ))}

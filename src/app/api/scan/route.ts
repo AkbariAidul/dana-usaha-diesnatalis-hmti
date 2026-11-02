@@ -1,14 +1,18 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { parseQrPayload } from '@/lib/link-token'
+import { findUserByPIN } from '@/lib/auth'
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
     const payload = String(body.payload ?? '').trim()
     const confirm = body.action === 'confirm'
-    const oleh = String(body.oleh ?? 'Admin')
+    const oleh = String(body.oleh ?? '').trim()
     if (!payload) return NextResponse.json({ error: 'QR kosong' }, { status: 400 })
+    if (confirm && !findUserByPIN(oleh)) {
+      return NextResponse.json({ error: 'PIN petugas tidak valid' }, { status: 401 })
+    }
 
     if (payload.startsWith('DN26|')) {
       const parsed = parseQrPayload(payload)
