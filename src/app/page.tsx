@@ -23,7 +23,7 @@ export default async function Home() {
     <div className="relative min-h-screen bg-white text-[#111827]">
       <header className="absolute inset-x-0 top-0 z-30">
         <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-          <Link href="/" className="flex min-w-0 items-center gap-3 lg:-ml-4">
+          <Link href="/" className="flex min-w-0 items-center gap-3 lg:-ml-8">
             <Image
               src="/logo-dies.png"
               alt="Logo In4Days XI"
@@ -52,7 +52,7 @@ export default async function Home() {
             </nav>
             <Link
               href="/lacak"
-              className="shrink-0 whitespace-nowrap rounded-xl border border-primary-600 px-3 py-2 text-sm font-medium text-primary-700 transition-colors hover:bg-primary-600 hover:text-white"
+              className="shrink-0 whitespace-nowrap rounded-xl bg-primary-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700"
             >
               Lacak Pesanan
             </Link>
