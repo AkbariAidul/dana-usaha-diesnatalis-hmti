@@ -1,9 +1,7 @@
 ﻿'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { toast } from 'sonner'
-import { getJSON, sendJSON } from '../../../api'
-import { beep } from '@/lib/beep'
+import { getJSON } from '../../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
 
@@ -21,7 +19,6 @@ export default function CheckinPage() {
   const [tikets, setTikets] = useState<TiketIssued[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [scanResult, setScanResult] = useState('')
 
   const load = useCallback(async () => {
     const data = await getJSON<TiketIssued[]>('/api/ticket/checkin')
@@ -39,27 +36,6 @@ export default function CheckinPage() {
   }, [load])
   useLiveRefresh(load)
 
-  async function scanQr() {
-    const code = scanResult.trim()
-    if (!code) return
-    const found = tikets.find(t => t.kode_qr === code || t.kode_tampil === code)
-    if (!found) {
-      toast.error('QR tidak ditemukan')
-      return
-    }
-    if (found.status === 'terpakai') {
-      toast.error('QR sudah digunakan')
-      return
-    }
-    try {
-      await sendJSON('/api/ticket/checkin', 'POST', { id: found.id, dicatat_oleh: 'Admin' })
-      beep()
-      toast.success('Check-in berhasil')
-      await load()
-      setScanResult('')
-    } catch (e) { toast.error((e as Error).message) }
-  }
-
   if (loading) return <PageSkeleton />
   if (error) return (
     <div className="space-y-4">
@@ -71,42 +47,11 @@ export default function CheckinPage() {
     </div>
   )
 
-  const belumDivalidasi = tikets.filter(t => t.status === 'belum_divalidasi').length
-  const terpakai = tikets.filter(t => t.status === 'terpakai').length
-
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Check-in</h1>
-        <a href="/dankelola/scan" className="rounded-xl bg-primary-600 px-3 py-2 text-sm font-medium text-white">Buka Scanner Kamera</a>
-      </div>
+      <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Check-in</h1>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-          <p className="text-sm text-slate-500">Belum Check-in</p>
-          <p className="text-3xl font-bold text-yellow-600">{belumDivalidasi}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-          <p className="text-sm text-slate-500">Sudah Check-in</p>
-          <p className="text-3xl font-bold text-green-600">{terpakai}</p>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-        <h2 className="font-semibold mb-4">Scan QR Code</h2>
-        <div className="flex gap-3">
-          <input
-            placeholder="Masukkan kode QR / Scan QR"
-            className="flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
-            value={scanResult}
-            onChange={e => setScanResult(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && scanQr()}
-          />
-          <button onClick={scanQr} className="bg-primary-600 text-white px-6 py-2.5 rounded-xl text-sm font-medium">Scan</button>
-        </div>
-      </div>
-
-      <div className="overflow-x-auto rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
+      <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left">
             <tr>
