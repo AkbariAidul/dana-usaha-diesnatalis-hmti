@@ -296,10 +296,12 @@ export function LacakDetail({ kode, token }: { kode: string; token: string }) {
   useEffect(() => { void load() }, [load])
   useLiveRefresh(() => load(true), 3000)
 
+  const lebar = data?.tipe === 'tiket' ? 'max-w-7xl' : 'max-w-5xl'
+
   return (
     <div className="min-h-screen bg-[#f7f9fc]">
       <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/90 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+        <div className={`mx-auto flex w-full ${lebar} items-center justify-between gap-3 px-4 py-3 sm:px-6`}>
           <Link href="/" className="flex min-w-0 items-center gap-3">
             <Image
               src="/logo-dies.png"
@@ -325,7 +327,7 @@ export function LacakDetail({ kode, token }: { kode: string; token: string }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl space-y-4 px-4 py-6 sm:px-6 sm:py-8">
+      <main className={`mx-auto w-full ${lebar} space-y-4 px-4 py-6 sm:px-6 sm:py-8`}>
         {loading && <div className="h-48 animate-pulse rounded-2xl bg-white" />}
         {error && (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
@@ -481,78 +483,97 @@ function TiketView({ data, token, reload }: { data: Extract<StatusResponse, { ti
   const sudahCheckin = tiket.filter((t) => t.status === 'terpakai').length
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="text-xl font-semibold text-slate-900">{pesanan.tiket_tipe?.nama ?? 'Tiket'}</h1>
-            <p className="text-sm text-slate-500">{pesanan.no_pesanan} · {pesanan.nama_pembeli}</p>
+    <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] xl:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
+      <div className="space-y-4 lg:sticky lg:top-24">
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="text-xl font-semibold text-slate-900">{pesanan.tiket_tipe?.nama ?? 'Tiket'}</h1>
+              <p className="mt-1 break-words text-sm text-slate-500">{pesanan.no_pesanan} · {pesanan.nama_pembeli}</p>
+            </div>
+            <StatusBadge status={pesanan.status} />
           </div>
-          <StatusBadge status={pesanan.status} />
+
+          <dl className="mt-5 divide-y divide-slate-100 border-y border-slate-100">
+            <div className="flex items-start justify-between gap-4 py-3">
+              <dt className="shrink-0 text-sm text-slate-500">Jumlah</dt>
+              <dd className="text-right text-sm font-semibold text-slate-900">{pesanan.jumlah} tiket</dd>
+            </div>
+            <div className="flex items-start justify-between gap-4 py-3">
+              <dt className="shrink-0 text-sm text-slate-500">Total</dt>
+              <dd className="text-right text-sm font-semibold text-slate-900">{formatRupiah(Number(pesanan.total))}</dd>
+            </div>
+            <div className="flex items-start justify-between gap-4 py-3">
+              <dt className="shrink-0 text-sm text-slate-500">Dibuat</dt>
+              <dd className="text-right text-sm font-semibold text-slate-900">{formatDate(pesanan.created_at)}</dd>
+            </div>
+            <div className="flex items-start justify-between gap-4 py-3">
+              <dt className="shrink-0 text-sm text-slate-500">Kontak</dt>
+              <dd className="min-w-0 break-all text-right text-sm font-semibold text-slate-900">{pesanan.kontak}</dd>
+            </div>
+          </dl>
+
+          {pesanan.catatan_admin && <p className="mt-3 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">{pesanan.catatan_admin}</p>}
+          {pesanan.bukti_url && (
+            <div className="mt-4 border-t border-slate-100 pt-4">
+              <BuktiPreview url={pesanan.bukti_url} />
+            </div>
+          )}
         </div>
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded-xl bg-slate-50 p-3">
-            <p className="text-xs text-slate-500">Jumlah</p>
-            <p className="font-semibold">{pesanan.jumlah} tiket</p>
-          </div>
-          <div className="rounded-xl bg-slate-50 p-3">
-            <p className="text-xs text-slate-500">Total</p>
-            <p className="font-semibold">{formatRupiah(Number(pesanan.total))}</p>
-          </div>
-          <div className="rounded-xl bg-slate-50 p-3">
-            <p className="text-xs text-slate-500">Dibuat</p>
-            <p className="font-semibold">{formatDate(pesanan.created_at)}</p>
-          </div>
-          <div className="min-w-0 rounded-xl bg-slate-50 p-3">
-            <p className="text-xs text-slate-500">Kontak</p>
-            <p className="truncate font-semibold" title={pesanan.kontak}>{pesanan.kontak}</p>
-          </div>
-        </div>
-        {pesanan.catatan_admin && <p className="mt-3 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">{pesanan.catatan_admin}</p>}
-        {pesanan.bukti_url && (
-          <div className="mt-4 border-t border-slate-100 pt-4">
-            <BuktiPreview url={pesanan.bukti_url} />
-          </div>
+
+        {perluUpload && pesanan.status !== 'lunas' && (
+          <BuktiUpload kode={data.kode} token={token} onDone={reload} />
         )}
       </div>
 
-      {pesanan.status === 'lunas' && tiket.length > 0 && (
-        <div className="rounded-2xl border border-emerald-200 bg-white p-5 shadow-sm sm:p-6">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2 font-semibold text-emerald-900">
-              <QrCode className="h-4 w-4" /> QR Tiket
+      <div className="space-y-4">
+        {pesanan.status !== 'lunas' && (
+          <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm sm:p-6">
+            <div className="flex items-center gap-2 font-semibold text-slate-900">
+              <Clock className="h-4 w-4" /> QR Tiket
             </div>
-            <span className="text-xs text-slate-500">{sudahCheckin} dari {tiket.length} sudah check-in</span>
+            <p className="mt-2 text-sm text-slate-500">
+              {pesanan.status === 'ditolak'
+                ? 'Pembayaran ditolak. Silakan unggah ulang bukti pembayaran.'
+                : 'QR tiket akan muncul setelah pembayaran diverifikasi admin.'}
+            </p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {tiket.map((t, index) => (
-              <div key={t.id} className="flex flex-col items-center gap-4 rounded-2xl border border-slate-200 p-4 text-center sm:flex-row sm:text-left">
-                <div className="shrink-0 rounded-xl bg-white p-2 ring-1 ring-slate-100">
-                  <QrImage value={t.kode_qr} size={140} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs text-slate-400">Tiket {index + 1} dari {tiket.length}</p>
-                  <p className="mt-0.5 break-all font-mono text-sm font-semibold text-slate-800">{t.kode_tampil}</p>
-                  <p className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${t.status === 'terpakai' ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'}`}>
-                    {t.status === 'terpakai' ? (t.digunakan_pada ? `Sudah check-in ${formatDateTime(t.digunakan_pada)}` : 'Sudah check-in') : 'Belum check-in'}
-                  </p>
-                </div>
+        )}
+
+        {pesanan.status === 'lunas' && tiket.length > 0 && (
+          <div className="rounded-2xl border border-emerald-200 bg-white p-5 shadow-sm sm:p-6">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2 font-semibold text-emerald-900">
+                <QrCode className="h-4 w-4" /> QR Tiket
               </div>
-            ))}
+              <span className="text-xs text-slate-500">{sudahCheckin} dari {tiket.length} sudah check-in</span>
+            </div>
+            <div className="grid gap-4 xl:grid-cols-2">
+              {tiket.map((t, index) => (
+                <div key={t.id} className="flex flex-col items-center gap-4 rounded-2xl border border-slate-200 p-4 text-center sm:flex-row sm:text-left">
+                  <div className="shrink-0 rounded-xl bg-white p-2 ring-1 ring-slate-100">
+                    <QrImage value={t.kode_qr} size={140} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-slate-400">Tiket {index + 1} dari {tiket.length}</p>
+                    <p className="mt-0.5 break-all font-mono text-sm font-semibold text-slate-800">{t.kode_tampil}</p>
+                    <p className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${t.status === 'terpakai' ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'}`}>
+                      {t.status === 'terpakai' ? (t.digunakan_pada ? `Sudah check-in ${formatDateTime(t.digunakan_pada)}` : 'Sudah check-in') : 'Belum check-in'}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="mt-4 text-sm text-slate-500">Tunjukkan masing-masing QR ke petugas saat check-in hari H.</p>
           </div>
-          <p className="mt-4 text-sm text-slate-500">Tunjukkan masing-masing QR ke petugas saat check-in hari H.</p>
-        </div>
-      )}
+        )}
 
-      {pesanan.status === 'lunas' && tiket.length === 0 && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-          Pembayaran sudah lunas, tetapi QR tiket belum terbit. Hubungi admin.
-        </div>
-      )}
-
-      {perluUpload && pesanan.status !== 'lunas' && (
-        <BuktiUpload kode={data.kode} token={token} onDone={reload} />
-      )}
+        {pesanan.status === 'lunas' && tiket.length === 0 && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            Pembayaran sudah lunas, tetapi QR tiket belum terbit. Hubungi admin.
+          </div>
+        )}
+      </div>
     </div>
   )
 }
