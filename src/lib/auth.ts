@@ -14,3 +14,7 @@ const USERS: Array<{ pin: string; user: DashboardUser }> = [
 export function findUserByPIN(inputPin: string): DashboardUser | null {
   return USERS.find((entry) => entry.pin === inputPin)?.user ?? null
 }
+
+export function findPINByUser(name: string): string | null {
+  return USERS.find((entry) => entry.user.name === name)?.pin ?? null
+}

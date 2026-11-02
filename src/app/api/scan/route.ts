@@ -1,17 +1,30 @@
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabase'
 import { parseQrPayload } from '@/lib/link-token'
-import { findUserByPIN } from '@/lib/auth'
+import { findPINByUser, type DashboardUser } from '@/lib/auth'
+
+async function getSessionPIN(): Promise<string | null> {
+  try {
+    const cookieStore = await cookies()
+    const raw = cookieStore.get('dashboard_user')?.value
+    if (!raw) return null
+    const user = JSON.parse(decodeURIComponent(raw)) as DashboardUser
+    return user.name ? findPINByUser(user.name) : null
+  } catch {
+    return null
+  }
+}
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
     const payload = String(body.payload ?? '').trim()
     const confirm = body.action === 'confirm'
-    const oleh = String(body.oleh ?? '').trim()
+    const oleh = (await getSessionPIN()) || ''
     if (!payload) return NextResponse.json({ error: 'QR kosong' }, { status: 400 })
-    if (confirm && !findUserByPIN(oleh)) {
-      return NextResponse.json({ error: 'PIN petugas tidak valid' }, { status: 401 })
+    if (confirm && !oleh) {
+      return NextResponse.json({ error: 'Sesi PIN tidak ditemukan, silakan login ulang' }, { status: 401 })
     }
 
     if (payload.startsWith('DN26|')) {

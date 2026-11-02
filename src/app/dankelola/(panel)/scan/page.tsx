@@ -43,24 +43,18 @@ const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm foc
 export default function ScanPage() {
   const [manual, setManual] = useState('')
   const [payload, setPayload] = useState('')
-  const [pin, setPin] = useState('')
   const [result, setResult] = useState<Result | null>(null)
   const [loading, setLoading] = useState(false)
 
   async function lookup(value: string, action: 'lookup' | 'confirm' = 'lookup') {
     if (!value.trim()) return
-    const petugas = pin.trim()
-    if (action === 'confirm' && !petugas) {
-      toast.error('Masukkan PIN petugas dulu')
-      return
-    }
     setPayload(value.trim())
     setLoading(true)
     try {
       const res = await fetch('/api/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payload: value.trim(), action, oleh: petugas }),
+        body: JSON.stringify({ payload: value.trim(), action }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'QR tidak valid')
@@ -102,20 +96,6 @@ export default function ScanPage() {
         </div>
 
         <div className="space-y-4">
-          <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm">
-            <h2 className="mb-3 font-semibold text-slate-900">PIN Petugas</h2>
-            <input
-              type="password"
-              inputMode="numeric"
-              autoComplete="off"
-              className={input}
-              placeholder="Masukkan PIN yang memvalidasi"
-              value={pin}
-              onChange={(e) => setPin(e.target.value)}
-            />
-            <p className="mt-2 text-xs text-slate-500">PIN ini dicatat di kolom Digunakan Oleh.</p>
-          </div>
-
           <form onSubmit={submitManual} className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm">
             <h2 className="mb-3 font-semibold text-slate-900">Input Manual</h2>
             <div className="flex gap-2">
