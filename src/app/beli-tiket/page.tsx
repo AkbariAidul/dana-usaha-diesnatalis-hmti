@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '@/app/dankelola/api'
 import { formatRupiah } from '@/lib/utils'
 import type { TicketKatalogItem } from '@/lib/types'
 import QRCode from 'qrcode'
 import {
-  ArrowLeft,
   ArrowRight,
   BadgeCheck,
   CalendarDays,
@@ -18,7 +18,6 @@ import {
   Loader2,
   QrCode,
   ScanLine,
-  ShieldCheck,
   Smartphone,
   Sparkles,
   Ticket,
@@ -96,8 +95,6 @@ export default function BeliTiketPublik() {
   const diskon = bundle ? Number(bundle.diskon_persen) : 0
   const subtotal = tipe ? Number(tipe.harga_aktif) * Number(form.jumlah) : 0
   const total = Math.round(subtotal * (1 - diskon / 100))
-  const tersedia = katalog.tiket.filter((t) => t.buka)
-  const hargaMulai = tersedia.length ? Math.min(...tersedia.map((t) => Number(t.harga_aktif))) : 0
 
   function pilihTipe(t: TicketKatalogItem) {
     if (!t.buka) return
@@ -164,85 +161,28 @@ export default function BeliTiketPublik() {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,#f5f3ff,transparent_38%),radial-gradient(circle_at_top_right,#ecfeff,transparent_32%),#f8fafc]">
       <header className="sticky top-0 z-30 border-b border-white/70 bg-white/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
+        <div className="mx-auto flex max-w-6xl items-center px-4 py-3.5 sm:px-6">
           <Link href="/" className="flex min-w-0 items-center gap-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-slate-950 text-sm font-semibold text-white shadow-lg shadow-slate-900/20">
-              DU
-            </span>
+            <Image
+              src="/logo-dies.png"
+              alt="Logo In4Days XI"
+              width={112}
+              height={37}
+              priority
+              className="h-auto w-24 shrink-0 sm:w-28"
+            />
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-slate-950">Beli Tiket</p>
               <p className="truncate text-xs text-slate-500">In4Days XI · Dies Natalis HMTI</p>
             </div>
           </Link>
-          <div className="flex shrink-0 items-center gap-2">
-            <Link
-              href="/lacak"
-              className="inline-flex rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-sm transition hover:border-primary-200 hover:text-primary-700 sm:px-3.5 sm:text-sm"
-            >
-              Lacak Pesanan
-            </Link>
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-2 text-sm font-medium text-slate-500 transition hover:bg-white hover:text-slate-900 sm:px-3"
-            >
-              <ArrowLeft className="h-4 w-4" /> <span className="hidden sm:inline">Kembali</span>
-            </Link>
-          </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-6xl px-4 pb-16 pt-6 sm:px-6 sm:pt-10">
         {step === 1 && (
           <>
-            <section className="relative overflow-hidden rounded-[2rem] bg-slate-950 px-6 py-10 text-white shadow-2xl shadow-slate-900/20 sm:px-10 sm:py-12">
-              <div className="pointer-events-none absolute -right-24 -top-28 h-80 w-80 rounded-full bg-primary-500/30 blur-3xl" />
-              <div className="pointer-events-none absolute -bottom-36 -left-24 h-80 w-80 rounded-full bg-cyan-400/20 blur-3xl" />
-              <div className="pointer-events-none absolute inset-0 opacity-[0.08] [background-image:linear-gradient(to_right,white_1px,transparent_1px),linear-gradient(to_bottom,white_1px,transparent_1px)] [background-size:48px_48px]" />
-
-              <div className="relative max-w-2xl">
-                <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-100 backdrop-blur">
-                  <Sparkles className="h-3.5 w-3.5" /> Tiket Resmi In4Days XI
-                </span>
-                <h1 className="mt-5 text-balance text-4xl font-semibold leading-[1.05] tracking-tight sm:text-5xl">
-                  Amankan tiketmu, nikmati hari-H tanpa antre.
-                </h1>
-                <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-300 sm:text-base">
-                  Beli tiket secara online, bayar lewat QRIS, lalu tunjukkan QR tiket saat scan di pintu masuk.
-                  Semua prosesnya transparan dan bisa dilacak.
-                </p>
-                <div className="mt-7 flex flex-wrap gap-3">
-                  <a
-                    href="#tipe-tiket"
-                    className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-black/10 transition hover:bg-primary-50"
-                  >
-                    Lihat Tipe Tiket <ArrowRight className="h-4 w-4" />
-                  </a>
-                  <Link
-                    href="/lacak"
-                    className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-5 py-2.5 text-sm font-medium text-white backdrop-blur transition hover:bg-white/10"
-                  >
-                    <ShieldCheck className="h-4 w-4" /> Cek Status Pesanan
-                  </Link>
-                </div>
-
-                <div className="mt-8 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="text-2xl font-semibold">{tersedia.length}</p>
-                    <p className="mt-0.5 text-xs text-slate-400">Tipe tiket tersedia</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="text-2xl font-semibold">{hargaMulai ? formatRupiah(hargaMulai) : '—'}</p>
-                    <p className="mt-0.5 text-xs text-slate-400">Harga mulai dari</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="text-2xl font-semibold">QRIS</p>
-                    <p className="mt-0.5 text-xs text-slate-400">Bayar dari e-wallet / m-banking</p>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <section className="mt-10">
+            <section>
               <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-600">Alur pembelian</p>
