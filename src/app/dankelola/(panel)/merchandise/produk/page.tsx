@@ -1,19 +1,21 @@
 ﻿'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { toast } from 'sonner'
-import { getJSON } from '../../../api'
+import { getJSON, sendJSON } from '../../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
+import { useConfirm } from '@/components/confirm-dialog'
 import type { Merchandise } from '@/lib/types'
 import { formatRupiah } from '@/lib/utils'
+import { Pencil, Plus, Trash2 } from 'lucide-react'
 
 export default function ProdukPage() {
+  const confirm = useConfirm()
   const [items, setItems] = useState<Merchandise[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ nama: '', deskripsi: '', harga: 0, stok: 0 })
 
   const load = useCallback(async () => {
     const data = await getJSON<Merchandise[]>('/api/merchandise')
@@ -31,22 +33,20 @@ export default function ProdukPage() {
   }, [load])
   useLiveRefresh(load)
 
-  async function tambah() {
-    if (!form.nama || !form.harga) {
-      toast.error('Nama dan harga harus diisi')
-      return
-    }
+  async function hapus(item: Merchandise) {
+    const ok = await confirm({
+      title: 'Hapus produk?',
+      description: `${item.nama} akan dihapus permanen.`,
+      confirmText: 'Hapus',
+    })
+    if (!ok) return
     try {
-      await fetch('/api/merchandise', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      })
-      toast.success('Produk ditambahkan')
-      setForm({ nama: '', deskripsi: '', harga: 0, stok: 0 })
-      setShowForm(false)
+      await sendJSON('/api/merchandise', 'DELETE', { id: item.id })
+      toast.success('Produk dihapus')
       await load()
-    } catch (e) { toast.error((e as Error).message) }
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
   }
 
   if (loading) return <PageSkeleton />
@@ -60,65 +60,83 @@ export default function ProdukPage() {
     </div>
   )
 
-  const aktif = items.filter(i => i.aktif).length
-  const totalStok = items.reduce((s, i) => s + i.stok, 0)
-
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Produk & Harga</h1>
-        <button onClick={() => setShowForm(!showForm)} className="bg-primary-600 text-white px-4 py-2 rounded-xl text-sm font-medium">+ Tambah Produk</button>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Produk & Harga</h1>
+          <p className="text-sm text-slate-500">Daftar produk merchandise yang dijual.</p>
+        </div>
+        <Link
+          href="/dankelola/merchandise/produk/new"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-700"
+        >
+          <Plus className="h-4 w-4" /> Tambah Produk
+        </Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-          <p className="text-sm text-slate-500">Produk Aktif</p>
-          <p className="text-3xl font-bold text-primary-600">{aktif}</p>
+      <section className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50/70 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-5 py-3">Nama</th>
+                <th className="px-5 py-3">Deskripsi</th>
+                <th className="px-5 py-3 text-right">Harga</th>
+                <th className="px-5 py-3 text-right">Stok</th>
+                <th className="px-5 py-3">Status</th>
+                <th className="px-5 py-3 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100/80">
+              {items.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-5 py-12 text-center text-sm text-slate-400">
+                    Belum ada produk.
+                  </td>
+                </tr>
+              )}
+              {items.map((item) => (
+                <tr key={item.id} className="transition-colors hover:bg-slate-50/70">
+                  <td className="px-5 py-3 font-medium text-slate-900">{item.nama}</td>
+                  <td className="max-w-[320px] px-5 py-3 text-slate-500">
+                    <span className="line-clamp-2">{item.deskripsi || '-'}</span>
+                  </td>
+                  <td className="px-5 py-3 text-right font-medium tabular-nums text-slate-900">{formatRupiah(Number(item.harga))}</td>
+                  <td className={`px-5 py-3 text-right font-medium tabular-nums ${item.stok > 0 ? 'text-slate-700' : 'text-red-600'}`}>{item.stok}</td>
+                  <td className="px-5 py-3">
+                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${item.aktif ? 'bg-green-100 text-green-800 ring-green-200' : 'bg-slate-100 text-slate-500 ring-slate-200'}`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${item.aktif ? 'bg-green-600' : 'bg-slate-400'}`} />
+                      {item.aktif ? 'Aktif' : 'Nonaktif'}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3">
+                    <div className="flex items-center justify-end gap-1">
+                      <Link
+                        href={`/dankelola/merchandise/produk/${item.id}/edit`}
+                        aria-label={`Edit ${item.nama}`}
+                        title="Edit"
+                        className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => hapus(item)}
+                        aria-label={`Hapus ${item.nama}`}
+                        title="Hapus"
+                        className="rounded-lg p-1.5 text-red-600 transition hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-          <p className="text-sm text-slate-500">Total Stok</p>
-          <p className="text-3xl font-bold text-slate-900">{totalStok}</p>
-        </div>
-      </div>
-
-      {showForm && (
-        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-          <h2 className="font-semibold mb-4">Tambah Produk</h2>
-          <div className="grid md:grid-cols-2 gap-3">
-            <input placeholder="Nama Produk" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.nama} onChange={e => setForm({ ...form, nama: e.target.value })} />
-            <input type="number" placeholder="Harga" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.harga || ''} onChange={e => setForm({ ...form, harga: Number(e.target.value) })} />
-            <input type="number" placeholder="Stok" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.stok || ''} onChange={e => setForm({ ...form, stok: Number(e.target.value) })} />
-            <input placeholder="Deskripsi (opsional)" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" value={form.deskripsi} onChange={e => setForm({ ...form, deskripsi: e.target.value })} />
-          </div>
-          <div className="mt-4 flex justify-end gap-2">
-            <button onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl">Batal</button>
-            <button onClick={tambah} className="px-4 py-2 bg-primary-600 text-white text-sm rounded-xl">Simpan</button>
-          </div>
-        </div>
-      )}
-
-      <div className="grid md:grid-cols-2 gap-4">
-        {items.length === 0 && <div className="col-span-2 text-center py-12 text-slate-400">Belum ada produk.</div>}
-        {items.map((item) => (
-          <div key={item.id} className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="font-semibold text-lg">{item.nama}</h3>
-                {item.deskripsi && <p className="text-sm text-slate-500 mt-1">{item.deskripsi}</p>}
-              </div>
-              <span className={`px-2 py-0.5 rounded text-xs ${item.aktif ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                {item.aktif ? 'Aktif' : 'Nonaktif'}
-              </span>
-            </div>
-            <div className="flex justify-between items-center mt-4">
-              <span className="font-bold text-xl text-primary-600">{formatRupiah(item.harga)}</span>
-              <span className={`text-sm px-2 py-1 rounded-full ${item.stok > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
-                Stok: {item.stok}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
+      </section>
     </div>
   )
 }

@@ -113,6 +113,9 @@ function getBreadcrumbs(pathname: string) {
   } else if (pathname.startsWith('/dankelola/merchandise/pengurus/')) {
     const action = pathname === '/dankelola/merchandise/pengurus/new' ? 'Tambah Pengurus' : 'Edit Pengurus'
     breadcrumbs.push({ label: action, href: pathname })
+  } else if (pathname.startsWith('/dankelola/merchandise/produk/')) {
+    const action = pathname === '/dankelola/merchandise/produk/new' ? 'Tambah Produk' : 'Edit Produk'
+    breadcrumbs.push({ label: action, href: pathname })
   }
 
   return breadcrumbs
@@ -424,7 +427,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               pathname.startsWith('/dankelola/ticket/modal') ||
               pathname.startsWith('/dankelola/ticket/penjualan') ||
               pathname.startsWith('/dankelola/ticket/checkin') ||
-              pathname.startsWith('/dankelola/merchandise/pengurus')
+              pathname.startsWith('/dankelola/merchandise')
                 ? 'w-full'
                 : 'mx-auto max-w-6xl'
             }`}
