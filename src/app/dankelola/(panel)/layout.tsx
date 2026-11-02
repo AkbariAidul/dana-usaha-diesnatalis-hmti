@@ -304,6 +304,19 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               ))}
             </nav>
           </div>
+          {currentUser && (
+            <div className="hidden items-center gap-3 md:flex">
+              <div className="text-right leading-tight">
+                <p className="text-sm font-medium text-slate-900">{currentUser.name}</p>
+                <p className="text-[11px] text-slate-500">
+                  Kelola <span className="capitalize">{ROLE_LABEL[currentUser.role]}</span>
+                </p>
+              </div>
+              <span className="grid h-9 w-9 place-items-center rounded-full bg-primary-600 text-sm font-semibold text-white">
+                {currentUser.name.trim().charAt(0).toUpperCase()}
+              </span>
+            </div>
+          )}
         </div>
       </header>
 
