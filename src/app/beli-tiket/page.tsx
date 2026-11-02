@@ -46,6 +46,13 @@ function formatTanggal(value: string) {
   })
 }
 
+function normalisasiKontak(value: string) {
+  let digits = value.replace(/\D/g, '')
+  if (digits.startsWith('62')) digits = `0${digits.slice(2)}`
+  else if (digits.startsWith('8')) digits = `0${digits}`
+  return digits.slice(0, 13)
+}
+
 function statusTiket(t: TicketKatalogItem) {
   if (t.buka) return t.is_hari_h ? 'Hari H' : 'Dibuka'
   if (t.sisa === 0) return 'Habis'
@@ -111,6 +118,14 @@ export default function BeliTiketPublik() {
     }
     if (!tipe.buka) {
       toast.error('Tiket sedang ditutup atau sudah habis')
+      return
+    }
+    if (!/^08\d{8,12}$/.test(form.kontak)) {
+      toast.error('Kontak WA harus diawali 08 dan hanya berisi angka')
+      return
+    }
+    if (!form.jumlah || Number(form.jumlah) < 1) {
+      toast.error('Jumlah tiket minimal 1')
       return
     }
     if (tipe.sisa !== null && Number(form.jumlah) > tipe.sisa) {
@@ -277,7 +292,7 @@ export default function BeliTiketPublik() {
                               {t.jumlah_orang} orang
                             </span>
                           </div>
-                          <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-slate-500">
+                          <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
                             {t.deskripsi || 'Tiket masuk In4Days XI.'}
                           </p>
                           <div className="mt-3 flex items-end justify-between gap-3">
@@ -430,11 +445,17 @@ export default function BeliTiketPublik() {
                       <div>
                         <label className="mb-1.5 block text-sm font-medium text-slate-700">Kontak WA</label>
                         <input
+                          type="tel"
+                          inputMode="numeric"
+                          autoComplete="tel"
+                          maxLength={13}
+                          pattern="08[0-9]*"
                           className={input}
                           placeholder="08xxxxxxxxxx"
                           value={form.kontak}
-                          onChange={(e) => setForm({ ...form, kontak: e.target.value })}
+                          onChange={(e) => setForm({ ...form, kontak: normalisasiKontak(e.target.value) })}
                         />
+                        <p className="mt-1 text-xs text-slate-400">Diawali 08, hanya angka.</p>
                       </div>
                       <div>
                         <label className="mb-1.5 block text-sm font-medium text-slate-700">Email (opsional)</label>
@@ -454,7 +475,12 @@ export default function BeliTiketPublik() {
                           className={input}
                           placeholder="1"
                           value={form.jumlah || ''}
-                          onChange={(e) => setForm({ ...form, jumlah: Math.max(1, Number(e.target.value) || 1) })}
+                          onChange={(e) =>
+                            setForm({
+                              ...form,
+                              jumlah: e.target.value === '' ? 0 : Math.max(0, Number(e.target.value) || 0),
+                            })
+                          }
                         />
                         <p className="mt-1 text-xs text-slate-400">
                           Berlaku untuk {Number(form.jumlah) * Number(tipe.jumlah_orang)} orang.
@@ -525,7 +551,7 @@ export default function BeliTiketPublik() {
                         <button
                           type="button"
                           onClick={beli}
-                          disabled={!form.nama_pembeli || !form.kontak || !tipe.buka}
+                          disabled={!form.nama_pembeli || !form.kontak || !form.jumlah || !tipe.buka}
                           className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-600/20 transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none"
                         >
                           {tipe.buka ? 'Buat Pesanan' : 'Tiket Ditutup'}
