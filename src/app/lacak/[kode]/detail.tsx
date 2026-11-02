@@ -1,10 +1,11 @@
 ﻿'use client'
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import QRCode from 'qrcode'
 import { toast } from 'sonner'
-import { ArrowLeft, CheckCircle2, Clock, QrCode, Upload } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Clock, QrCode, Upload, X } from 'lucide-react'
 import { formatDate, formatDateTime, formatRupiah } from '@/lib/utils'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 
@@ -139,6 +140,87 @@ function QrImage({ value, size = 240 }: { value: string; size?: number }) {
   return <img src={src} alt="QR Code" className="rounded-xl" style={{ width: size, height: size }} />
 }
 
+function BuktiPreview({ url, label = 'Bukti pembayaran', compact = false }: { url: string; label?: string; compact?: boolean }) {
+  const [open, setOpen] = useState(false)
+  const [failed, setFailed] = useState(false)
+
+  if (failed) {
+    return (
+      <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary-600 hover:underline">
+        Lihat
+      </a>
+    )
+  }
+
+  return (
+    <>
+      {compact ? (
+        <button type="button" onClick={() => setOpen(true)} className="text-xs font-medium text-primary-600 hover:underline">
+          Lihat
+        </button>
+      ) : (
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            aria-label={`Lihat ${label}`}
+            title={`Lihat ${label}`}
+            className="group relative block h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 transition hover:ring-2 hover:ring-primary-200"
+          >
+            <img
+              src={url}
+              alt={label}
+              decoding="async"
+              className="h-full w-full object-cover"
+              onError={() => setFailed(true)}
+            />
+            <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-slate-900/0 text-[10px] font-semibold text-white opacity-0 transition group-hover:bg-slate-900/50 group-hover:opacity-100">
+              Lihat
+            </span>
+          </button>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-slate-700">{label}</p>
+            <button type="button" onClick={() => setOpen(true)} className="mt-0.5 text-xs text-primary-600 hover:underline">
+              Lihat bukti
+            </button>
+          </div>
+        </div>
+      )}
+
+      {open && (
+        <div
+          className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-900/70 p-4"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="max-h-[calc(100dvh-2rem)] w-full max-w-sm overflow-y-auto rounded-2xl bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+              <p className="text-sm font-semibold text-slate-900">{label}</p>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                aria-label="Tutup"
+                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="bg-slate-50 p-3">
+              <div className="mx-auto aspect-[4/5] w-full overflow-hidden rounded-lg bg-slate-100">
+                <img src={url} alt={label} className="h-full w-full object-contain" />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 function BuktiUpload({ kode, token, nominal, onDone }: { kode: string; token: string; nominal?: number; onDone: () => void }) {
   const [file, setFile] = useState<File | null>(null)
   const [nilai, setNilai] = useState(nominal ? String(nominal) : '')
@@ -216,22 +298,34 @@ export function LacakDetail({ kode, token }: { kode: string; token: string }) {
 
   return (
     <div className="min-h-screen bg-[#f7f9fc]">
-      <header className="border-b border-slate-200/70 bg-white/90 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
-          <Link href="/" className="flex items-center gap-3">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary-600 text-sm font-semibold text-white">DU</span>
-            <div>
-              <p className="text-sm font-semibold text-slate-900">Riwayat {kode}</p>
-              <p className="text-xs text-slate-500">Dies Natalis HMTI</p>
+      <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <Link href="/" className="flex min-w-0 items-center gap-3">
+            <Image
+              src="/logo-dies.png"
+              alt="Logo In4Days XI"
+              width={112}
+              height={37}
+              priority
+              className="h-auto w-20 shrink-0 sm:w-24"
+            />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-slate-900">Riwayat {kode}</p>
+              <p className="hidden truncate text-xs text-slate-500 sm:block">In4Days XI · Dies Natalis HMTI</p>
             </div>
           </Link>
-          <Link href="/lacak" className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900">
-            <ArrowLeft className="h-4 w-4" /> Lacak lain
+          <Link
+            href="/lacak"
+            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 sm:text-sm"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span className="hidden sm:inline">Lacak lain</span>
+            <span className="sm:hidden">Lacak</span>
           </Link>
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl space-y-4 px-4 py-8">
+      <main className="mx-auto max-w-5xl space-y-4 px-4 py-6 sm:px-6 sm:py-8">
         {loading && <div className="h-48 animate-pulse rounded-2xl bg-white" />}
         {error && (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
@@ -257,7 +351,7 @@ function TenantView({ data, token, reload }: { data: Extract<StatusResponse, { t
   if (!tenant) {
     return (
       <div className="space-y-4">
-        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm sm:p-6">
           <div className="flex items-center justify-between gap-3">
             <div>
               <h1 className="text-xl font-semibold text-slate-900">{daftar?.nama_usaha ?? data.kode}</h1>
@@ -267,9 +361,9 @@ function TenantView({ data, token, reload }: { data: Extract<StatusResponse, { t
           </div>
           {daftar?.catatan_admin && <p className="mt-3 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">{daftar.catatan_admin}</p>}
           {daftar?.bukti_url && (
-            <a href={daftar.bukti_url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-sm text-primary-600 hover:underline">
-              Lihat bukti pembayaran
-            </a>
+            <div className="mt-3">
+              <BuktiPreview url={daftar.bukti_url} />
+            </div>
           )}
           <p className="mt-4 flex items-center gap-2 text-sm text-slate-500">
             <Clock className="h-4 w-4" />
@@ -282,7 +376,7 @@ function TenantView({ data, token, reload }: { data: Extract<StatusResponse, { t
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-xl font-semibold text-slate-900">{tenant.nama_usaha}</h1>
@@ -336,7 +430,7 @@ function TenantView({ data, token, reload }: { data: Extract<StatusResponse, { t
         </div>
       )}
 
-      <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm sm:p-6">
         <h2 className="mb-3 font-semibold text-slate-900">Riwayat Pembayaran</h2>
         {pembayaran.length === 0 && <p className="text-sm text-slate-400">Belum ada pembayaran.</p>}
         {pembayaran.length > 0 && (
@@ -363,7 +457,7 @@ function TenantView({ data, token, reload }: { data: Extract<StatusResponse, { t
                       </span>
                     </td>
                     <td className="py-2">
-                      {p.bukti_url ? <a href={p.bukti_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline">Lihat</a> : '-'}
+                      {p.bukti_url ? <BuktiPreview url={p.bukti_url} compact /> : '-'}
                     </td>
                   </tr>
                 ))}
@@ -384,17 +478,19 @@ function TiketView({ data, token, reload }: { data: Extract<StatusResponse, { ti
   const { pesanan, tiket } = data
   const perluUpload = !pesanan.bukti_url || pesanan.status === 'ditolak'
 
+  const sudahCheckin = tiket.filter((t) => t.status === 'terpakai').length
+
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0">
             <h1 className="text-xl font-semibold text-slate-900">{pesanan.tiket_tipe?.nama ?? 'Tiket'}</h1>
             <p className="text-sm text-slate-500">{pesanan.no_pesanan} · {pesanan.nama_pembeli}</p>
           </div>
           <StatusBadge status={pesanan.status} />
         </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="rounded-xl bg-slate-50 p-3">
             <p className="text-xs text-slate-500">Jumlah</p>
             <p className="font-semibold">{pesanan.jumlah} tiket</p>
@@ -407,28 +503,40 @@ function TiketView({ data, token, reload }: { data: Extract<StatusResponse, { ti
             <p className="text-xs text-slate-500">Dibuat</p>
             <p className="font-semibold">{formatDate(pesanan.created_at)}</p>
           </div>
+          <div className="min-w-0 rounded-xl bg-slate-50 p-3">
+            <p className="text-xs text-slate-500">Kontak</p>
+            <p className="truncate font-semibold" title={pesanan.kontak}>{pesanan.kontak}</p>
+          </div>
         </div>
         {pesanan.catatan_admin && <p className="mt-3 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">{pesanan.catatan_admin}</p>}
         {pesanan.bukti_url && (
-          <a href={pesanan.bukti_url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-sm text-primary-600 hover:underline">
-            Lihat bukti pembayaran
-          </a>
+          <div className="mt-4 border-t border-slate-100 pt-4">
+            <BuktiPreview url={pesanan.bukti_url} />
+          </div>
         )}
       </div>
 
       {pesanan.status === 'lunas' && tiket.length > 0 && (
-        <div className="rounded-2xl border border-emerald-200 bg-white p-6 shadow-sm">
-          <div className="mb-4 flex items-center gap-2 font-semibold text-emerald-900">
-            <QrCode className="h-4 w-4" /> QR Tiket
+        <div className="rounded-2xl border border-emerald-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 font-semibold text-emerald-900">
+              <QrCode className="h-4 w-4" /> QR Tiket
+            </div>
+            <span className="text-xs text-slate-500">{sudahCheckin} dari {tiket.length} sudah check-in</span>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            {tiket.map((t) => (
-              <div key={t.id} className="rounded-2xl border border-slate-200 p-4 text-center">
-                <QrImage value={t.kode_qr} size={180} />
-                <p className="mt-2 font-mono text-xs text-slate-600">{t.kode_tampil}</p>
-                <p className={`mt-1 text-xs ${t.status === 'terpakai' ? 'text-green-700' : 'text-slate-500'}`}>
-                  {t.status === 'terpakai' ? (t.digunakan_pada ? `Sudah check-in ${formatDateTime(t.digunakan_pada)}` : 'Sudah check-in') : 'Belum check-in'}
-                </p>
+            {tiket.map((t, index) => (
+              <div key={t.id} className="flex flex-col items-center gap-4 rounded-2xl border border-slate-200 p-4 text-center sm:flex-row sm:text-left">
+                <div className="shrink-0 rounded-xl bg-white p-2 ring-1 ring-slate-100">
+                  <QrImage value={t.kode_qr} size={140} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-slate-400">Tiket {index + 1} dari {tiket.length}</p>
+                  <p className="mt-0.5 break-all font-mono text-sm font-semibold text-slate-800">{t.kode_tampil}</p>
+                  <p className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${t.status === 'terpakai' ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'}`}>
+                    {t.status === 'terpakai' ? (t.digunakan_pada ? `Sudah check-in ${formatDateTime(t.digunakan_pada)}` : 'Sudah check-in') : 'Belum check-in'}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
@@ -455,7 +563,7 @@ function PoView({ data, token, reload }: { data: Extract<StatusResponse, { tipe:
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-xl font-semibold text-slate-900">{po.no_po}</h1>
@@ -494,9 +602,9 @@ function PoView({ data, token, reload }: { data: Extract<StatusResponse, { tipe:
         </div>
         {po.catatan_admin && <p className="mt-3 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">{po.catatan_admin}</p>}
         {po.bukti_url && (
-          <a href={po.bukti_url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-sm text-primary-600 hover:underline">
-            Lihat bukti pembayaran
-          </a>
+          <div className="mt-4 border-t border-slate-100 pt-4">
+            <BuktiPreview url={po.bukti_url} />
+          </div>
         )}
       </div>
 

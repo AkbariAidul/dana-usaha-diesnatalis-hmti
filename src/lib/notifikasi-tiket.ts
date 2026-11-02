@@ -16,6 +16,8 @@ type AcaraNotif = {
   tanggal_acara?: string | null
 }
 
+const PENUTUP = 'Hormat Kami,\nPanitia Danus In4Days XI'
+
 function nomorFonnte(value: string) {
   const digits = value.replace(/\D/g, '')
   if (digits.startsWith('0')) return `62${digits.slice(1)}`
@@ -97,6 +99,8 @@ export async function kirimNotifMenungguVerifikasi(
     'Status: Menunggu verifikasi admin.',
     '',
     'QR tiket akan aktif setelah pembayaran diverifikasi. Simpan link di atas untuk mengecek status terbaru.',
+    '',
+    PENUTUP,
   ].join('\n')
   return kirimWhatsApp(pesanan.kontak, message)
 }
@@ -114,6 +118,8 @@ export async function kirimNotifTerverifikasi(
     'Status: Lunas / terverifikasi.',
     '',
     'QR tiket sudah aktif di link riwayat tiket. Tunjukkan QR tersebut ke petugas saat check-in hari H.',
+    '',
+    PENUTUP,
   ].join('\n')
   return kirimWhatsApp(pesanan.kontak, message)
 }
@@ -133,6 +139,33 @@ export async function kirimNotifReminder(
     '',
     detailPesanan(pesanan, tipeNama, link),
     'Jangan lupa simpan QR tiket dan tunjukkan ke petugas saat check-in.',
+    '',
+    PENUTUP,
+  ].join('\n')
+  return kirimWhatsApp(pesanan.kontak, message)
+}
+
+export async function kirimNotifCheckin(
+  request: Request,
+  pesanan: PesananNotif,
+  tipeNama: string,
+  nomor: number,
+  total: number
+) {
+  const link = linkTiket(request, pesanan.no_pesanan)
+  const message = [
+    `Halo ${pesanan.nama_pembeli}, tiket kamu sudah berhasil discan dan dinyatakan valid.`,
+    '',
+    `Kode pesanan: ${pesanan.no_pesanan}`,
+    `Nama: ${pesanan.nama_pembeli}`,
+    `Tipe tiket: ${tipeNama}`,
+    `Tiket: ${nomor} dari ${total}`,
+    '',
+    `Riwayat & QR tiket: ${link}`,
+    '',
+    'Terima kasih sudah hadir di In4Days XI.',
+    '',
+    PENUTUP,
   ].join('\n')
   return kirimWhatsApp(pesanan.kontak, message)
 }

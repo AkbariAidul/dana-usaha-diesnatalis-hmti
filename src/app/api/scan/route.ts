@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server'
+import { after, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabase'
 import { parseQrPayload } from '@/lib/link-token'
+import { kirimNotifCheckin } from '@/lib/notifikasi-tiket'
 import type { DashboardUser } from '@/lib/auth'
 
 async function getSessionUser(): Promise<DashboardUser | null> {
@@ -164,6 +165,18 @@ export async function POST(request: Request) {
         aksi: 'checkin',
         dicatat_oleh: oleh,
       })
+
+      if (pesanan) {
+        after(() =>
+          kirimNotifCheckin(
+            request,
+            pesanan,
+            tipeTiket?.nama ?? 'Tiket',
+            nomor || 1,
+            totalTiket
+          )
+        )
+      }
     }
 
     return NextResponse.json({
