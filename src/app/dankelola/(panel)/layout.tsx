@@ -101,7 +101,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
   async function logout() {
     await fetch('/api/auth/logout', { method: 'POST' } as RequestInit)
-    router.push('/dankelola/login')
+    router.push('/')
   }
 
   const toggleGroup = (key: string) => {

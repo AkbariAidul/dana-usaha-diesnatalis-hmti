@@ -22,8 +22,8 @@ export default async function Home() {
   return (
     <div className="relative min-h-screen bg-white text-[#111827]">
       <header className="absolute inset-x-0 top-0 z-30">
-        <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-          <Link href="/" className="flex min-w-0 items-center gap-3 lg:-ml-8">
+        <div className="flex h-[72px] w-full items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+          <Link href="/" className="flex min-w-0 items-center gap-3">
             <Image
               src="/logo-dies.png"
               alt="Logo In4Days XI"
