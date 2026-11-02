@@ -1,33 +1,12 @@
 ﻿'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import {
-  Banknote,
-  CheckCircle2,
-  Clock,
-  Coins,
-  Inbox,
-  Ticket,
-  TrendingUp,
-  Wallet,
-  XCircle,
-  type LucideIcon,
-} from 'lucide-react'
+import { Inbox, Ticket } from 'lucide-react'
 import { getJSON } from '../../../api'
 import { PageSkeleton } from '../../ui'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { formatRupiah } from '@/lib/utils'
-import type { PesananTiket, TicketModalItem } from '@/lib/types'
-
-type Tone = 'primary' | 'amber' | 'green' | 'red' | 'orange'
-
-const TONES: Record<Tone, { chip: string; value: string }> = {
-  primary: { chip: 'bg-primary-50 text-primary-600', value: 'text-slate-900' },
-  amber: { chip: 'bg-amber-50 text-amber-600', value: 'text-amber-600' },
-  green: { chip: 'bg-green-50 text-green-600', value: 'text-green-600' },
-  red: { chip: 'bg-red-50 text-red-600', value: 'text-red-600' },
-  orange: { chip: 'bg-orange-50 text-orange-600', value: 'text-orange-600' },
-}
+import type { PesananTiket } from '@/lib/types'
 
 const STATUS: Record<PesananTiket['status'], { label: string; className: string; dot: string }> = {
   menunggu_verifikasi: { label: 'Menunggu', className: 'bg-amber-50 text-amber-700 ring-amber-200', dot: 'bg-amber-500' },
@@ -36,33 +15,14 @@ const STATUS: Record<PesananTiket['status'], { label: string; className: string;
   batal: { label: 'Batal', className: 'bg-slate-100 text-slate-600 ring-slate-200', dot: 'bg-slate-400' },
 }
 
-function StatCard({ label, value, icon: Icon, tone }: { label: string; value: string | number; icon: LucideIcon; tone: Tone }) {
-  return (
-    <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm shadow-slate-200/40 transition duration-200 hover:-translate-y-0.5 hover:shadow-md">
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-sm text-slate-500">{label}</p>
-        <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${TONES[tone].chip}`}>
-          <Icon className="h-4 w-4" />
-        </span>
-      </div>
-      <p className={`mt-2 text-xl font-bold tracking-tight tabular-nums md:text-2xl ${TONES[tone].value}`}>{value}</p>
-    </div>
-  )
-}
-
 export default function PenjualanPage() {
   const [pesanan, setPesanan] = useState<PesananTiket[]>([])
-  const [modalPerTiket, setModalPerTiket] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
-    const [data, modalItems] = await Promise.all([
-      getJSON<PesananTiket[]>('/api/ticket/penjualan'),
-      getJSON<TicketModalItem[]>('/api/ticket/modal'),
-    ])
+    const data = await getJSON<PesananTiket[]>('/api/ticket/penjualan')
     setPesanan(data)
-    setModalPerTiket(modalItems.reduce((sum, item) => sum + Number(item.harga ?? 0), 0))
     setError(null)
   }, [])
 
@@ -84,9 +44,7 @@ export default function PenjualanPage() {
     </div>
   )
 
-  const menunggu = pesanan.filter((p) => p.status === 'menunggu_verifikasi').length
   const lunas = pesanan.filter((p) => p.status === 'lunas')
-  const ditolak = pesanan.filter((p) => p.status === 'ditolak').length
   const totalTiket = lunas.reduce((s, p) => s + Number(p.jumlah), 0)
   const totalPenjualan = lunas.reduce((s, p) => s + Number(p.total), 0)
   const totalModal = lunas.reduce((s, p) => s + Number(p.modal_total), 0)
@@ -126,20 +84,6 @@ export default function PenjualanPage() {
           <Ticket className="h-4 w-4 text-primary-500" />
           <span className="font-semibold text-slate-900">{totalTiket}</span> tiket terjual
         </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-        <StatCard label="Total Pesanan" value={pesanan.length} icon={Ticket} tone="primary" />
-        <StatCard label="Menunggu Verifikasi" value={menunggu} icon={Clock} tone="amber" />
-        <StatCard label="Lunas" value={lunas.length} icon={CheckCircle2} tone="green" />
-        <StatCard label="Ditolak" value={ditolak} icon={XCircle} tone="red" />
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-        <StatCard label="Penjualan Lunas" value={formatRupiah(totalPenjualan)} icon={Banknote} tone="primary" />
-        <StatCard label="Modal / Tiket" value={formatRupiah(modalPerTiket)} icon={Wallet} tone="orange" />
-        <StatCard label="Modal Terpakai" value={formatRupiah(totalModal)} icon={Coins} tone="orange" />
-        <StatCard label="Keuntungan" value={formatRupiah(totalKeuntungan)} icon={TrendingUp} tone={totalKeuntungan >= 0 ? 'green' : 'red'} />
       </div>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
