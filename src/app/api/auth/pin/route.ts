@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     maxAge: 86400,
     path: '/',
   })
-  response.cookies.set('dashboard_user', encodeURIComponent(JSON.stringify(user)), {
+  response.cookies.set('dashboard_user', JSON.stringify(user), {
     httpOnly: false,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',

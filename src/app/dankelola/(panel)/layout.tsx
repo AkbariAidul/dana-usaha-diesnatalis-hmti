@@ -40,6 +40,18 @@ function isPathActive(pathname: string, href: string) {
   return bestActiveHref(pathname) === href
 }
 
+function parseDashboardUser(raw: string): DashboardUser | null {
+  try {
+    return JSON.parse(decodeURIComponent(raw))
+  } catch {
+    try {
+      return JSON.parse(decodeURIComponent(decodeURIComponent(raw)))
+    } catch {
+      return null
+    }
+  }
+}
+
 function findActiveGroup(pathname: string) {
   for (const group of menuConfig) {
     if (group.href && isPathActive(pathname, group.href)) return group.key
@@ -154,11 +166,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     const match = document.cookie.match(/(?:^|; )dashboard_user=([^;]+)/)
     if (match) {
-      try {
-        setCurrentUser(JSON.parse(decodeURIComponent(match[1])))
-      } catch {
-        setCurrentUser(null)
-      }
+      setCurrentUser(parseDashboardUser(match[1]))
     }
     const pending = sessionStorage.getItem('dashboard_welcome')
     if (pending) {
