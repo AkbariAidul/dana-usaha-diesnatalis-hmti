@@ -49,10 +49,12 @@ export default function PengurusPage() {
   const paginated = filtered.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE)
 
   async function toggle(item: Pengurus) {
+    const aktif = !item.aktif
+    setItems((prev) => prev.map((p) => (p.id === item.id ? { ...p, aktif } : p)))
     try {
-      await sendJSON(`/api/pengurus/${item.id}`, 'PATCH', { aktif: !item.aktif })
-      await load()
+      await sendJSON(`/api/pengurus/${item.id}`, 'PATCH', { aktif })
     } catch (e) {
+      setItems((prev) => prev.map((p) => (p.id === item.id ? { ...p, aktif: item.aktif } : p)))
       toast.error((e as Error).message)
     }
   }
@@ -137,9 +139,6 @@ export default function PengurusPage() {
                     >
                       <span className={`relative h-5 w-9 rounded-full transition-colors ${item.aktif ? 'bg-green-500' : 'bg-slate-300'}`}>
                         <span className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${item.aktif ? 'translate-x-4' : 'translate-x-0'}`} />
-                      </span>
-                      <span className={`text-xs font-medium ${item.aktif ? 'text-green-700' : 'text-slate-500'}`}>
-                        {item.aktif ? 'Aktif' : 'Nonaktif'}
                       </span>
                     </button>
                   </td>
