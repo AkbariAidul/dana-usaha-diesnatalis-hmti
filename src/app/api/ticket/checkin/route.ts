@@ -1,15 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-
-type TiketIssued = {
-  id: string
-  pesanan_id: string
-  kode_qr: string
-  kode_tampil: string
-  status: 'belum_divalidasi' | 'terpakai'
-  digunakan_oleh: string | null
-  digunakan_pada: string | null
-}
+import { findUserByPIN } from '@/lib/auth'
 
 export async function GET() {
   try {
@@ -27,7 +18,9 @@ export async function GET() {
       kode_qr: item.kode_qr,
       kode_tampil: item.kode_tampil,
       status: item.status || 'belum_divalidasi',
-      digunakan_oleh: item.digunakan_oleh,
+      digunakan_oleh: item.digunakan_oleh
+        ? findUserByPIN(String(item.digunakan_oleh))?.name ?? item.digunakan_oleh
+        : null,
       digunakan_pada: item.digunakan_pada,
     }))
     

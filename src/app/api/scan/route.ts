@@ -2,15 +2,15 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabase'
 import { parseQrPayload } from '@/lib/link-token'
-import { findPINByUser, type DashboardUser } from '@/lib/auth'
+import type { DashboardUser } from '@/lib/auth'
 
-async function getSessionPIN(): Promise<string | null> {
+async function getSessionUser(): Promise<DashboardUser | null> {
   try {
     const cookieStore = await cookies()
     const raw = cookieStore.get('dashboard_user')?.value
     if (!raw) return null
     const user = JSON.parse(decodeURIComponent(raw)) as DashboardUser
-    return user.name ? findPINByUser(user.name) : null
+    return user.name ? user : null
   } catch {
     return null
   }
@@ -21,10 +21,10 @@ export async function POST(request: Request) {
     const body = await request.json()
     const payload = String(body.payload ?? '').trim()
     const confirm = body.action === 'confirm'
-    const oleh = (await getSessionPIN()) || ''
+    const oleh = (await getSessionUser())?.name || ''
     if (!payload) return NextResponse.json({ error: 'QR kosong' }, { status: 400 })
     if (confirm && !oleh) {
-      return NextResponse.json({ error: 'Sesi PIN tidak ditemukan, silakan login ulang' }, { status: 401 })
+      return NextResponse.json({ error: 'Sesi login tidak ditemukan, silakan login ulang' }, { status: 401 })
     }
 
     if (payload.startsWith('DN26|')) {
