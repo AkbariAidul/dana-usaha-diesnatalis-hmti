@@ -1,10 +1,17 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { kirimNotifTerverifikasi } from '@/lib/notifikasi-tiket'
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
     const { id, status, catatan_admin } = body
+
+    const { data: sebelum } = await supabaseAdmin
+      .from('pesanan_tiket')
+      .select('status')
+      .eq('id', id)
+      .maybeSingle()
 
     const { data, error } = await supabaseAdmin
       .from('pesanan_tiket')
@@ -55,6 +62,19 @@ export async function POST(request: Request) {
             status: 'belum_divalidasi',
           })
         }
+      }
+    }
+
+    if (status === 'lunas' && sebelum?.status !== 'lunas') {
+      try {
+        const { data: tipe } = await supabaseAdmin
+          .from('tiket_tipe')
+          .select('nama')
+          .eq('id', data.tiket_tipe_id)
+          .maybeSingle()
+        await kirimNotifTerverifikasi(request, data, tipe?.nama || 'Tiket')
+      } catch (err) {
+        console.error('Gagal mengirim notifikasi WhatsApp:', err)
       }
     }
 
