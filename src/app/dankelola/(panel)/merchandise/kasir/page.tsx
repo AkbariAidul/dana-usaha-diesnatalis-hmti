@@ -5,15 +5,18 @@ import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
-import type { Merchandise } from '@/lib/types'
+import type { Merchandise, MerchModalItem } from '@/lib/types'
 import { formatRupiah } from '@/lib/utils'
+import { hitungDiskon } from '@/lib/merch-diskon'
 
 type KasirTransaksi = {
   id: string
+  merchandise_id: string | null
   tanggal: string
   produk: string
   qty: number
   total: number
+  diskon: number
   metode: string
   dicatat_oleh: string
 }
@@ -21,19 +24,22 @@ type KasirTransaksi = {
 export default function KasirPage() {
   const [transaksi, setTransaksi] = useState<KasirTransaksi[]>([])
   const [produk, setProduk] = useState<Merchandise[]>([])
+  const [modalSatuan, setModalSatuan] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ merchandise_id: '', qty: 1, metode: 'Tunai', dicatat_oleh: '' })
 
   const load = useCallback(async () => {
-    const [data, daftarProduk] = await Promise.all([
+    const [data, daftarProduk, modalItems] = await Promise.all([
       getJSON<KasirTransaksi[]>('/api/merchandise/kasir'),
       getJSON<Merchandise[]>('/api/merchandise'),
+      getJSON<MerchModalItem[]>('/api/merchandise/modal').catch(() => []),
     ])
     const produkHariH = daftarProduk.filter((item) => item.aktif && Number(item.harga) > 0)
     setTransaksi(data)
     setProduk(produkHariH)
+    setModalSatuan((modalItems ?? []).reduce((sum, item) => sum + Number(item.harga), 0))
     setForm((f) => ({
       ...f,
       merchandise_id: produkHariH.some((item) => item.id === f.merchandise_id) ? f.merchandise_id : produkHariH[0]?.id || '',
@@ -52,7 +58,11 @@ export default function KasirPage() {
   useLiveRefresh(load)
 
   const dipilih = useMemo(() => produk.find((item) => item.id === form.merchandise_id) ?? null, [produk, form.merchandise_id])
-  const total = Number(dipilih?.harga ?? 0) * Number(form.qty)
+  const hitung = useMemo(
+    () => hitungDiskon(Number(form.qty), Number(dipilih?.harga ?? 0), dipilih?.diskon, 'hari_h'),
+    [dipilih, form.qty],
+  )
+  const total = hitung.total
 
   async function tambah() {
     if (!form.merchandise_id || !form.dicatat_oleh || !form.qty || form.qty < 1) {
@@ -89,6 +99,8 @@ export default function KasirPage() {
   )
 
   const totalHariIni = transaksi.reduce((s, t) => s + t.total, 0)
+  const totalModal = transaksi.reduce((s, t) => s + (t.merchandise_id ? modalSatuan * t.qty : 0), 0)
+  const keuntungan = totalHariIni - totalModal
   const tunai = transaksi.filter(t => t.metode === 'Tunai').reduce((s, t) => s + t.total, 0)
   const nonTunai = totalHariIni - tunai
 
@@ -99,18 +111,27 @@ export default function KasirPage() {
         <button onClick={() => setShowForm(!showForm)} className="bg-primary-600 text-white px-4 py-2 rounded-xl text-sm font-medium">+ Transaksi Baru</button>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
           <p className="text-sm text-slate-500">Total Transaksi</p>
           <p className="text-3xl font-bold text-primary-600">{transaksi.length}</p>
         </div>
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
           <p className="text-sm text-slate-500">Pendapatan</p>
-          <p className="text-3xl font-bold text-green-600">{totalHariIni.toLocaleString('id-ID')}</p>
+          <p className="text-3xl font-bold text-green-600">{formatRupiah(totalHariIni)}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
+          <p className="text-sm text-slate-500">Modal</p>
+          <p className="text-3xl font-bold text-orange-600">{formatRupiah(totalModal)}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
+          <p className="text-sm text-slate-500">Keuntungan</p>
+          <p className={`text-3xl font-bold ${keuntungan >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatRupiah(keuntungan)}</p>
         </div>
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
           <p className="text-sm text-slate-500">Metode</p>
-          <p className="text-xl font-bold text-slate-900">Tunai: {tunai} | Non-Tunai: {nonTunai}</p>
+          <p className="text-sm font-semibold text-slate-900">Tunai: {formatRupiah(tunai)}</p>
+          <p className="text-sm font-semibold text-slate-900">Non-Tunai: {formatRupiah(nonTunai)}</p>
         </div>
       </div>
 
@@ -136,7 +157,10 @@ export default function KasirPage() {
                 ? dipilih.stok_unlimited ? 'Stok tak terbatas' : `Stok tersisa ${dipilih.stok}`
                 : 'Pilih produk terlebih dahulu'}
             </span>
-            <span className="font-semibold text-slate-900">Total: {formatRupiah(total)}</span>
+            <div className="text-right">
+              {hitung.diskon > 0 && <p className="text-xs text-green-600">Diskon -{formatRupiah(hitung.diskon)}</p>}
+              <span className="font-semibold text-slate-900">Total: {formatRupiah(total)}</span>
+            </div>
           </div>
           <div className="mt-4 flex justify-end gap-2">
             <button onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl">Batal</button>
@@ -152,27 +176,38 @@ export default function KasirPage() {
               <th className="px-3 py-2">Waktu</th>
               <th className="px-3 py-2">Produk</th>
               <th className="px-3 py-2">Qty</th>
-              <th className="px-3 py-2">Total</th>
+              <th className="px-3 py-2 text-right">Harga Jual</th>
+              <th className="px-3 py-2 text-right">Modal</th>
+              <th className="px-3 py-2 text-right">Keuntungan</th>
               <th className="px-3 py-2">Metode</th>
               <th className="px-3 py-2">Kasir</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100/80">
-            {transaksi.length === 0 && <tr><td colSpan={6} className="px-3 py-6 text-center text-slate-400">Belum ada transaksi hari ini.</td></tr>}
-            {transaksi.map((t) => (
-              <tr key={t.id} className="hover:bg-slate-50">
-                <td className="px-3 py-2 text-slate-500">{new Date(t.tanggal).toLocaleString('id-ID')}</td>
-                <td className="px-3 py-2 font-medium">{t.produk}</td>
-                <td className="px-3 py-2">{t.qty}</td>
-                <td className="px-3 py-2 font-medium">{t.total.toLocaleString('id-ID')}</td>
-                <td className="px-3 py-2">
-                  <span className={`px-2 py-0.5 rounded text-xs ${t.metode === 'Tunai' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
-                    {t.metode}
-                  </span>
-                </td>
-                <td className="px-3 py-2 text-slate-500">{t.dicatat_oleh || '-'}</td>
-              </tr>
-            ))}
+            {transaksi.length === 0 && <tr><td colSpan={8} className="px-3 py-6 text-center text-slate-400">Belum ada transaksi hari ini.</td></tr>}
+            {transaksi.map((t) => {
+              const modal = t.merchandise_id ? modalSatuan * t.qty : 0
+              const laba = t.total - modal
+              return (
+                <tr key={t.id} className="hover:bg-slate-50">
+                  <td className="px-3 py-2 text-slate-500">{new Date(t.tanggal).toLocaleString('id-ID')}</td>
+                  <td className="px-3 py-2 font-medium">{t.produk}</td>
+                  <td className="px-3 py-2">{t.qty}</td>
+                  <td className="px-3 py-2 text-right font-medium tabular-nums">
+                    {formatRupiah(t.total)}
+                    {t.diskon > 0 && <div className="text-[11px] text-green-600">Diskon -{formatRupiah(t.diskon)}</div>}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-orange-600">{formatRupiah(modal)}</td>
+                  <td className={`px-3 py-2 text-right font-semibold tabular-nums ${laba >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatRupiah(laba)}</td>
+                  <td className="px-3 py-2">
+                    <span className={`px-2 py-0.5 rounded text-xs ${t.metode === 'Tunai' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
+                      {t.metode}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-slate-500">{t.dicatat_oleh || '-'}</td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>

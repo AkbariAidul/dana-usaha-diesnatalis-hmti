@@ -11,28 +11,38 @@ export async function GET() {
 
     const list = data ?? []
     const ids = list.map((p) => p.id)
-    const [{ data: items }, { data: varian }, { data: pengurus }, { data: merchandise }] = await Promise.all([
+    const [{ data: items }, { data: varian }, { data: pengurus }, { data: merchandise }, { data: modalItems }] = await Promise.all([
       ids.length ? supabaseAdmin.from('merch_po_item').select('*').in('po_id', ids) : Promise.resolve({ data: [] }),
       supabaseAdmin.from('merch_varian').select('id,nama'),
       supabaseAdmin.from('pengurus').select('id,nama,divisi'),
       supabaseAdmin.from('merchandise').select('id,nama'),
+      supabaseAdmin.from('merch_modal_item').select('harga'),
     ])
 
     const varianMap = new Map((varian ?? []).map((v) => [v.id, v.nama]))
     const pengurusMap = new Map((pengurus ?? []).map((p) => [p.id, p]))
     const merchandiseMap = new Map((merchandise ?? []).map((m) => [m.id, m.nama]))
+    const modalSatuan = (modalItems ?? []).reduce((sum, item) => sum + Number(item.harga), 0)
 
-    const result = list.map((po) => ({
-      ...po,
-      pengurus: po.pengurus_id ? pengurusMap.get(po.pengurus_id) ?? null : null,
-      items: (items ?? [])
+    const result = list.map((po) => {
+      const poItems = (items ?? [])
         .filter((i) => i.po_id === po.id)
         .map((i) => ({
           ...i,
           merchandise: i.merchandise_id ? { nama: merchandiseMap.get(i.merchandise_id) ?? '' } : null,
           varian: i.varian_id ? { nama: varianMap.get(i.varian_id) ?? '' } : null,
-        })),
-    }))
+        }))
+      const totalQty = poItems.reduce((sum, item) => sum + Number(item.qty), 0)
+      const modalTotal = modalSatuan * totalQty
+      return {
+        ...po,
+        pengurus: po.pengurus_id ? pengurusMap.get(po.pengurus_id) ?? null : null,
+        items: poItems,
+        modal_satuan: modalSatuan,
+        modal_total: modalTotal,
+        keuntungan: Number(po.total) - modalTotal,
+      }
+    })
 
     return NextResponse.json(result)
   } catch (err: unknown) {

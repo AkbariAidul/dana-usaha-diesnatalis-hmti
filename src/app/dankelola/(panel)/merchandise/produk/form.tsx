@@ -4,10 +4,11 @@ import { useEffect, useState, type FormEvent } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Image as ImageIcon } from 'lucide-react'
+import { Image as ImageIcon, Plus, Trash2 } from 'lucide-react'
 import { getJSON, sendJSON } from '../../../api'
 import { PageSkeleton } from '../../ui'
-import type { Merchandise } from '@/lib/types'
+import type { DiskonRule, Merchandise } from '@/lib/types'
+import { normalizeDiskon } from '@/lib/merch-diskon'
 
 const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
 
@@ -25,7 +26,7 @@ function toIso(value: string) {
 
 export default function ProdukForm({ id }: { id?: string }) {
   const router = useRouter()
-  const [form, setForm] = useState({ nama: '', deskripsi: '', warna: '', harga: 0, harga_po: 0, po_mulai: '', po_selesai: '', po_unlimited: true, po_stok: 0, stok: 0, stok_unlimited: false, gambar_url: '', aktif: true })
+  const [form, setForm] = useState({ nama: '', deskripsi: '', warna: '', harga: 0, harga_po: 0, po_mulai: '', po_selesai: '', po_unlimited: true, po_stok: 0, stok: 0, stok_unlimited: false, gambar_url: '', aktif: true, diskon: [] as DiskonRule[] })
   const [foto, setFoto] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(Boolean(id))
@@ -57,6 +58,7 @@ export default function ProdukForm({ id }: { id?: string }) {
           stok_unlimited: Boolean(found.stok_unlimited),
           gambar_url: found.gambar_url ?? '',
           aktif: found.aktif,
+          diskon: normalizeDiskon(found.diskon),
         })
       })
       .catch((e) => toast.error((e as Error).message))
@@ -76,6 +78,24 @@ export default function ProdukForm({ id }: { id?: string }) {
     }
     setPreview(form.gambar_url || null)
   }, [foto, form.gambar_url])
+
+  function tambahDiskon() {
+    setForm({
+      ...form,
+      diskon: [...form.diskon, { min_qty: 2, tipe: 'persen', nilai: 0, berlaku_po: true, berlaku_hari_h: true }],
+    })
+  }
+
+  function updateDiskon(index: number, patch: Partial<DiskonRule>) {
+    setForm({
+      ...form,
+      diskon: form.diskon.map((rule, i) => i === index ? { ...rule, ...patch } : rule),
+    })
+  }
+
+  function hapusDiskon(index: number) {
+    setForm({ ...form, diskon: form.diskon.filter((_, i) => i !== index) })
+  }
 
   async function simpan(e: FormEvent) {
     e.preventDefault()
@@ -101,6 +121,26 @@ export default function ProdukForm({ id }: { id?: string }) {
         return
       }
     }
+    for (const [index, rule] of form.diskon.entries()) {
+      const label = `Aturan diskon #${index + 1}`
+      if (rule.min_qty < 2) {
+        toast.error(`${label}: minimal qty 2`)
+        return
+      }
+      if (rule.nilai <= 0) {
+        toast.error(`${label}: nilai diskon harus lebih dari 0`)
+        return
+      }
+      if (rule.tipe === 'persen' && rule.nilai > 100) {
+        toast.error(`${label}: diskon persen maksimal 100`)
+        return
+      }
+      if (!rule.berlaku_po && !rule.berlaku_hari_h) {
+        toast.error(`${label}: pilih Pre-Order atau Hari H`)
+        return
+      }
+    }
+
     setSaving(true)
     try {
       let gambarUrl = form.gambar_url.trim() || null
@@ -129,6 +169,7 @@ export default function ProdukForm({ id }: { id?: string }) {
         stok_unlimited: form.stok_unlimited,
         gambar_url: gambarUrl,
         aktif: form.aktif,
+        diskon: normalizeDiskon(form.diskon),
       })
       toast.success(id ? 'Produk diperbarui' : 'Produk ditambahkan')
       router.push('/dankelola/merchandise/produk')
@@ -318,6 +359,98 @@ export default function ProdukForm({ id }: { id?: string }) {
             </div>
           )}
         </div>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-slate-700">Aturan Diskon per Qty</p>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Diskon otomatis saat qty memenuhi minimal. Persen dihitung dari subtotal, nominal dipotong sekali per baris produk.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={tambahDiskon}
+              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              <Plus className="h-4 w-4" /> Tambah Aturan
+            </button>
+          </div>
+          {form.diskon.length === 0 ? (
+            <p className="mt-3 text-sm text-slate-400">Belum ada aturan diskon.</p>
+          ) : (
+            <div className="mt-3 space-y-3">
+              {form.diskon.map((rule, index) => (
+                <div key={index} className="rounded-xl border border-slate-200 bg-white p-3">
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-slate-500">Minimal Qty</label>
+                      <input
+                        type="number"
+                        min={2}
+                        className={input}
+                        value={rule.min_qty || ''}
+                        onChange={(e) => updateDiskon(index, { min_qty: Number(e.target.value) })}
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-slate-500">Tipe Diskon</label>
+                      <select
+                        className={input}
+                        value={rule.tipe}
+                        onChange={(e) => updateDiskon(index, { tipe: e.target.value === 'nominal' ? 'nominal' : 'persen' })}
+                      >
+                        <option value="persen">Persen (%)</option>
+                        <option value="nominal">Nominal (Rp)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-slate-500">
+                        Nilai {rule.tipe === 'persen' ? '(%)' : '(Rp)'}
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={rule.tipe === 'persen' ? 100 : undefined}
+                        className={input}
+                        value={rule.nilai || ''}
+                        onChange={(e) => updateDiskon(index, { nilai: Number(e.target.value) })}
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap gap-4 text-sm text-slate-700">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={rule.berlaku_po}
+                          onChange={(e) => updateDiskon(index, { berlaku_po: e.target.checked })}
+                          className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                        />
+                        Pre-Order
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={rule.berlaku_hari_h}
+                          onChange={(e) => updateDiskon(index, { berlaku_hari_h: e.target.checked })}
+                          className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                        />
+                        Hari H
+                      </label>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => hapusDiskon(index)}
+                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Hapus
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <label className="flex items-center gap-2 text-sm text-slate-700">
           <input

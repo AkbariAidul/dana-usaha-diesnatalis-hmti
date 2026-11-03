@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { hitungTerjual } from '@/lib/merch-po'
 import { signRef } from '@/lib/link-token'
+import { hitungDiskon } from '@/lib/merch-diskon'
 
 type ItemBody = {
   merchandise_id: string
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Nama dan kontak wajib diisi' }, { status: 400 })
     }
 
-    const validatedItems: Array<{ produk: { id: string; nama: string; harga_po: number; gambar_url: string | null; po_unlimited: boolean; po_stok: number }; qty: number; varian?: Varian | null }> = []
+    const validatedItems: Array<{ produk: { id: string; nama: string; harga_po: number; gambar_url: string | null; po_unlimited: boolean; po_stok: number; diskon?: unknown }; qty: number; varian?: Varian | null; subtotal: number; diskon: number }> = []
     let total = 0
 
     for (const item of items) {
@@ -99,9 +100,9 @@ export async function POST(request: Request) {
       }
 
       const harga = Number(produk.harga_po)
-      const subtotal = harga * qty
-      total += subtotal
-      validatedItems.push({ produk, qty, varian })
+      const hitung = hitungDiskon(qty, harga, produk.diskon, 'po')
+      total += hitung.total
+      validatedItems.push({ produk, qty, varian, subtotal: hitung.total, diskon: hitung.diskon })
     }
 
     const { data: existing } = await supabaseAdmin.from('merch_po').select('no_po')
@@ -138,7 +139,8 @@ export async function POST(request: Request) {
       ukuran: v.varian?.nama ?? null,
       qty: v.qty,
       harga_satuan: Number(v.produk.harga_po),
-      subtotal: Number(v.produk.harga_po) * v.qty,
+      diskon: v.diskon,
+      subtotal: v.subtotal,
     }))
 
     const { error: itemError } = await supabaseAdmin.from('merch_po_item').insert(insertItems)

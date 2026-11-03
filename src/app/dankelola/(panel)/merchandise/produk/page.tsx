@@ -249,6 +249,16 @@ export default function ProdukPage() {
                     {item.po_mulai && item.po_selesai ? (
                       <div className="text-[11px] text-slate-400">{formatJadwal(item.po_mulai)} – {formatJadwal(item.po_selesai)}</div>
                     ) : null}
+                    {item.diskon && item.diskon.length > 0 ? (
+                      <div className="mt-1 flex flex-wrap justify-end gap-1">
+                        {item.diskon.map((d, index) => (
+                          <span key={index} className="rounded bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-700">
+                            {d.min_qty}+ {d.tipe === 'persen' ? `${d.nilai}%` : formatRupiah(d.nilai)}
+                            {d.berlaku_po && d.berlaku_hari_h ? '' : d.berlaku_po ? ' PO' : ' H'}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
                   </td>
                   <td className="px-5 py-3 text-right tabular-nums">
                     <div className={`font-medium ${item.stok_unlimited || item.stok > 0 ? 'text-slate-700' : 'text-red-600'}`}>

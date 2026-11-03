@@ -30,6 +30,9 @@ type PreOrder = {
   catatan_admin: string | null
   picked_up_at: string | null
   created_at: string
+  modal_satuan: number
+  modal_total: number
+  keuntungan: number
   pengurus: { nama: string; divisi: string | null } | null
   items: Item[]
 }
@@ -115,14 +118,16 @@ export default function PreorderPage() {
               <th className="px-3 py-2">No. PO</th>
               <th className="px-3 py-2">Pemesan</th>
               <th className="px-3 py-2">Item</th>
-              <th className="px-3 py-2">Total</th>
+              <th className="px-3 py-2 text-right">Harga Jual</th>
+              <th className="px-3 py-2 text-right">Modal</th>
+              <th className="px-3 py-2 text-right">Keuntungan</th>
               <th className="px-3 py-2">Bukti</th>
               <th className="px-3 py-2">Status</th>
               <th className="px-3 py-2">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100/80">
-            {items.length === 0 && <tr><td colSpan={7} className="px-3 py-6 text-center text-slate-400">Belum ada pre-order.</td></tr>}
+            {items.length === 0 && <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-400">Belum ada pre-order.</td></tr>}
             {items.map((item) => (
               <tr key={item.id} className="hover:bg-slate-50">
                 <td className="px-3 py-2 font-mono text-xs">{item.no_po}</td>
@@ -139,7 +144,11 @@ export default function PreorderPage() {
                     </div>
                   ))}
                 </td>
-                <td className="px-3 py-2 font-medium">{formatRupiah(Number(item.total))}</td>
+                <td className="px-3 py-2 text-right font-medium tabular-nums">{formatRupiah(Number(item.total))}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-orange-600">{formatRupiah(Number(item.modal_total))}</td>
+                <td className={`px-3 py-2 text-right font-semibold tabular-nums ${Number(item.keuntungan) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatRupiah(Number(item.keuntungan))}
+                </td>
                 <td className="px-3 py-2">
                   {item.bukti_url ? <a href={item.bukti_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline">Lihat</a> : '-'}
                 </td>

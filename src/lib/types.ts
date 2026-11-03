@@ -88,6 +88,14 @@ export interface Acara {
   rekening_qris: string
 }
 
+export interface DiskonRule {
+  min_qty: number
+  tipe: 'persen' | 'nominal'
+  nilai: number
+  berlaku_po: boolean
+  berlaku_hari_h: boolean
+}
+
 export interface Merchandise {
   id: string
   nama: string
@@ -103,6 +111,7 @@ export interface Merchandise {
   po_stok: number
   gambar_url: string | null
   aktif: boolean
+  diskon: DiskonRule[] | null
 }
 
 export interface Ticket {

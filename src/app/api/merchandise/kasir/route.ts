@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { hitungDiskon } from '@/lib/merch-diskon'
 
 export async function GET() {
   try {
@@ -13,10 +14,12 @@ export async function GET() {
     
     const transformed = (data ?? []).map(item => ({
       id: item.id,
+      merchandise_id: item.merchandise_id ?? null,
       tanggal: item.created_at || new Date().toISOString(),
       produk: item.produk_nama || item.produk || '-',
       qty: Number(item.qty),
       total: Number(item.total),
+      diskon: Number(item.diskon ?? 0),
       metode: item.metode || 'Tunai',
       dicatat_oleh: item.dicatat_oleh || 'Admin',
     }))
@@ -39,7 +42,7 @@ export async function POST(request: Request) {
 
     const { data: produk, error: produkError } = await supabaseAdmin
       .from('merchandise')
-      .select('id,nama,harga,stok,stok_unlimited')
+      .select('id,nama,harga,stok,stok_unlimited,diskon')
       .eq('id', merchandiseId)
       .eq('aktif', true)
       .maybeSingle()
@@ -66,7 +69,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const total = Number(produk.harga) * qty
+    const hitung = hitungDiskon(qty, Number(produk.harga), produk.diskon, 'hari_h')
     const { data, error } = await supabaseAdmin
       .from('kasir_transaksi')
       .insert({
@@ -74,7 +77,8 @@ export async function POST(request: Request) {
         produk: produk.nama,
         produk_nama: produk.nama,
         qty,
-        total,
+        total: hitung.total,
+        diskon: hitung.diskon,
         metode: body.metode || 'Tunai',
         dicatat_oleh: body.dicatat_oleh || 'Admin',
       })

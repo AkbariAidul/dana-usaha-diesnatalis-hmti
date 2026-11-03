@@ -7,6 +7,8 @@ import { toast } from 'sonner'
 import { ArrowLeft, Shirt, Trash2, Plus, Minus } from 'lucide-react'
 import { formatRupiah } from '@/lib/utils'
 import { buatQrisDinamis } from '@/lib/qris'
+import { hitungDiskon } from '@/lib/merch-diskon'
+import type { DiskonRule } from '@/lib/types'
 
 type Pengurus = { id: string; nama: string; divisi: string | null; kontak: string | null }
 type Varian = { id: string; nama: string }
@@ -18,6 +20,7 @@ type Produk = {
   warna: string | null
   harga: number
   harga_po: number | null
+  diskon: DiskonRule[] | null
 }
 type ItemKeranjang = {
   produk: Produk
@@ -69,7 +72,8 @@ export default function PoMerchandisePage() {
     }).catch(() => toast.error('Gagal memuat katalog'))
   }, [])
 
-  const totalKeranjang = useMemo(() => keranjang.reduce((s, item) => s + (Number(item.produk.harga_po) * item.qty), 0), [keranjang])
+  const totalKeranjang = useMemo(() => keranjang.reduce((s, item) => s + hitungDiskon(item.qty, Number(item.produk.harga_po), item.produk.diskon, 'po').total, 0), [keranjang])
+  const totalDiskon = useMemo(() => keranjang.reduce((s, item) => s + hitungDiskon(item.qty, Number(item.produk.harga_po), item.produk.diskon, 'po').diskon, 0), [keranjang])
   const totalQty = useMemo(() => keranjang.reduce((s, item) => s + item.qty, 0), [keranjang])
 
   useEffect(() => {
@@ -301,48 +305,55 @@ export default function PoMerchandisePage() {
                 <p className="mt-4 text-center text-sm text-slate-500">Keranjang masih kosong.</p>
               ) : (
                 <div className="mt-4 space-y-3">
-                  {keranjang.map((item, idx) => (
-                    <div key={idx} className="flex flex-wrap items-center gap-3 border-b border-slate-100 pb-3 last:border-0 last:pb-0">
-                      <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-100">
-                        {item.produk.gambar_url ? (
-                          <img src={item.produk.gambar_url} alt={item.produk.nama} className="h-full w-full object-cover" />
-                        ) : (
-                          <Shirt className="h-5 w-5 text-slate-300" />
-                        )}
+                  {keranjang.map((item, idx) => {
+                    const hitung = hitungDiskon(item.qty, Number(item.produk.harga_po), item.produk.diskon, 'po')
+                    return (
+                      <div key={idx} className="flex flex-wrap items-center gap-3 border-b border-slate-100 pb-3 last:border-0 last:pb-0">
+                        <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-100">
+                          {item.produk.gambar_url ? (
+                            <img src={item.produk.gambar_url} alt={item.produk.nama} className="h-full w-full object-cover" />
+                          ) : (
+                            <Shirt className="h-5 w-5 text-slate-300" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-slate-900">{item.produk.nama}</p>
+                          {varianList.length > 0 ? (
+                            <select
+                              className="mt-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700"
+                              value={item.varian?.id ?? ''}
+                              onChange={(e) => pilihVarian(idx, e.target.value)}
+                            >
+                              <option value="">Pilih varian</option>
+                              {varianList.map((v) => (
+                                <option key={v.id} value={v.id}>{v.nama}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <p className="text-xs text-slate-500">{item.varian?.nama || 'Tanpa varian'}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => updateQty(idx, item.qty - 1)} className="rounded-lg border p-1 hover:bg-slate-50"><Minus className="h-3.5 w-3.5" /></button>
+                          <span className="w-7 text-center text-sm">{item.qty}</span>
+                          <button onClick={() => updateQty(idx, item.qty + 1)} className="rounded-lg border p-1 hover:bg-slate-50"><Plus className="h-3.5 w-3.5" /></button>
+                        </div>
+                        <div className="min-w-24 text-right">
+                          <div className="text-sm font-semibold text-violet-600">{formatRupiah(hitung.total)}</div>
+                          {hitung.diskon > 0 && <div className="text-[11px] text-green-600">Diskon -{formatRupiah(hitung.diskon)}</div>}
+                        </div>
+                        <button onClick={() => hapusDariKeranjang(idx)} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-slate-900">{item.produk.nama}</p>
-                        {varianList.length > 0 ? (
-                          <select
-                            className="mt-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700"
-                            value={item.varian?.id ?? ''}
-                            onChange={(e) => pilihVarian(idx, e.target.value)}
-                          >
-                            <option value="">Pilih varian</option>
-                            {varianList.map((v) => (
-                              <option key={v.id} value={v.id}>{v.nama}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          <p className="text-xs text-slate-500">{item.varian?.nama || 'Tanpa varian'}</p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <button onClick={() => updateQty(idx, item.qty - 1)} className="rounded-lg border p-1 hover:bg-slate-50"><Minus className="h-3.5 w-3.5" /></button>
-                        <span className="w-7 text-center text-sm">{item.qty}</span>
-                        <button onClick={() => updateQty(idx, item.qty + 1)} className="rounded-lg border p-1 hover:bg-slate-50"><Plus className="h-3.5 w-3.5" /></button>
-                      </div>
-                      <div className="min-w-20 text-right text-sm font-semibold text-violet-600">
-                        {formatRupiah(Number(item.produk.harga_po) * item.qty)}
-                      </div>
-                      <button onClick={() => hapusDariKeranjang(idx)} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600">
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
+                    )
+                  })}
                   <div className="flex items-center justify-between pt-1">
                     <span className="text-sm text-slate-500">Total Pembayaran</span>
-                    <span className="font-semibold text-violet-600">{formatRupiah(totalKeranjang)}</span>
+                    <div className="text-right">
+                      {totalDiskon > 0 && <div className="text-xs text-green-600">Hemat {formatRupiah(totalDiskon)}</div>}
+                      <span className="font-semibold text-violet-600">{formatRupiah(totalKeranjang)}</span>
+                    </div>
                   </div>
                 </div>
               )}
@@ -458,7 +469,10 @@ export default function PoMerchandisePage() {
 
               <div className="mt-4 flex items-center justify-between rounded-xl bg-slate-50 p-4">
                 <span className="text-sm text-slate-500">Total Pembayaran</span>
-                <span className="text-lg font-semibold text-violet-600">{formatRupiah(totalKeranjang)}</span>
+                <div className="text-right">
+                  {totalDiskon > 0 && <div className="text-xs text-green-600">Hemat {formatRupiah(totalDiskon)}</div>}
+                  <span className="text-lg font-semibold text-violet-600">{formatRupiah(totalKeranjang)}</span>
+                </div>
               </div>
 
               <div className="mt-4 flex justify-end">

@@ -154,18 +154,26 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const [currentUser, setCurrentUser] = useState<DashboardUser | null>(null)
   const [welcome, setWelcome] = useState<DashboardUser | null>(null)
   const [tiketTerjual, setTiketTerjual] = useState<number | null>(null)
+  const [tipeCount, setTipeCount] = useState<number | null>(null)
   const [produkCount, setProdukCount] = useState<number | null>(null)
+  const [pengurusCount, setPengurusCount] = useState<number | null>(null)
+  const [preorderCount, setPreorderCount] = useState<number | null>(null)
   const [checkinStats, setCheckinStats] = useState<{ terpakai: number; total: number } | null>(null)
   const breadcrumbs = getBreadcrumbs(pathname)
 
   const loadBadges = useCallback(async () => {
-    const [tipe, checkin, merchandise] = await Promise.all([
+    const [tipe, checkin, merchandise, pengurus, preorder] = await Promise.all([
       getJSON<{ terjual: number | null }[]>('/api/ticket'),
       getJSON<{ status: string }[]>('/api/ticket/checkin'),
       getJSON<unknown[]>('/api/merchandise'),
+      getJSON<unknown[]>('/api/pengurus'),
+      getJSON<unknown[]>('/api/merchandise/preorder'),
     ])
     setTiketTerjual(tipe.reduce((sum, t) => sum + Number(t.terjual ?? 0), 0))
+    setTipeCount(tipe.length)
     setProdukCount(merchandise.length)
+    setPengurusCount(pengurus.length)
+    setPreorderCount(preorder.length)
     setCheckinStats({
       terpakai: checkin.filter((t) => t.status === 'terpakai').length,
       total: checkin.length,
@@ -305,6 +313,21 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                       {child.href === '/dankelola/merchandise/produk' && produkCount !== null && (
                         <span className="ml-auto min-w-[1.5rem] shrink-0 rounded-full bg-white/20 px-2 py-0.5 text-center text-[10px] font-semibold tabular-nums text-white">
                           {produkCount}
+                        </span>
+                      )}
+                      {child.href === '/dankelola/merchandise/pengurus' && pengurusCount !== null && (
+                        <span className="ml-auto min-w-[1.5rem] shrink-0 rounded-full bg-white/20 px-2 py-0.5 text-center text-[10px] font-semibold tabular-nums text-white">
+                          {pengurusCount}
+                        </span>
+                      )}
+                      {child.href === '/dankelola/merchandise/preorder' && preorderCount !== null && (
+                        <span className="ml-auto min-w-[1.5rem] shrink-0 rounded-full bg-white/20 px-2 py-0.5 text-center text-[10px] font-semibold tabular-nums text-white">
+                          {preorderCount}
+                        </span>
+                      )}
+                      {child.href === '/dankelola/ticket/tahap' && tipeCount !== null && (
+                        <span className="ml-auto min-w-[1.5rem] shrink-0 rounded-full bg-white/20 px-2 py-0.5 text-center text-[10px] font-semibold tabular-nums text-white">
+                          {tipeCount}
                         </span>
                       )}
                       {child.href === '/dankelola/ticket/penjualan' && tiketTerjual !== null && (
