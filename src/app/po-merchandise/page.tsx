@@ -14,6 +14,7 @@ type Produk = {
   id: string
   nama: string
   gambar_url: string | null
+  warna: string | null
   harga: number
   harga_po: number | null
 }
@@ -232,7 +233,12 @@ export default function PoMerchandisePage() {
                     )}
                   </div>
                   <h2 className="font-medium text-slate-900">{item.nama}</h2>
-                  <div className="mt-1 text-sm text-slate-500">Harga Hari H: {formatRupiah(Number(item.harga))}</div>
+                  {item.warna ? <div className="mt-1 text-sm text-slate-500">Warna: {item.warna}</div> : null}
+                  {Number(item.harga) > 0 ? (
+                    <div className="mt-1 text-sm text-slate-500">Harga Hari H: {formatRupiah(Number(item.harga))}</div>
+                  ) : (
+                    <div className="mt-1 text-xs text-slate-500">Produk ini hanya untuk pre-order, tidak dijual saat Hari H.</div>
+                  )}
                   <div className="mt-2 flex items-center justify-between">
                     <span className="text-sm font-semibold text-violet-600">
                       {item.harga_po ? formatRupiah(Number(item.harga_po)) : 'Pre-order belum dibuka'}

@@ -1,0 +1,2 @@
+ALTER TABLE merchandise
+  ADD COLUMN IF NOT EXISTS warna TEXT;

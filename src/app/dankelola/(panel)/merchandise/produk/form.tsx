@@ -25,7 +25,7 @@ function toIso(value: string) {
 
 export default function ProdukForm({ id }: { id?: string }) {
   const router = useRouter()
-  const [form, setForm] = useState({ nama: '', deskripsi: '', harga: 0, harga_po: 0, po_mulai: '', po_selesai: '', po_unlimited: true, po_stok: 0, stok: 0, stok_unlimited: false, gambar_url: '', aktif: true })
+  const [form, setForm] = useState({ nama: '', deskripsi: '', warna: '', harga: 0, harga_po: 0, po_mulai: '', po_selesai: '', po_unlimited: true, po_stok: 0, stok: 0, stok_unlimited: false, gambar_url: '', aktif: true })
   const [foto, setFoto] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(Boolean(id))
@@ -46,6 +46,7 @@ export default function ProdukForm({ id }: { id?: string }) {
         setForm({
           nama: found.nama,
           deskripsi: found.deskripsi ?? '',
+          warna: found.warna ?? '',
           harga: Number(found.harga),
           harga_po: Number(found.harga_po ?? 0),
           po_mulai: toLocalInput(found.po_mulai),
@@ -117,6 +118,7 @@ export default function ProdukForm({ id }: { id?: string }) {
         ...(id ? { id } : {}),
         nama: form.nama.trim(),
         deskripsi: form.deskripsi.trim() || null,
+        warna: form.warna.trim() || null,
         harga: Number(form.harga) || 0,
         harga_po: Number(form.harga_po) || null,
         po_mulai: form.po_mulai ? toIso(form.po_mulai) : null,
@@ -192,6 +194,16 @@ export default function ProdukForm({ id }: { id?: string }) {
             value={form.nama}
             onChange={(e) => setForm({ ...form, nama: e.target.value })}
             autoFocus
+          />
+        </div>
+        <div>
+          <label htmlFor="warna" className="mb-1 block text-xs font-medium text-slate-500">Warna (opsional)</label>
+          <input
+            id="warna"
+            className={input}
+            placeholder="cth: Hitam, Putih"
+            value={form.warna}
+            onChange={(e) => setForm({ ...form, warna: e.target.value })}
           />
         </div>
         <div>

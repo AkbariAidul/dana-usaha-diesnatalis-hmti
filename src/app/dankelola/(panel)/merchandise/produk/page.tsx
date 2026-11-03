@@ -124,7 +124,10 @@ export default function ProdukPage() {
                       )}
                     </div>
                   </td>
-                  <td className="px-5 py-3 font-medium text-slate-900">{item.nama}</td>
+                  <td className="px-5 py-3">
+                    <div className="font-medium text-slate-900">{item.nama}</div>
+                    {item.warna ? <div className="text-xs text-slate-400">Warna: {item.warna}</div> : null}
+                  </td>
                   <td className="max-w-[320px] px-5 py-3 text-slate-500">
                     <span className="line-clamp-2">{item.deskripsi || '-'}</span>
                   </td>

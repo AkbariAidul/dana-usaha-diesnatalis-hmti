@@ -92,6 +92,7 @@ export interface Merchandise {
   id: string
   nama: string
   deskripsi: string | null
+  warna: string | null
   harga: number
   stok: number
   stok_unlimited: boolean
