@@ -58,10 +58,17 @@ export default function KasirNewPage() {
     [form.metode, qrisPayload, hitung.total],
   )
 
-  function ubahQty(value: number) {
-    const max = stokTersisa === null ? 999 : Math.max(0, stokTersisa)
-    const next = Math.max(1, Math.min(Number(value) || 1, max))
-    setForm((f) => ({ ...f, qty: next }))
+  function ubahQty(raw: string) {
+    if (raw === '') {
+      setForm((f) => ({ ...f, qty: 0 }))
+      return
+    }
+    const max = stokTersisa === null ? 999 : Math.max(1, stokTersisa)
+    setForm((f) => ({ ...f, qty: Math.min(Math.max(1, Number(raw) || 1), max) }))
+  }
+
+  function rapikanQty() {
+    if (form.qty < 1) setForm((f) => ({ ...f, qty: 1 }))
   }
 
   async function simpan(e: FormEvent) {
@@ -135,7 +142,8 @@ export default function KasirNewPage() {
                 max={stokTersisa ?? undefined}
                 className={input}
                 value={form.qty || ''}
-                onChange={(e) => ubahQty(Number(e.target.value))}
+                onChange={(e) => ubahQty(e.target.value)}
+                onBlur={rapikanQty}
               />
             </div>
             <div>
