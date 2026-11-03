@@ -231,7 +231,7 @@ export default function ProdukForm({ id }: { id?: string }) {
             />
           </div>
           <div>
-            <label htmlFor="stok" className="mb-1 block text-xs font-medium text-slate-500">Stok</label>
+            <label htmlFor="stok" className="mb-1 block text-xs font-medium text-slate-500">Stok Hari H</label>
             <input
               id="stok"
               type="number"

@@ -100,7 +100,7 @@ export default function ProdukPage() {
                 <th className="px-5 py-3">Nama</th>
                 <th className="px-5 py-3">Deskripsi</th>
                 <th className="px-5 py-3 text-right">Harga</th>
-                <th className="px-5 py-3 text-right">Stok</th>
+                <th className="px-5 py-3 text-right">Stok / Slot PO</th>
                 <th className="px-5 py-3">Status</th>
                 <th className="px-5 py-3 text-right">Aksi</th>
               </tr>
@@ -135,8 +135,15 @@ export default function ProdukPage() {
                       <div className="text-[11px] text-slate-400">{formatJadwal(item.po_mulai)} – {formatJadwal(item.po_selesai)}</div>
                     ) : null}
                   </td>
-                  <td className={`px-5 py-3 text-right font-medium tabular-nums ${item.stok_unlimited || item.stok > 0 ? 'text-slate-700' : 'text-red-600'}`}>
-                    {item.stok_unlimited ? 'Tak terbatas' : item.stok}
+                  <td className="px-5 py-3 text-right tabular-nums">
+                    <div className={`font-medium ${item.stok_unlimited || item.stok > 0 ? 'text-slate-700' : 'text-red-600'}`}>
+                      Hari H: {item.stok_unlimited ? 'Tak terbatas' : item.stok}
+                    </div>
+                    {item.harga_po ? (
+                      <div className="text-xs text-slate-400">
+                        Slot PO: {item.po_unlimited ? 'Tak terbatas' : item.po_stok}
+                      </div>
+                    ) : null}
                   </td>
                   <td className="px-5 py-3">
                     <button
