@@ -13,6 +13,7 @@ type Varian = { id: string; nama: string }
 type Produk = {
   id: string
   nama: string
+  deskripsi: string | null
   gambar_url: string | null
   warna: string | null
   harga: number
@@ -215,15 +216,15 @@ export default function PoMerchandisePage() {
               <h1 className="text-2xl font-semibold text-slate-900">Katalog Merchandise</h1>
               <p className="text-sm text-slate-500">Pilih produk yang ingin dipesan.</p>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid auto-rows-fr gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {produkList.length === 0 && (
                 <div className="col-span-full rounded-2xl border border-dashed border-slate-200 p-10 text-center text-sm text-slate-500">
                   Belum ada produk.
                 </div>
               )}
               {produkList.map((item) => (
-                <div key={item.id} className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
-                  <div className="mb-3 aspect-square overflow-hidden rounded-xl bg-slate-100">
+                <div key={item.id} className="flex h-full flex-col rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
+                  <div className="mb-3 aspect-square shrink-0 overflow-hidden rounded-xl bg-slate-100">
                     {item.gambar_url ? (
                       <img src={item.gambar_url} alt={item.nama} className="h-full w-full object-cover" />
                     ) : (
@@ -232,24 +233,35 @@ export default function PoMerchandisePage() {
                       </div>
                     )}
                   </div>
-                  <h2 className="font-medium text-slate-900">{item.nama}</h2>
-                  {item.warna ? <div className="mt-1 text-sm text-slate-500">Warna: {item.warna}</div> : null}
-                  {Number(item.harga) > 0 ? (
-                    <div className="mt-1 text-sm text-slate-500">Harga Hari H: {formatRupiah(Number(item.harga))}</div>
-                  ) : (
-                    <div className="mt-1 text-xs text-slate-500">Produk ini hanya untuk pre-order, tidak dijual saat Hari H.</div>
-                  )}
-                  <div className="mt-2 flex items-center justify-between">
-                    <span className="text-sm font-semibold text-violet-600">
-                      {item.harga_po ? formatRupiah(Number(item.harga_po)) : 'Pre-order belum dibuka'}
-                    </span>
-                    <button
-                      onClick={() => tambahKeKeranjang(item)}
-                      disabled={!item.harga_po}
-                      className="flex items-center gap-1 rounded-xl bg-violet-600 px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <Plus className="h-4 w-4" /> Tambah
-                    </button>
+                  <div className="flex flex-1 flex-col">
+                    <h2 className="line-clamp-2 min-h-[2.5rem] font-medium text-slate-900">{item.nama}</h2>
+                    <div className="mt-1 min-h-[2rem]">
+                      {item.deskripsi ? (
+                        <p className="line-clamp-2 text-xs text-slate-500">{item.deskripsi}</p>
+                      ) : null}
+                    </div>
+                    <div className="min-h-[1.25rem] text-sm text-slate-500">
+                      {item.warna ? `Warna: ${item.warna}` : ''}
+                    </div>
+                    <div className="mt-1 min-h-[2.5rem]">
+                      {Number(item.harga) > 0 ? (
+                        <div className="text-sm text-slate-500">Harga Hari H: {formatRupiah(Number(item.harga))}</div>
+                      ) : (
+                        <div className="text-xs text-slate-500">Produk ini hanya untuk pre-order, tidak dijual saat Hari H.</div>
+                      )}
+                    </div>
+                    <div className="mt-auto flex items-end justify-between gap-3 pt-3">
+                      <span className="text-sm font-semibold text-violet-600">
+                        {item.harga_po ? formatRupiah(Number(item.harga_po)) : 'Pre-order belum dibuka'}
+                      </span>
+                      <button
+                        onClick={() => tambahKeKeranjang(item)}
+                        disabled={!item.harga_po}
+                        className="flex shrink-0 items-center gap-1 rounded-xl bg-violet-600 px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <Plus className="h-4 w-4" /> Tambah
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

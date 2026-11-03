@@ -5,7 +5,7 @@ export async function GET() {
   try {
     const { data: produk } = await supabaseAdmin
       .from('merchandise')
-      .select('id,nama,gambar_url,warna,harga,harga_po,po_mulai,po_selesai,po_unlimited,po_stok,aktif')
+      .select('id,nama,deskripsi,gambar_url,warna,harga,harga_po,po_mulai,po_selesai,po_unlimited,po_stok,aktif')
       .eq('aktif', true)
       .order('nama')
 

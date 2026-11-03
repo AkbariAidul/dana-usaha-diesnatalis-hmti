@@ -9,7 +9,7 @@ import { PageSkeleton } from '../../ui'
 import { useConfirm } from '@/components/confirm-dialog'
 import type { Merchandise } from '@/lib/types'
 import { formatRupiah } from '@/lib/utils'
-import { Image as ImageIcon, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Copy, Image as ImageIcon, Pencil, Plus, Trash2 } from 'lucide-react'
 
 function formatJadwal(value: string | null) {
   if (!value) return '-'
@@ -21,10 +21,13 @@ export default function ProdukPage() {
   const [items, setItems] = useState<Merchandise[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const allSelected = items.length > 0 && items.every((item) => selected.has(item.id))
 
   const load = useCallback(async () => {
     const data = await getJSON<Merchandise[]>('/api/merchandise')
     setItems(data)
+    setSelected((prev) => new Set([...prev].filter((id) => data.some((item) => item.id === id))))
     setError(null)
   }, [])
 
@@ -45,6 +48,65 @@ export default function ProdukPage() {
       await sendJSON('/api/merchandise', 'POST', { id: item.id, aktif })
     } catch (e) {
       setItems((prev) => prev.map((p) => (p.id === item.id ? { ...p, aktif: item.aktif } : p)))
+      toast.error((e as Error).message)
+    }
+  }
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAll() {
+    setSelected(allSelected ? new Set() : new Set(items.map((item) => item.id)))
+  }
+
+  async function hapusTerpilih() {
+    const chosen = items.filter((item) => selected.has(item.id))
+    if (!chosen.length) return
+    const ok = await confirm({
+      title: 'Hapus produk terpilih?',
+      description: `${chosen.length} produk akan dihapus permanen.`,
+      confirmText: 'Hapus',
+    })
+    if (!ok) return
+    try {
+      await Promise.all(chosen.map((item) => sendJSON('/api/merchandise', 'DELETE', { id: item.id })))
+      toast.success(`${chosen.length} produk dihapus`)
+      setSelected(new Set())
+      await load()
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
+  }
+
+  async function duplikatTerpilih() {
+    const chosen = items.filter((item) => selected.has(item.id))
+    if (!chosen.length) return
+    try {
+      await Promise.all(chosen.map((item) => sendJSON('/api/merchandise', 'POST', {
+        nama: `${item.nama} (Copy)`,
+        deskripsi: item.deskripsi,
+        warna: item.warna,
+        harga: Number(item.harga) || 0,
+        harga_po: item.harga_po ? Number(item.harga_po) : null,
+        po_mulai: item.po_mulai,
+        po_selesai: item.po_selesai,
+        po_unlimited: item.po_unlimited,
+        po_stok: Number(item.po_stok) || 0,
+        stok: Number(item.stok) || 0,
+        stok_unlimited: item.stok_unlimited,
+        gambar_url: item.gambar_url,
+        aktif: item.aktif,
+      })))
+      toast.success(`${chosen.length} produk diduplikat`)
+      setSelected(new Set())
+      await load()
+    } catch (e) {
       toast.error((e as Error).message)
     }
   }
@@ -91,11 +153,42 @@ export default function ProdukPage() {
         </Link>
       </div>
 
+      {selected.size > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
+          <p className="text-sm text-slate-600"><span className="font-semibold text-slate-900">{selected.size}</span> produk dipilih</p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={duplikatTerpilih}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              <Copy className="h-4 w-4" /> Duplikat
+            </button>
+            <button
+              type="button"
+              onClick={hapusTerpilih}
+              className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+            >
+              <Trash2 className="h-4 w-4" /> Hapus
+            </button>
+          </div>
+        </div>
+      )}
+
       <section className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/70 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-5 py-3">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleSelectAll}
+                    aria-label="Pilih semua produk"
+                    className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                  />
+                </th>
                 <th className="px-5 py-3">Foto</th>
                 <th className="px-5 py-3">Nama</th>
                 <th className="px-5 py-3">Deskripsi</th>
@@ -108,13 +201,22 @@ export default function ProdukPage() {
             <tbody className="divide-y divide-slate-100/80">
               {items.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-5 py-12 text-center text-sm text-slate-400">
+                  <td colSpan={8} className="px-5 py-12 text-center text-sm text-slate-400">
                     Belum ada produk.
                   </td>
                 </tr>
               )}
               {items.map((item) => (
                 <tr key={item.id} className="transition-colors hover:bg-slate-50/70">
+                  <td className="px-5 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(item.id)}
+                      onChange={() => toggleSelect(item.id)}
+                      aria-label={`Pilih ${item.nama}`}
+                      className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                    />
+                  </td>
                   <td className="px-5 py-3">
                     <div className="grid h-10 w-10 place-items-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
                       {item.gambar_url ? (
