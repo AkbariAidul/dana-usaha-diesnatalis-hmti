@@ -1,9 +1,39 @@
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabase'
 import { hitungDiskon } from '@/lib/merch-diskon'
+import type { DashboardUser } from '@/lib/auth'
 
-export async function GET() {
+async function getSessionUser(): Promise<DashboardUser | null> {
   try {
+    const cookieStore = await cookies()
+    const raw = cookieStore.get('dashboard_user')?.value
+    if (!raw) return null
+    const user = JSON.parse(decodeURIComponent(raw)) as DashboardUser
+    return user.name ? user : null
+  } catch {
+    return null
+  }
+}
+
+export async function GET(request: Request) {
+  const ringkasan = new URL(request.url).searchParams.get('ringkasan') === '1'
+  try {
+    if (ringkasan) {
+      const [{ data: trx, error: trxError }, { data: produk, error: produkError }] = await Promise.all([
+        supabaseAdmin.from('kasir_transaksi').select('qty'),
+        supabaseAdmin.from('merchandise').select('stok,stok_unlimited').eq('aktif', true),
+      ])
+      if (trxError) throw trxError
+      if (produkError) throw produkError
+      const terjual = (trx ?? []).reduce((sum, item) => sum + Number(item.qty ?? 0), 0)
+      const sisa = (produk ?? []).reduce(
+        (sum, item) => sum + (item.stok_unlimited ? 0 : Number(item.stok ?? 0)),
+        0,
+      )
+      return NextResponse.json({ terjual, sisa, total: terjual + sisa })
+    }
+
     const { data, error } = await supabaseAdmin
       .from('kasir_transaksi')
       .select('*')
@@ -27,12 +57,18 @@ export async function GET() {
     return NextResponse.json(transformed)
   } catch (err: unknown) {
     console.error('Kasir error:', err)
+    if (ringkasan) return NextResponse.json({ terjual: 0, sisa: 0, total: 0 }, { status: 200 })
     return NextResponse.json([], { status: 200 })
   }
 }
 
 export async function POST(request: Request) {
   try {
+    const kasir = await getSessionUser()
+    if (!kasir) {
+      return NextResponse.json({ error: 'Sesi login tidak ditemukan, silakan login ulang' }, { status: 401 })
+    }
+
     const body = await request.json()
     const merchandiseId = String(body.merchandise_id ?? '')
     const qty = Math.max(1, Math.min(999, Number(body.qty) || 1))
@@ -80,7 +116,7 @@ export async function POST(request: Request) {
         total: hitung.total,
         diskon: hitung.diskon,
         metode: body.metode || 'Tunai',
-        dicatat_oleh: body.dicatat_oleh || 'Admin',
+        dicatat_oleh: kasir.name,
       })
       .select()
       .single()
