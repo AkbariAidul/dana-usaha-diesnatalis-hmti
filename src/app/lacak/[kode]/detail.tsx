@@ -731,11 +731,9 @@ function PoView({ data, token, reload }: { data: Extract<StatusResponse, { tipe:
         <BuktiUpload kode={data.kode} token={token} nominal={sisa} imageOnly onDone={reload} />
       )}
 
-      {data.cicilan && data.cicilan.length > 0 && (
+      {po.pembayaran_tipe === 'nyicil' && data.cicilan && data.cicilan.length > 0 && (
         <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm">
-          <h3 className="text-lg font-semibold text-slate-900">
-            {po.pembayaran_tipe === 'nyicil' ? 'Riwayat Cicilan' : 'Riwayat Pembayaran'}
-          </h3>
+          <h3 className="text-lg font-semibold text-slate-900">Riwayat Cicilan</h3>
           <div className="mt-4 space-y-3">
             {data.cicilan.map((c) => (
               <div key={c.id} className="flex items-center justify-between rounded-xl bg-slate-50 p-3">
@@ -761,9 +759,7 @@ function PoView({ data, token, reload }: { data: Extract<StatusResponse, { tipe:
             ))}
           </div>
           <div className="mt-4 flex justify-between rounded-xl bg-slate-100 p-3 text-sm">
-            <span className="text-slate-600">
-              {po.pembayaran_tipe === 'nyicil' ? 'Total Cicilan Terverifikasi' : 'Total Pembayaran Terverifikasi'}
-            </span>
+            <span className="text-slate-600">Total Cicilan Terverifikasi</span>
             <span className="font-semibold text-slate-900">
               {formatRupiah(data.cicilan.filter((c) => c.validated).reduce((s, c) => s + Number(c.nominal), 0))}
             </span>

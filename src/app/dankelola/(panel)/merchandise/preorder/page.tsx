@@ -232,11 +232,19 @@ export default function PreorderPage() {
                     {item.picked_up_at && <div className="mt-1 text-xs text-green-700">Diambil {formatDate(item.picked_up_at)}</div>}
                   </td>
                   <td className="px-3 py-2">
+                    {item.pembayaran_tipe !== 'nyicil' ? (
+                      item.bukti_url ? (
+                        <a href={item.bukti_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline">Bukti</a>
+                      ) : (
+                        <span className="text-xs text-slate-400">—</span>
+                      )
+                    ) : (
+                      <>
                     <button
                       onClick={() => setCicilanModal(cicilanModal === item.id ? null : item.id)}
                       className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700 hover:bg-slate-200"
                     >
-                      {item.cicilan?.length ?? 0} pembayaran
+                      {item.cicilan?.length ?? 0} cicilan
                     </button>
                     {cicilanModal === item.id && (
                       <div className="mt-2 space-y-2">
@@ -287,6 +295,8 @@ export default function PreorderPage() {
                           >Tambah</button>
                         </div>
                       </div>
+                    )}
+                      </>
                     )}
                   </td>
                   <td className="px-3 py-2">
