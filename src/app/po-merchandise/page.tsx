@@ -99,6 +99,7 @@ export default function PoMerchandisePage() {
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState('')
   const [uploading, setUploading] = useState(false)
+  const [nominalBayar, setNominalBayar] = useState('')
   const [pengurusOpen, setPengurusOpen] = useState(false)
 
   useEffect(() => {
@@ -254,6 +255,11 @@ export default function PoMerchandisePage() {
 
   async function upload() {
     if (!file || !pesanan) return
+    const nominal = form.pembayaran_tipe === 'lunas' ? Number(pesanan.total) : Number(nominalBayar)
+    if (!nominal || nominal <= 0) {
+      toast.error('Isi nominal yang kamu bayar dulu')
+      return
+    }
     setUploading(true)
     try {
       const fd = new FormData()
@@ -265,7 +271,7 @@ export default function PoMerchandisePage() {
       const res = await fetch('/api/public/status/bukti', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kode: pesanan.no_po, t: pesanan.t, bukti_url: up.url }),
+        body: JSON.stringify({ kode: pesanan.no_po, t: pesanan.t, bukti_url: up.url, nominal }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Gagal mengirim bukti')
@@ -650,9 +656,22 @@ export default function PoMerchandisePage() {
                   {qr ? <img src={qr} alt="QRIS" className="h-72 w-72 rounded-lg" /> : <div className="h-72 w-72 animate-pulse rounded-lg bg-slate-100" />}
                 </div>
                 {form.pembayaran_tipe === 'nyicil' ? (
-                  <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-700">
-                    QRIS ini tidak mengunci nominal. Saat scan, masukkan nominal DP/cicilan yang ingin dibayar.
-                  </p>
+                  <>
+                    <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-700">
+                      QRIS ini tidak mengunci nominal. Saat scan, masukkan nominal DP/cicilan yang ingin dibayar.
+                    </p>
+                    <div className="text-left">
+                      <label className="mb-1 block text-sm font-medium text-slate-700">Nominal yang dibayar</label>
+                      <input
+                        type="number"
+                        min={1}
+                        placeholder={`cth: ${Math.round(totalKeranjang / 2)}`}
+                        value={nominalBayar}
+                        onChange={(e) => setNominalBayar(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/10"
+                      />
+                    </div>
+                  </>
                 ) : (
                   <p className="text-sm text-slate-500">Nominal QRIS otomatis {formatRupiah(totalKeranjang)}.</p>
                 )}
@@ -669,6 +688,19 @@ export default function PoMerchandisePage() {
               <div className="space-y-4 rounded-2xl border border-slate-200/70 bg-white p-6 text-center shadow-sm">
                 <h2 className="text-lg font-semibold text-slate-900">Pembayaran Cash</h2>
                 <p className="text-sm text-slate-500">Serahkan bukti pembayaran tunai ke panitia. Simpan link ini untuk memantau status.</p>
+                {form.pembayaran_tipe === 'nyicil' && (
+                  <div className="text-left">
+                    <label className="mb-1 block text-sm font-medium text-slate-700">Nominal yang dibayar</label>
+                    <input
+                      type="number"
+                      min={1}
+                      placeholder={`cth: ${Math.round(totalKeranjang / 2)}`}
+                      value={nominalBayar}
+                      onChange={(e) => setNominalBayar(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/10"
+                    />
+                  </div>
+                )}
                 <BuktiUpload
                   file={file}
                   preview={preview}
