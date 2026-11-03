@@ -17,6 +17,18 @@ type Item = {
   varian: { nama: string } | null
 }
 
+type Cicilan = {
+  id: string
+  no_transaksi: string
+  tanggal_bayar: string
+  nominal: number
+  metode: string
+  bukti_url: string | null
+  validated: boolean
+  validated_by: string | null
+  validated_at: string | null
+}
+
 type PreOrder = {
   id: string
   no_po: string
@@ -35,17 +47,32 @@ type PreOrder = {
   keuntungan: number
   pengurus: { nama: string; divisi: string | null } | null
   items: Item[]
+  cicilan?: Cicilan[]
 }
 
 export default function PreorderPage() {
   const [items, setItems] = useState<PreOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [cicilanModal, setCicilanModal] = useState<string | null>(null)
+  const [cicilanForm, setCicilanForm] = useState({ nominal: '', metode: 'QRIS' })
 
   async function load() {
     try {
       const list = await getJSON<PreOrder[]>('/api/merchandise/preorder')
-      setItems(list)
+      // Fetch cicilan untuk setiap PO
+      const withCicilan = await Promise.all(
+        list.map(async (po) => {
+          try {
+            const res = await fetch(`/api/merchandise/preorder/cicilan?po_id=${po.id}`)
+            const cicilan = await res.json()
+            return { ...po, cicilan: cicilan ?? [] }
+          } catch {
+            return { ...po, cicilan: [] }
+          }
+        })
+      )
+      setItems(withCicilan)
       setError(null)
     } catch (e) {
       setError('Gagal memuat data pre-order')
@@ -64,6 +91,37 @@ export default function PreorderPage() {
       toast.success(`Status diubah ke ${status.replace(/_/g, ' ')}`)
       await load()
     } catch (e) { toast.error((e as Error).message) }
+  }
+
+  async function tambahCicilan(poId: string) {
+    const nominal = Number(cicilanForm.nominal)
+    if (!nominal || nominal <= 0) {
+      toast.error('Nominal harus lebih dari 0')
+      return
+    }
+    try {
+      await sendJSON('/api/merchandise/preorder/cicilan', 'POST', {
+        po_id: poId,
+        nominal,
+        metode: cicilanForm.metode,
+      })
+      toast.success('Cicilan berhasil ditambahkan')
+      setCicilanModal(null)
+      setCicilanForm({ nominal: '', metode: 'QRIS' })
+      await load()
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
+  }
+
+  async function toggleValidasi(id: string, validated: boolean) {
+    try {
+      await sendJSON('/api/merchandise/preorder/cicilan', 'PATCH', { id, validated })
+      toast.success(validated ? 'Cicilan diverifikasi' : 'Cicilan dicabut')
+      await load()
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
   }
 
   if (loading) return <PageSkeleton />
@@ -118,66 +176,122 @@ export default function PreorderPage() {
               <th className="px-3 py-2">No. PO</th>
               <th className="px-3 py-2">Pemesan</th>
               <th className="px-3 py-2">Item</th>
-              <th className="px-3 py-2 text-right">Harga Jual</th>
-              <th className="px-3 py-2 text-right">Modal</th>
-              <th className="px-3 py-2 text-right">Keuntungan</th>
-              <th className="px-3 py-2">Bukti</th>
+              <th className="px-3 py-2 text-right">Total</th>
+              <th className="px-3 py-2 text-right">Sudah Dibayar</th>
+              <th className="px-3 py-2 text-right">Sisa</th>
               <th className="px-3 py-2">Status</th>
+              <th className="px-3 py-2">Cicilan</th>
               <th className="px-3 py-2">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100/80">
             {items.length === 0 && <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-400">Belum ada pre-order.</td></tr>}
-            {items.map((item) => (
-              <tr key={item.id} className="hover:bg-slate-50">
-                <td className="px-3 py-2 font-mono text-xs">{item.no_po}</td>
-                <td className="px-3 py-2">
-                  <div className="font-medium">{item.nama_pemesan}</div>
-                  <div className="text-xs text-slate-500">{item.tipe_pemesan} · {item.kontak}</div>
-                  {item.pengurus && <div className="text-xs text-slate-400">{item.pengurus.divisi || '-'}</div>}
-                </td>
-                <td className="px-3 py-2">
-                  {item.items?.map((i) => (
-                    <div key={i.id} className="text-xs">
-                      {i.merchandise?.nama ?? 'Item'}
-                      {(i.varian?.nama || i.ukuran) ? ` (${i.varian?.nama || i.ukuran})` : ''} × {i.qty}
+            {items.map((item) => {
+              const sisa = Math.max(0, Number(item.total) - Number(item.sudah_dibayar ?? 0))
+              return (
+                <tr key={item.id} className="hover:bg-slate-50">
+                  <td className="px-3 py-2 font-mono text-xs">{item.no_po}</td>
+                  <td className="px-3 py-2">
+                    <div className="font-medium">{item.nama_pemesan}</div>
+                    <div className="text-xs text-slate-500">{item.tipe_pemesan} · {item.kontak}</div>
+                    {item.pengurus && <div className="text-xs text-slate-400">{item.pengurus.divisi || '-'}</div>}
+                  </td>
+                  <td className="px-3 py-2">
+                    {item.items?.map((i) => (
+                      <div key={i.id} className="text-xs">
+                        {i.merchandise?.nama ?? 'Item'}
+                        {(i.varian?.nama || i.ukuran) ? ` (${i.varian?.nama || i.ukuran})` : ''} × {i.qty}
+                      </div>
+                    ))}
+                  </td>
+                  <td className="px-3 py-2 text-right font-medium tabular-nums">{formatRupiah(Number(item.total))}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-green-600">{formatRupiah(Number(item.sudah_dibayar ?? 0))}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-orange-600">{formatRupiah(sisa)}</td>
+                  <td className="px-3 py-2">
+                    <span className={`rounded px-2 py-0.5 text-xs ${
+                      item.status === 'menunggu_verifikasi' ? 'bg-yellow-100 text-yellow-800' :
+                      item.status === 'dp_diterima' ? 'bg-blue-100 text-blue-800' :
+                      item.status === 'lunas' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {item.status.replace(/_/g, ' ')}
+                    </span>
+                    {item.picked_up_at && <div className="mt-1 text-xs text-green-700">Diambil {formatDate(item.picked_up_at)}</div>}
+                  </td>
+                  <td className="px-3 py-2">
+                    <button
+                      onClick={() => setCicilanModal(cicilanModal === item.id ? null : item.id)}
+                      className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700 hover:bg-slate-200"
+                    >
+                      {item.cicilan?.length ?? 0} cicilan
+                    </button>
+                    {cicilanModal === item.id && (
+                      <div className="mt-2 space-y-2">
+                        {item.cicilan?.map((c) => (
+                          <div key={c.id} className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs">
+                            <div className="flex justify-between">
+                              <span className="font-mono">{c.no_transaksi}</span>
+                              <span className="font-medium">{formatRupiah(c.nominal)}</span>
+                            </div>
+                            <div className="text-slate-500">{formatDate(c.tanggal_bayar)} · {c.metode}</div>
+                            <div className="mt-1 flex items-center justify-between">
+                              <span className={`rounded px-1.5 py-0.5 ${c.validated ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                {c.validated ? 'Terverifikasi' : 'Pending'}
+                              </span>
+                              <div className="flex gap-1">
+                                {!c.validated && (
+                                  <button
+                                    onClick={() => toggleValidasi(c.id, true)}
+                                    className="rounded bg-green-600 px-1.5 py-0.5 text-xs text-white"
+                                  >Verifikasi</button>
+                                )}
+                                {c.bukti_url && (
+                                  <a href={c.bukti_url} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">Bukti</a>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            placeholder="Nominal"
+                            value={cicilanForm.nominal}
+                            onChange={(e) => setCicilanForm({ ...cicilanForm, nominal: e.target.value })}
+                            className="w-24 rounded-lg border border-slate-200 px-2 py-1 text-xs"
+                          />
+                          <select
+                            value={cicilanForm.metode}
+                            onChange={(e) => setCicilanForm({ ...cicilanForm, metode: e.target.value })}
+                            className="rounded-lg border border-slate-200 px-2 py-1 text-xs"
+                          >
+                            <option>QRIS</option>
+                            <option>Cash</option>
+                          </select>
+                          <button
+                            onClick={() => tambahCicilan(item.id)}
+                            className="rounded bg-violet-600 px-2 py-1 text-xs text-white"
+                          >Tambah</button>
+                        </div>
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="flex flex-wrap gap-1">
+                      {item.status === 'menunggu_verifikasi' && (
+                        <>
+                          <button onClick={() => updateStatus(item.id, 'lunas')} className="rounded bg-green-600 px-2 py-1 text-xs text-white">Lunas</button>
+                          <button onClick={() => updateStatus(item.id, 'dp_diterima')} className="rounded bg-blue-600 px-2 py-1 text-xs text-white">DP 25%</button>
+                          <button onClick={() => updateStatus(item.id, 'ditolak')} className="rounded bg-red-600 px-2 py-1 text-xs text-white">Tolak</button>
+                        </>
+                      )}
+                      {item.status === 'dp_diterima' && (
+                        <button onClick={() => updateStatus(item.id, 'lunas')} className="rounded bg-green-600 px-2 py-1 text-xs text-white">Tandai Lunas</button>
+                      )}
                     </div>
-                  ))}
-                </td>
-                <td className="px-3 py-2 text-right font-medium tabular-nums">{formatRupiah(Number(item.total))}</td>
-                <td className="px-3 py-2 text-right tabular-nums text-orange-600">{formatRupiah(Number(item.modal_total))}</td>
-                <td className={`px-3 py-2 text-right font-semibold tabular-nums ${Number(item.keuntungan) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatRupiah(Number(item.keuntungan))}
-                </td>
-                <td className="px-3 py-2">
-                  {item.bukti_url ? <a href={item.bukti_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline">Lihat</a> : '-'}
-                </td>
-                <td className="px-3 py-2">
-                  <span className={`rounded px-2 py-0.5 text-xs ${
-                    item.status === 'menunggu_verifikasi' ? 'bg-yellow-100 text-yellow-800' :
-                    item.status === 'dp_diterima' ? 'bg-blue-100 text-blue-800' :
-                    item.status === 'lunas' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    {item.status.replace(/_/g, ' ')}
-                  </span>
-                  {item.picked_up_at && <div className="mt-1 text-xs text-green-700">Diambil {formatDate(item.picked_up_at)}</div>}
-                </td>
-                <td className="px-3 py-2">
-                  <div className="flex flex-wrap gap-1">
-                    {item.status === 'menunggu_verifikasi' && (
-                      <>
-                        <button onClick={() => updateStatus(item.id, 'lunas')} className="rounded bg-green-600 px-2 py-1 text-xs text-white">Lunas</button>
-                        <button onClick={() => updateStatus(item.id, 'dp_diterima')} className="rounded bg-blue-600 px-2 py-1 text-xs text-white">DP 25%</button>
-                        <button onClick={() => updateStatus(item.id, 'ditolak')} className="rounded bg-red-600 px-2 py-1 text-xs text-white">Tolak</button>
-                      </>
-                    )}
-                    {item.status === 'dp_diterima' && (
-                      <button onClick={() => updateStatus(item.id, 'lunas')} className="rounded bg-green-600 px-2 py-1 text-xs text-white">Tandai Lunas</button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>

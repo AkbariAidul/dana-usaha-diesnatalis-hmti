@@ -42,24 +42,24 @@ function detailPo(po: PoNotif, link: string) {
   const dibayar = Number(po.sudah_dibayar ?? 0)
   const total = Number(po.total ?? 0)
   const sisa = Math.max(0, total - dibayar)
-  const lines = [
+  const lines: string[] = [
     `Kode PO: ${po.no_po}`,
     `Nama: ${po.nama_pemesan}`,
     `Kategori: ${po.tipe_pemesan}`,
-    po.pembayaran_metode && `Metode: ${po.pembayaran_metode}`,
-    po.pembayaran_tipe && `Tipe: ${po.pembayaran_tipe}`,
+    po.pembayaran_metode ? `Metode: ${po.pembayaran_metode}` : null,
+    po.pembayaran_tipe ? `Tipe: ${po.pembayaran_tipe}` : null,
     '',
     'Detail Pesanan:',
     detailItem(po.items) || '  (lihat di riwayat)',
     '',
     `Total: ${formatRupiah(total)}`,
-    po.nominal_cicilan && `Cicilan ini: ${formatRupiah(Number(po.nominal_cicilan))}`,
-    dibayar > 0 && `Sudah dibayar: ${formatRupiah(dibayar)}`,
-    sisa > 0 && `Sisa: ${formatRupiah(sisa)}`,
+    po.nominal_cicilan ? `Cicilan ini: ${formatRupiah(Number(po.nominal_cicilan))}` : null,
+    dibayar > 0 ? `Sudah dibayar: ${formatRupiah(dibayar)}` : null,
+    sisa > 0 ? `Sisa: ${formatRupiah(sisa)}` : null,
     '',
     `Riwayat & QR pengambilan: ${link}`,
-  ].filter(Boolean).join('\n')
-  return lines
+  ].filter((v): v is string => v !== null)
+  return lines.join('\n')
 }
 
 export async function kirimNotifPoMenungguVerifikasi(request: Request, po: PoNotif) {
