@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import QRCode from 'qrcode'
 import { toast } from 'sonner'
-import { ArrowLeft, Check, ChevronDown, Shirt, Trash2, Plus, Minus } from 'lucide-react'
+import { Check, ChevronDown, Shirt, Trash2, Plus, Minus } from 'lucide-react'
+import { PublicNavbar } from '@/components/public-navbar'
 import { formatRupiah } from '@/lib/utils'
 import { buatQrisDinamis } from '@/lib/qris'
 import { hitungDiskon } from '@/lib/merch-diskon'
@@ -47,7 +48,7 @@ export default function PoMerchandisePage() {
   const [step, setStep] = useState(1)
   const [keranjang, setKeranjang] = useState<ItemKeranjang[]>([])
   const [form, setForm] = useState({
-    tipe_pemesan: 'Pengurus Himpunan' as 'Pengurus Himpunan' | 'Umum',
+    tipe_pemesan: 'Umum' as 'Pengurus Himpunan' | 'Umum',
     pengurus_id: '',
     nama_pengurus: '',
     nama_pemesan: '',
@@ -211,20 +212,13 @@ export default function PoMerchandisePage() {
 
   return (
     <div className="min-h-screen bg-[#f7f9fc]">
-      <header className="border-b border-slate-200/70 bg-white/90 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
-          <Link href="/" className="flex items-center gap-3">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-violet-600 text-sm font-semibold text-white">DU</span>
-            <div>
-              <p className="text-sm font-semibold text-slate-900">PO Merchandise</p>
-              <p className="text-xs text-slate-500">Dies Natalis HMTI</p>
-            </div>
-          </Link>
-          <Link href="/" className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900">
-            <ArrowLeft className="h-4 w-4" /> Kembali
-          </Link>
-        </div>
-      </header>
+      <PublicNavbar
+        title="PO Merchandise"
+        crumbs={[
+          { label: 'Beranda', href: '/' },
+          { label: 'PO Merchandise' },
+        ]}
+      />
 
       <main className="mx-auto max-w-5xl space-y-6 px-4 py-8 pb-28">
         {step === 1 && (
@@ -383,7 +377,16 @@ export default function PoMerchandisePage() {
                       type="button"
                       onClick={() => {
                         setPengurusOpen(false)
-                        setForm({ ...form, tipe_pemesan: tipe, pengurus_id: '', nama_pengurus: '', nama_pemesan: tipe === 'Umum' ? '' : form.nama_pemesan })
+                        setForm({
+                          ...form,
+                          tipe_pemesan: tipe,
+                          pengurus_id: '',
+                          nama_pengurus: '',
+                          nama_pemesan: tipe === 'Umum' ? '' : form.nama_pemesan,
+                          ...(tipe === 'Umum'
+                            ? { pembayaran_metode: 'QRIS' as const, pembayaran_tipe: 'lunas' as const }
+                            : {}),
+                        })
                       }}
                       className={`rounded-xl border p-3 text-left text-sm ${form.tipe_pemesan === tipe ? 'border-violet-500 bg-violet-50 ring-2 ring-violet-500/10' : 'border-slate-200'}`}
                     >
@@ -492,39 +495,48 @@ export default function PoMerchandisePage() {
             </div>
 
             <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">Metode Pembayaran</label>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {(['QRIS', 'Cash'] as const).map((m) => (
-                      <button
-                        key={m}
-                        type="button"
-                        onClick={() => setForm({ ...form, pembayaran_metode: m })}
-                        className={`rounded-xl border p-3 text-left text-sm ${form.pembayaran_metode === m ? 'border-violet-500 bg-violet-50 ring-2 ring-violet-500/10' : 'border-slate-200'}`}
-                      >
-                        <span className="font-medium text-slate-900">{m}</span>
-                      </button>
-                    ))}
+              {form.tipe_pemesan === 'Pengurus Himpunan' ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">Metode Pembayaran</label>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {(['QRIS', 'Cash'] as const).map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setForm({ ...form, pembayaran_metode: m })}
+                          className={`rounded-xl border p-3 text-left text-sm ${form.pembayaran_metode === m ? 'border-violet-500 bg-violet-50 ring-2 ring-violet-500/10' : 'border-slate-200'}`}
+                        >
+                          <span className="font-medium text-slate-900">{m}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">Tipe Pembayaran</label>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {(['lunas', 'nyicil'] as const).map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setForm({ ...form, pembayaran_tipe: t })}
+                          className={`rounded-xl border p-3 text-left text-sm ${form.pembayaran_tipe === t ? 'border-violet-500 bg-violet-50 ring-2 ring-violet-500/10' : 'border-slate-200'}`}
+                        >
+                          <span className="font-medium text-slate-900">{t === 'lunas' ? 'Lunas' : 'Nyicil (DP)'}</span>
+                          <span className="mt-0.5 block text-xs text-slate-500">{t === 'lunas' ? 'Bayar penuh sekarang' : 'Bayar DP terlebih dahulu'}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">Tipe Pembayaran</label>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {(['lunas', 'nyicil'] as const).map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => setForm({ ...form, pembayaran_tipe: t })}
-                        className={`rounded-xl border p-3 text-left text-sm ${form.pembayaran_tipe === t ? 'border-violet-500 bg-violet-50 ring-2 ring-violet-500/10' : 'border-slate-200'}`}
-                      >
-                        <span className="font-medium text-slate-900">{t === 'lunas' ? 'Lunas' : 'Nyicil (DP)'}</span>
-                        <span className="mt-0.5 block text-xs text-slate-500">{t === 'lunas' ? 'Bayar penuh sekarang' : 'Bayar DP terlebih dahulu'}</span>
-                      </button>
-                    ))}
-                  </div>
+              ) : (
+                <div className="rounded-xl border border-violet-200 bg-violet-50/60 p-4">
+                  <p className="text-sm font-medium text-slate-900">QRIS · Lunas</p>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                    Pembayaran untuk umum dilakukan langsung lunas melalui QRIS. Opsi Cash dan Nyicil hanya tersedia untuk Pengurus Himpunan.
+                  </p>
                 </div>
-              </div>
+              )}
 
               <div className="mt-4 flex items-center justify-between rounded-xl bg-slate-50 p-4">
                 <span className="text-sm text-slate-500">Total Pembayaran</span>

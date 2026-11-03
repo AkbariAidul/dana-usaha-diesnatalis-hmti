@@ -1,10 +1,10 @@
 ﻿'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Search, ArrowLeft } from 'lucide-react'
+import { Search } from 'lucide-react'
+import { PublicNavbar } from '@/components/public-navbar'
 
 export default function LacakPage() {
   const router = useRouter()
@@ -33,20 +33,16 @@ export default function LacakPage() {
 
   return (
     <div className="min-h-screen bg-[#f7f9fc]">
-      <header className="border-b border-slate-200/70 bg-white/90 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
-          <Link href="/" className="flex items-center gap-3">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary-600 text-sm font-semibold text-white">DU</span>
-            <div>
-              <p className="text-sm font-semibold text-slate-900">Lacak Pesanan</p>
-              <p className="text-xs text-slate-500">Dies Natalis HMTI</p>
-            </div>
-          </Link>
-          <Link href="/" className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900">
-            <ArrowLeft className="h-4 w-4" /> Kembali
-          </Link>
-        </div>
-      </header>
+      <PublicNavbar
+        title="Lacak Pesanan"
+        subtitle="Dies Natalis HMTI"
+        maxWidth="max-w-3xl"
+        action={null}
+        crumbs={[
+          { label: 'Beranda', href: '/' },
+          { label: 'Lacak Pesanan' },
+        ]}
+      />
 
       <main className="mx-auto max-w-xl px-4 py-10">
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">

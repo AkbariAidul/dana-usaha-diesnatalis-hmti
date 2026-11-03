@@ -1,5 +1,5 @@
-﻿import Link from "next/link";
-import { ArrowLeft, Image as ImageIcon } from "lucide-react";
+﻿import { Image as ImageIcon } from "lucide-react";
+import { PublicNavbar } from "@/components/public-navbar";
 import { getMerchandise } from "@/lib/queries";
 import { formatRupiah } from "@/lib/utils";
 import { AutoRefresh } from "@/components/auto-refresh";
@@ -12,14 +12,14 @@ export default async function MerchandisePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <AutoRefresh />
-      <header className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
-          <Link href="/" className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-            <ArrowLeft className="w-5 h-5" />
-          </Link>
-          <h1 className="text-xl font-bold">Merchandise</h1>
-        </div>
-      </header>
+      <PublicNavbar
+        title="Merchandise"
+        maxWidth="max-w-4xl"
+        crumbs={[
+          { label: "Beranda", href: "/" },
+          { label: "Merchandise" },
+        ]}
+      />
 
       <main className="max-w-4xl mx-auto px-4 py-8">
         {items.length === 0 ? (

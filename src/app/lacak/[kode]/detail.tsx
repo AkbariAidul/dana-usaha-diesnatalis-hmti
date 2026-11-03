@@ -1,11 +1,11 @@
 ﻿'use client'
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import QRCode from 'qrcode'
 import { toast } from 'sonner'
 import { ArrowLeft, CheckCircle2, Clock, QrCode, Upload, X } from 'lucide-react'
+import { PublicNavbar } from '@/components/public-navbar'
 import { formatDate, formatDateTime, formatRupiah } from '@/lib/utils'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 
@@ -301,22 +301,10 @@ export function LacakDetail({ kode, token }: { kode: string; token: string }) {
 
   return (
     <div className="min-h-screen bg-[#f7f9fc]">
-      <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/90 backdrop-blur-xl">
-        <div className={`mx-auto flex w-full ${lebar} items-center justify-between gap-3 px-4 py-3 sm:px-6`}>
-          <Link href="/" className="flex min-w-0 items-center gap-3">
-            <Image
-              src="/logo-dies.png"
-              alt="Logo In4Days XI"
-              width={112}
-              height={37}
-              priority
-              className="h-auto w-20 shrink-0 sm:w-24"
-            />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-slate-900">Riwayat {kode}</p>
-              <p className="hidden truncate text-xs text-slate-500 sm:block">In4Days XI · Dies Natalis HMTI</p>
-            </div>
-          </Link>
+      <PublicNavbar
+        title={`Riwayat ${kode}`}
+        maxWidth={lebar}
+        action={
           <Link
             href="/lacak"
             className="flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 sm:text-sm"
@@ -325,8 +313,13 @@ export function LacakDetail({ kode, token }: { kode: string; token: string }) {
             <span className="hidden sm:inline">Lacak lain</span>
             <span className="sm:hidden">Lacak</span>
           </Link>
-        </div>
-      </header>
+        }
+        crumbs={[
+          { label: 'Beranda', href: '/' },
+          { label: 'Lacak Pesanan', href: '/lacak' },
+          { label: kode },
+        ]}
+      />
 
       <main className={`mx-auto w-full ${lebar} space-y-4 px-4 py-6 sm:px-6 sm:py-8`}>
         {loading && <div className="h-48 animate-pulse rounded-2xl bg-white" />}

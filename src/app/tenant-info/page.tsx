@@ -1,5 +1,4 @@
-﻿import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+﻿import { PublicNavbar } from "@/components/public-navbar";
 
 const kategori = [
   { kode: "KT-01", nama: "Tempat aja", harga: "Rp150.000", include: [] },
@@ -21,12 +20,14 @@ const faktor = [
 export default function TenantInfo() {
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
-          <Link href="/" className="p-2 hover:bg-gray-100 rounded-lg"><ArrowLeft className="w-5 h-5" /></Link>
-          <h1 className="text-xl font-bold">Info Open Tenant</h1>
-        </div>
-      </header>
+      <PublicNavbar
+        title="Info Open Tenant"
+        maxWidth="max-w-4xl"
+        crumbs={[
+          { label: "Beranda", href: "/" },
+          { label: "Info Tenant" },
+        ]}
+      />
 
       <main className="max-w-4xl mx-auto px-4 py-8 space-y-8">
         <section className="bg-white rounded-xl shadow p-6">

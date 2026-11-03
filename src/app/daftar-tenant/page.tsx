@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { PublicNavbar } from '@/components/public-navbar'
 import { getJSON, sendJSON } from '@/app/dankelola/api'
 import { hitungHarga, periodeDariTanggal, periodeLabel, KategoriSewa, HargaDasar, FaktorHarga, PeriodeHarga } from '@/lib/types'
 import { formatDate, formatRupiah, todayISO } from '@/lib/utils'
@@ -90,18 +91,15 @@ export default function DaftarTenantPublik() {
 
   return (
     <div className="min-h-screen bg-[#f7f9fc]">
-      <header className="border-b border-slate-200/70 bg-white/90 backdrop-blur-xl">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary-600 text-sm font-semibold text-white">DU</span>
-            <div>
-              <p className="text-sm font-semibold text-slate-900">Pendaftaran Tenant</p>
-              <p className="text-xs text-slate-500">Dana Usaha HMTI</p>
-            </div>
-          </Link>
-          <Link href="/" className="text-sm text-slate-500 hover:text-slate-900">Kembali ke Beranda</Link>
-        </div>
-      </header>
+      <PublicNavbar
+        title="Pendaftaran Tenant"
+        subtitle="Dana Usaha HMTI"
+        maxWidth="max-w-4xl"
+        crumbs={[
+          { label: 'Beranda', href: '/' },
+          { label: 'Pendaftaran Tenant' },
+        ]}
+      />
 
       <main className="max-w-4xl mx-auto px-4 py-8 space-y-6">
         {step===1 && (

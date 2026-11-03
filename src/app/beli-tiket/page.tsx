@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { toast } from 'sonner'
+import { PublicNavbar } from '@/components/public-navbar'
 import { getJSON, sendJSON } from '@/app/dankelola/api'
 import { buatQrisDinamis } from '@/lib/qris'
 import { formatRupiah } from '@/lib/utils'
@@ -208,24 +208,14 @@ export default function BeliTiketPublik() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,#f5f3ff,transparent_38%),radial-gradient(circle_at_top_right,#ecfeff,transparent_32%),#f8fafc]">
-      <header className="sticky top-0 z-30 border-b border-white/70 bg-white/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-[1600px] items-center px-4 py-3.5 sm:px-6 lg:px-8">
-          <Link href="/" className="flex min-w-0 items-center gap-3">
-            <Image
-              src="/logo-dies.png"
-              alt="Logo In4Days XI"
-              width={112}
-              height={37}
-              priority
-              className="h-auto w-24 shrink-0 sm:w-28"
-            />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-slate-950">Beli Tiket</p>
-              <p className="truncate text-xs text-slate-500">In4Days XI · Dies Natalis HMTI</p>
-            </div>
-          </Link>
-        </div>
-      </header>
+      <PublicNavbar
+        title="Beli Tiket"
+        crumbs={[
+          { label: 'Beranda', href: '/' },
+          { label: 'Beli Tiket' },
+        ]}
+        maxWidth="max-w-[1600px]"
+      />
 
       <main className="mx-auto max-w-[1600px] px-4 pb-16 pt-6 sm:px-6 sm:pt-10 lg:px-8">
         {step === 1 && (

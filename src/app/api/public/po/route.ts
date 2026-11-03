@@ -24,8 +24,8 @@ export async function POST(request: Request) {
     let kontak = String(body.kontak ?? '').trim()
     let pengurusId: string | null = null
     const email = body.email ? String(body.email).trim() : null
-    const pembayaranMetode = body.pembayaran_metode ? String(body.pembayaran_metode) : null
-    const pembayaranTipe = body.pembayaran_tipe ? String(body.pembayaran_tipe) : null
+    const pembayaranMetode = tipe === 'Pengurus Himpunan' && body.pembayaran_metode === 'Cash' ? 'Cash' : 'QRIS'
+    const pembayaranTipe = tipe === 'Pengurus Himpunan' && body.pembayaran_tipe === 'nyicil' ? 'nyicil' : 'lunas'
 
     if (tipe === 'Pengurus Himpunan') {
       pengurusId = String(body.pengurus_id ?? '')
