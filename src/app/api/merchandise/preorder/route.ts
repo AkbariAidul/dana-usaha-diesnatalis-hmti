@@ -99,11 +99,12 @@ export async function PATCH(request: Request) {
 
     const { data: current } = await supabaseAdmin
       .from('merch_po')
-      .select('total,no_po,nama_pemesan,kontak,sudah_dibayar,pembayaran_metode,pembayaran_tipe')
+      .select('total,no_po,nama_pemesan,kontak,tipe_pemesan,sudah_dibayar,pembayaran_metode,pembayaran_tipe')
       .eq('id', id)
       .single()
     if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+    const nominalCiclian = body.nominal_ciclian ? Number(body.nominal_ciclian) : null
     const payload: Record<string, unknown> = {
       status,
       updated_at: new Date().toISOString(),
@@ -129,13 +130,43 @@ export async function PATCH(request: Request) {
       .single()
 
     if (error) throw error
+
+    // Fetch items for notification
+    const { data: poItems } = await supabaseAdmin
+      .from('merch_po_item')
+      .select('merchandise_id,varian_id,qty,harga_satuan,subtotal')
+      .eq('po_id', id)
+
+    const { data: merchandise } = await supabaseAdmin
+      .from('merchandise')
+      .select('id,nama')
+    const merchMap = new Map((merchandise ?? []).map((m) => [m.id, m.nama]))
+
+    const { data: varian } = await supabaseAdmin
+      .from('merch_varian')
+      .select('id,nama')
+    const varianMap = new Map((varian ?? []).map((v) => [v.id, v.nama]))
+
+    const itemDetails = (poItems ?? []).map((item) => ({
+      nama_produk: merchMap.get(item.merchandise_id ?? '') ?? 'Item',
+      ukuran: item.varian_id ? varianMap.get(item.varian_id) ?? null : null,
+      qty: Number(item.qty),
+      harga_satuan: Number(item.harga_satuan),
+      subtotal: Number(item.subtotal),
+    }))
+
     if (status === 'dp_diterima' || status === 'lunas') {
       try {
-        await kirimNotifPoTerverifikasi(request, data)
+        await kirimNotifPoTerverifikasi(request, {
+          ...data,
+          items: itemDetails,
+          nominal_ciclian: nominalCiclian,
+        })
       } catch (notifError) {
         console.error('Notifikasi PO gagal:', notifError)
       }
     }
+
     return NextResponse.json(data)
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })

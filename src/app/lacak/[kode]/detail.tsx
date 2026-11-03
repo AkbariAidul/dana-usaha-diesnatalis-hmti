@@ -99,10 +99,23 @@ type MerchItem = {
   varian: { nama: string } | null
 }
 
+type Cicilan = {
+  id: string
+  no_transaksi: string
+  tanggal_bayar: string
+  nominal: number
+  metode: string
+  bukti_url: string | null
+  validated: boolean
+  validated_by: string | null
+  validated_at: string | null
+  created_at: string
+}
+
 type StatusResponse =
   | { tipe: 'tenant'; kode: string; daftar: DaftarTenant | null; tenant: Tenant | null; pembayaran: Pembayaran[]; totalValid: number; eligible: boolean; qr: string | null }
   | { tipe: 'tiket'; kode: string; pesanan: PesananTiket; tiket: TiketIssued[] }
-  | { tipe: 'po'; kode: string; po: MerchPo; items: MerchItem[]; qr: string | null }
+  | { tipe: 'po'; kode: string; po: MerchPo; items: MerchItem[]; cicilan: Cicilan[]; qr: string | null }
 
 const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
 
@@ -714,6 +727,42 @@ function PoView({ data, token, reload }: { data: Extract<StatusResponse, { tipe:
 
       {perluUpload && po.status !== 'lunas' && (
         <BuktiUpload kode={data.kode} token={token} imageOnly onDone={reload} />
+      )}
+
+      {data.cicilan && data.cicilan.length > 0 && (
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm">
+          <h3 className="text-lg font-semibold text-slate-900">Riwayat Cicilan</h3>
+          <div className="mt-4 space-y-3">
+            {data.cicilan.map((c) => (
+              <div key={c.id} className="flex items-center justify-between rounded-xl bg-slate-50 p-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs text-slate-500">{c.no_transaksi}</span>
+                    <span className={`rounded px-2 py-0.5 text-xs ${c.validated ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {c.validated ? 'Terverifikasi' : 'Menunggu Verifikasi'}
+                    </span>
+                  </div>
+                  <div className="text-xs text-slate-500">{formatDateTime(c.tanggal_bayar)} · {c.metode}</div>
+                  {c.bukti_url && (
+                    <a href={c.bukti_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline">
+                      Lihat bukti
+                    </a>
+                  )}
+                </div>
+                <div className="text-right">
+                  <div className="font-semibold text-slate-900">{formatRupiah(Number(c.nominal))}</div>
+                  {c.validated_at && <div className="text-xs text-green-600">Terverifikasi {formatDate(c.validated_at)}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 flex justify-between rounded-xl bg-slate-100 p-3 text-sm">
+            <span className="text-slate-600">Total Cicilan Terverifikasi</span>
+            <span className="font-semibold text-slate-900">
+              {formatRupiah(data.cicilan.filter((c) => c.validated).reduce((s, c) => s + Number(c.nominal), 0))}
+            </span>
+          </div>
+        </div>
       )}
     </div>
   )

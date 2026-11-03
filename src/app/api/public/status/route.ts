@@ -80,13 +80,18 @@ export async function GET(request: Request) {
       .maybeSingle()
     if (!po) return NextResponse.json({ error: 'Pesanan tidak ditemukan' }, { status: 404 })
 
-    const [{ data: items }, { data: varian }, { data: merchandise }, { data: pengurus }] = await Promise.all([
+    const [{ data: items }, { data: varian }, { data: merchandise }, { data: pengurus }, { data: cicilan }] = await Promise.all([
       supabaseAdmin.from('merch_po_item').select('*').eq('po_id', po.id),
       supabaseAdmin.from('merch_varian').select('id,nama'),
       supabaseAdmin.from('merchandise').select('id,nama,gambar_url'),
       po.pengurus_id
         ? supabaseAdmin.from('pengurus').select('nama,divisi').eq('id', po.pengurus_id).maybeSingle()
         : Promise.resolve({ data: null }),
+      supabaseAdmin
+        .from('merch_po_cicilan')
+        .select('*')
+        .eq('po_id', po.id)
+        .order('tanggal_bayar', { ascending: true }),
     ])
     const varianMap = new Map((varian ?? []).map((v) => [v.id, v.nama]))
     const merchandiseMap = new Map((merchandise ?? []).map((m) => [m.id, m]))
@@ -102,6 +107,7 @@ export async function GET(request: Request) {
         merchandise: i.merchandise_id ? merchandiseMap.get(i.merchandise_id) ?? null : null,
         varian: i.varian_id ? { nama: varianMap.get(i.varian_id) ?? '' } : null,
       })),
+      cicilan: cicilan ?? [],
       qr: bisaAmbil ? buatQrPayload('po', kode) : null,
     })
   } catch (err: unknown) {

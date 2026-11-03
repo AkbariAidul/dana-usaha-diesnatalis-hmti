@@ -88,22 +88,53 @@ export async function POST(request: Request) {
 
     const { data: po } = await supabaseAdmin
       .from('merch_po')
-      .select('id,status,no_po,nama_pemesan,kontak,total,sudah_dibayar,pembayaran_metode,pembayaran_tipe')
+      .select('id,status,no_po,nama_pemesan,kontak,total,sudah_dibayar,pembayaran_metode,pembayaran_tipe,tipe_pemesan')
       .eq('no_po', kode)
       .maybeSingle()
     if (!po) return NextResponse.json({ error: 'Pesanan tidak ditemukan' }, { status: 404 })
     if (po.status === 'lunas') {
       return NextResponse.json({ error: 'Pesanan sudah lunas' }, { status: 400 })
     }
+
+    const { data: poItems } = await supabaseAdmin
+      .from('merch_po_item')
+      .select('merchandise_id,varian_id,qty,harga_satuan,subtotal')
+      .eq('po_id', po.id)
+
+    const { data: merchandise } = await supabaseAdmin
+      .from('merchandise')
+      .select('id,nama')
+    const merchMap = new Map((merchandise ?? []).map((m) => [m.id, m.nama]))
+
+    const { data: varian } = await supabaseAdmin
+      .from('merch_varian')
+      .select('id,nama')
+    const varianMap = new Map((varian ?? []).map((v) => [v.id, v.nama]))
+
+    const itemDetails = (poItems ?? []).map((item) => ({
+      nama_produk: merchMap.get(item.merchandise_id ?? '') ?? 'Item',
+      ukuran: item.varian_id ? varianMap.get(item.varian_id) ?? null : null,
+      qty: Number(item.qty),
+      harga_satuan: Number(item.harga_satuan),
+      subtotal: Number(item.subtotal),
+    }))
+
+    const nominalCiclian = Number(body.nominal) || null
+
     const { data: updated, error } = await supabaseAdmin
       .from('merch_po')
       .update({ bukti_url: buktiUrl, status: 'menunggu_verifikasi', updated_at: new Date().toISOString() })
       .eq('id', po.id)
-      .select('status,no_po,nama_pemesan,kontak,total,sudah_dibayar,pembayaran_metode,pembayaran_tipe')
+      .select('status,no_po,nama_pemesan,kontak,total,sudah_dibayar,pembayaran_metode,pembayaran_tipe,tipe_pemesan')
       .single()
     if (error) throw error
+
     try {
-      await kirimNotifPoMenungguVerifikasi(request, updated)
+      await kirimNotifPoMenungguVerifikasi(request, {
+        ...updated,
+        items: itemDetails,
+        nominal_cicilan: nominalCiclian,
+      })
     } catch (notifError) {
       console.error('Notifikasi PO gagal:', notifError)
     }

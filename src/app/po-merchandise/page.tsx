@@ -5,7 +5,8 @@ import Link from 'next/link'
 import QRCode from 'qrcode'
 import { toast } from 'sonner'
 import { Check, ChevronDown, Shirt, Trash2, Plus, Minus } from 'lucide-react'
-import { PublicBreadcrumb, PublicNavbar } from '@/components/public-navbar'
+import { PublicNavbar } from '@/components/public-navbar'
+import { PoStepper } from '@/components/po-stepper'
 import { formatRupiah } from '@/lib/utils'
 import { buatQrisDinamis, buatQrisTanpaNominal } from '@/lib/qris'
 import { hitungDiskon } from '@/lib/merch-diskon'
@@ -36,8 +37,6 @@ type Pesanan = {
   t: string
   items: Array<{ produk: { nama: string; gambar_url: string | null }; qty: number; varian?: { nama: string } | null }>
 }
-
-const langkahBreadcrumb = ['Katalog', 'Form Pemesan', 'Pembayaran', 'Instruksi Pembayaran', 'Menunggu Verifikasi']
 
 const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
 
@@ -284,12 +283,15 @@ export default function PoMerchandisePage() {
       <PublicNavbar title="PO Merchandise" />
 
       <main className="mx-auto max-w-5xl space-y-6 px-4 py-8 pb-28">
-        <PublicBreadcrumb
-          items={[
-            { label: 'Beranda', href: '/' },
-            { label: 'PO Merchandise', href: '/po-merchandise' },
-            { label: langkahBreadcrumb[step - 1] ?? 'PO Merchandise' },
+        <PoStepper
+          steps={[
+            { label: 'Katalog', href: '/po-merchandise' },
+            { label: 'Form Pemesan' },
+            { label: 'Pembayaran' },
+            { label: 'Instruksi Pembayaran' },
+            { label: 'Menunggu Verifikasi' },
           ]}
+          currentStep={step}
         />
         {step === 1 && (
           <>
