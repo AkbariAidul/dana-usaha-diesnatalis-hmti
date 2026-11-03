@@ -119,7 +119,17 @@ export async function PATCH(request: Request) {
       payload.sudah_dibayar = Math.round(Number(current.total) * 0.25)
     }
     if (status === 'ditolak' || status === 'batal') {
-      payload.sudah_dibayar = 0
+      await supabaseAdmin
+        .from('merch_po_cicilan')
+        .delete()
+        .eq('po_id', id)
+        .eq('validated', false)
+      const { data: validCicilan } = await supabaseAdmin
+        .from('merch_po_cicilan')
+        .select('nominal')
+        .eq('po_id', id)
+        .eq('validated', true)
+      payload.sudah_dibayar = (validCicilan ?? []).reduce((sum, c) => sum + Number(c.nominal), 0)
     }
 
     const { data, error } = await supabaseAdmin

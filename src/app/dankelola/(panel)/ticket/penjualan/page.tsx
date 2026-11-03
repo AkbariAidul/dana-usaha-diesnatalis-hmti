@@ -1,46 +1,16 @@
 ﻿'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight, Inbox, Search, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Inbox, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
 import { PageSkeleton } from '../../ui'
 import { useConfirm } from '@/components/confirm-dialog'
+import { BuktiPreviewModal, BuktiThumb } from '@/components/bukti'
+import { Modal } from '@/components/modal'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { formatRupiah } from '@/lib/utils'
 import type { PesananTiket, TicketPeriode } from '@/lib/types'
-
-function BuktiThumb({ url, noPesanan, onPreview }: { url: string; noPesanan: string; onPreview: () => void }) {
-  const [failed, setFailed] = useState(false)
-
-  if (failed) {
-    return (
-      <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary-600 hover:underline">
-        Lihat
-      </a>
-    )
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={onPreview}
-      className="group relative block h-16 w-16 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 transition hover:ring-2 hover:ring-primary-200"
-      title="Lihat bukti pembayaran"
-    >
-      <img
-        src={url}
-        alt={`Bukti ${noPesanan}`}
-        decoding="async"
-        className="h-full w-full object-cover"
-        onError={() => setFailed(true)}
-      />
-      <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-slate-900/0 text-[10px] font-semibold text-white opacity-0 transition group-hover:bg-slate-900/50 group-hover:opacity-100">
-        Lihat
-      </span>
-    </button>
-  )
-}
 
 const STATUS: Record<PesananTiket['status'], { label: string; className: string; dot: string }> = {
   menunggu_verifikasi: { label: 'Menunggu', className: 'bg-amber-50 text-amber-700 ring-amber-200', dot: 'bg-amber-500' },
@@ -237,7 +207,7 @@ export default function PenjualanPage() {
                     </td>
                     <td className="px-5 py-3">
                       {p.bukti_url ? (
-                        <BuktiThumb url={p.bukti_url} noPesanan={p.no_pesanan} onPreview={() => setPreview(p.bukti_url)} />
+                        <BuktiThumb url={p.bukti_url} label={`Bukti ${p.no_pesanan}`} onPreview={() => setPreview(p.bukti_url)} />
                       ) : (
                         <span className="text-xs text-slate-400">—</span>
                       )}
@@ -299,84 +269,39 @@ export default function PenjualanPage() {
         </div>
       </section>
 
-      {preview && (
-        <div
-          className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-900/70 p-4"
-          onClick={() => setPreview(null)}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="max-h-[calc(100dvh-2rem)] w-full max-w-sm overflow-y-auto rounded-2xl bg-white shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-              <p className="text-sm font-semibold text-slate-900">Bukti Pembayaran</p>
-              <button
-                type="button"
-                onClick={() => setPreview(null)}
-                aria-label="Tutup"
-                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="bg-slate-50 p-3">
-              <div className="mx-auto aspect-[4/5] w-full overflow-hidden rounded-lg bg-slate-100">
-                <img
-                  src={preview}
-                  alt="Bukti pembayaran"
-                  className="h-full w-full object-contain"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <BuktiPreviewModal url={preview} onClose={() => setPreview(null)} />
 
-      {rejectTarget && (
-        <div
-          className="fixed inset-0 z-[95] flex items-center justify-center bg-slate-900/60 p-4"
-          onClick={() => setRejectTarget(null)}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
+      <Modal open={!!rejectTarget} onClose={() => setRejectTarget(null)}>
+        <h2 className="text-lg font-semibold text-slate-900">Tolak pesanan?</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Pesanan {rejectTarget?.no_pesanan} atas nama {rejectTarget?.nama_pembeli} akan ditolak.
+        </p>
+        <label className="mb-1 mt-4 block text-xs font-medium text-slate-500">Alasan penolakan</label>
+        <textarea
+          rows={3}
+          value={rejectReason}
+          onChange={(e) => setRejectReason(e.target.value)}
+          placeholder="Contoh: Bukti transfer tidak valid"
+          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
+        />
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setRejectTarget(null)}
+            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
           >
-            <h2 className="text-lg font-semibold text-slate-900">Tolak pesanan?</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Pesanan {rejectTarget.no_pesanan} atas nama {rejectTarget.nama_pembeli} akan ditolak.
-            </p>
-            <label className="mb-1 mt-4 block text-xs font-medium text-slate-500">Alasan penolakan</label>
-            <textarea
-              rows={3}
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Contoh: Bukti transfer tidak valid"
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
-            />
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setRejectTarget(null)}
-                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={() => void submitReject()}
-                disabled={busyId === rejectTarget.id}
-                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-50"
-              >
-                Tolak Pesanan
-              </button>
-            </div>
-          </div>
+            Batal
+          </button>
+          <button
+            type="button"
+            onClick={() => void submitReject()}
+            disabled={!rejectTarget || busyId === rejectTarget.id}
+            className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-50"
+          >
+            Tolak Pesanan
+          </button>
         </div>
-      )}
+      </Modal>
     </div>
   )
 }

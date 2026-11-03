@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
+import { useConfirm } from '@/components/confirm-dialog'
+import { BuktiPreviewModal, BuktiThumb } from '@/components/bukti'
+import { Modal } from '@/components/modal'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
 import { formatDate, formatRupiah } from '@/lib/utils'
@@ -53,11 +56,15 @@ type PreOrder = {
 }
 
 export default function PreorderPage() {
+  const confirm = useConfirm()
   const [items, setItems] = useState<PreOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [cicilanModal, setCicilanModal] = useState<string | null>(null)
   const [cicilanForm, setCicilanForm] = useState({ nominal: '', metode: 'QRIS' })
+  const [preview, setPreview] = useState<string | null>(null)
+  const [rejectTarget, setRejectTarget] = useState<PreOrder | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
 
   async function load() {
     try {
@@ -87,12 +94,16 @@ export default function PreorderPage() {
   useEffect(() => { load() }, [])
   useLiveRefresh(load)
 
-  async function updateStatus(id: string, status: string) {
+  async function updateStatus(id: string, status: string, catatan?: string) {
     try {
-      await sendJSON('/api/merchandise/preorder', 'PATCH', { id, status })
-      toast.success(`Status diubah ke ${status.replace(/_/g, ' ')}`)
+      await sendJSON('/api/merchandise/preorder', 'PATCH', { id, status, catatan_admin: catatan })
+      toast.success(status === 'ditolak' ? 'Pesanan ditolak' : `Status diubah ke ${status.replace(/_/g, ' ')}`)
       await load()
-    } catch (e) { toast.error((e as Error).message) }
+      return true
+    } catch (e) {
+      toast.error((e as Error).message)
+      return false
+    }
   }
 
   async function tambahCicilan(poId: string) {
@@ -126,13 +137,39 @@ export default function PreorderPage() {
     }
   }
 
-  async function verifikasiPending(po: PreOrder) {
-    const pending = po.cicilan?.find((c) => !c.validated)
+  async function handleVerifikasi(po: PreOrder, target?: Cicilan) {
+    const pending = target ?? po.cicilan?.find((c) => !c.validated)
     if (!pending) {
       toast.error('Tidak ada pembayaran yang menunggu verifikasi. Tambahkan pembayaran manual bila bayar tunai.')
       return
     }
+    const ok = await confirm({
+      title: 'Verifikasi pembayaran?',
+      description: `Pembayaran ${formatRupiah(Number(pending.nominal))} untuk PO ${po.no_po} atas nama ${po.nama_pemesan} akan diverifikasi.`,
+      confirmText: 'Verifikasi',
+      danger: false,
+    })
+    if (!ok) return
     await toggleValidasi(pending.id, true)
+  }
+
+  function openReject(po: PreOrder) {
+    setRejectReason('')
+    setRejectTarget(po)
+  }
+
+  async function submitReject() {
+    if (!rejectTarget) return
+    const reason = rejectReason.trim()
+    if (!reason) {
+      toast.error('Alasan penolakan wajib diisi')
+      return
+    }
+    const ok = await updateStatus(rejectTarget.id, 'ditolak', reason)
+    if (ok) {
+      setRejectTarget(null)
+      setRejectReason('')
+    }
   }
 
   if (loading) return <PageSkeleton />
@@ -234,7 +271,7 @@ export default function PreorderPage() {
                   <td className="px-3 py-2">
                     {item.pembayaran_tipe !== 'nyicil' ? (
                       item.bukti_url ? (
-                        <a href={item.bukti_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline">Bukti</a>
+                        <BuktiThumb url={item.bukti_url} label={`Bukti ${item.no_po}`} onPreview={() => setPreview(item.bukti_url)} />
                       ) : (
                         <span className="text-xs text-slate-400">—</span>
                       )
@@ -261,13 +298,22 @@ export default function PreorderPage() {
                               </span>
                               <div className="flex gap-1">
                                 {!c.validated && (
-                                  <button
-                                    onClick={() => toggleValidasi(c.id, true)}
-                                    className="rounded bg-green-600 px-1.5 py-0.5 text-xs text-white"
-                                  >Verifikasi</button>
+                                  <>
+                                    <button
+                                      onClick={() => handleVerifikasi(item, c)}
+                                      className="rounded bg-green-600 px-1.5 py-0.5 text-xs text-white"
+                                    >Verifikasi</button>
+                                    <button
+                                      onClick={() => openReject(item)}
+                                      className="rounded bg-red-600 px-1.5 py-0.5 text-xs text-white"
+                                    >Tolak</button>
+                                  </>
                                 )}
                                 {c.bukti_url && (
-                                  <a href={c.bukti_url} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">Bukti</a>
+                                  <button
+                                    onClick={() => setPreview(c.bukti_url)}
+                                    className="text-primary-600 hover:underline"
+                                  >Bukti</button>
                                 )}
                               </div>
                             </div>
@@ -301,20 +347,26 @@ export default function PreorderPage() {
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap gap-1">
-                      {item.status !== 'lunas' && item.status !== 'batal' && item.status !== 'ditolak' && (
+                      {item.status === 'ditolak' ? (
+                        <button onClick={() => updateStatus(item.id, 'menunggu_verifikasi')} className="rounded bg-slate-600 px-2 py-1 text-xs text-white">Buka Lagi</button>
+                      ) : item.status === 'batal' || item.status === 'lunas' ? (
+                        <span className="text-xs text-slate-400">—</span>
+                      ) : item.pembayaran_tipe === 'nyicil' ? (
+                        <button
+                          onClick={() => setCicilanModal(cicilanModal === item.id ? null : item.id)}
+                          className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700 hover:bg-slate-200"
+                        >Kelola Cicilan</button>
+                      ) : (
                         <>
                           <button
-                            onClick={() => verifikasiPending(item)}
+                            onClick={() => handleVerifikasi(item)}
                             className="rounded bg-green-600 px-2 py-1 text-xs text-white"
                             title="Verifikasi pembayaran yang diupload pemesan"
                           >
                             Verifikasi
                           </button>
-                          <button onClick={() => updateStatus(item.id, 'ditolak')} className="rounded bg-red-600 px-2 py-1 text-xs text-white">Tolak</button>
+                          <button onClick={() => openReject(item)} className="rounded bg-red-600 px-2 py-1 text-xs text-white">Tolak</button>
                         </>
-                      )}
-                      {item.status === 'ditolak' && (
-                        <button onClick={() => updateStatus(item.id, 'menunggu_verifikasi')} className="rounded bg-slate-600 px-2 py-1 text-xs text-white">Buka Lagi</button>
                       )}
                     </div>
                   </td>
@@ -324,6 +376,39 @@ export default function PreorderPage() {
           </tbody>
         </table>
       </div>
+
+      <BuktiPreviewModal url={preview} onClose={() => setPreview(null)} />
+
+      <Modal open={!!rejectTarget} onClose={() => setRejectTarget(null)}>
+        <h2 className="text-lg font-semibold text-slate-900">Tolak pesanan?</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Pesanan {rejectTarget?.no_po} atas nama {rejectTarget?.nama_pemesan} akan ditolak.
+        </p>
+        <label className="mb-1 mt-4 block text-xs font-medium text-slate-500">Alasan penolakan</label>
+        <textarea
+          rows={3}
+          value={rejectReason}
+          onChange={(e) => setRejectReason(e.target.value)}
+          placeholder="Contoh: Bukti transfer tidak valid"
+          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
+        />
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setRejectTarget(null)}
+            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+          >
+            Batal
+          </button>
+          <button
+            type="button"
+            onClick={() => void submitReject()}
+            className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+          >
+            Tolak Pesanan
+          </button>
+        </div>
+      </Modal>
     </div>
   )
 }
