@@ -641,6 +641,7 @@ function TiketView({ data, token, reload }: { data: Extract<StatusResponse, { ti
 
 function PoView({ data, token, reload }: { data: Extract<StatusResponse, { tipe: 'po' }>; token: string; reload: () => void }) {
   const { po, items, qr } = data
+  const sisa = Math.max(0, Number(po.total) - Number(po.sudah_dibayar ?? 0))
   const perluUpload = !po.bukti_url || po.status === 'ditolak' || po.status === 'dp_diterima'
 
   return (
@@ -721,12 +722,13 @@ function PoView({ data, token, reload }: { data: Extract<StatusResponse, { tipe:
 
       {!qr && !po.picked_up_at && po.status === 'dp_diterima' && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-          DP sudah diterima. Pelunasan dilakukan ke admin, setelah lunas QR pengambilan akan muncul.
+          Pembayaran sebagian sudah diterima. Sisa {formatRupiah(sisa)}. Kamu bisa mencicil berapa pun dan berapa kali pun
+          lewat form di bawah sampai lunas, lalu QR pengambilan aktif otomatis.
         </div>
       )}
 
       {perluUpload && po.status !== 'lunas' && (
-        <BuktiUpload kode={data.kode} token={token} imageOnly onDone={reload} />
+        <BuktiUpload kode={data.kode} token={token} nominal={sisa} imageOnly onDone={reload} />
       )}
 
       {data.cicilan && data.cicilan.length > 0 && (

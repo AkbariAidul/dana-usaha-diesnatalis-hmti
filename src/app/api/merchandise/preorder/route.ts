@@ -104,7 +104,7 @@ export async function PATCH(request: Request) {
       .single()
     if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    const nominalCiclian = body.nominal_ciclian ? Number(body.nominal_ciclian) : null
+    const nominalCicilan = body.nominal_cicilan ? Number(body.nominal_cicilan) : null
     const payload: Record<string, unknown> = {
       status,
       updated_at: new Date().toISOString(),
@@ -160,7 +160,7 @@ export async function PATCH(request: Request) {
         await kirimNotifPoTerverifikasi(request, {
           ...data,
           items: itemDetails,
-          nominal_ciclian: nominalCiclian,
+          nominal_cicilan: nominalCicilan,
         })
       } catch (notifError) {
         console.error('Notifikasi PO gagal:', notifError)

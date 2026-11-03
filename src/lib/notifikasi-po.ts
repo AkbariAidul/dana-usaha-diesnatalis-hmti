@@ -67,7 +67,7 @@ export async function kirimNotifPoMenungguVerifikasi(request: Request, po: PoNot
   const message = [
     `Halo ${po.nama_pemesan}, bukti pembayaran PO kamu sudah kami terima.`,
     '',
-    ...detailPo(po, link),
+    detailPo(po, link),
     'Status: Menunggu verifikasi admin.',
     '',
     'QR pengambilan merchandise aktif setelah pembayaran dinyatakan lunas.',
@@ -83,7 +83,7 @@ export async function kirimNotifPoTerverifikasi(request: Request, po: PoNotif) {
   const message = [
     `Halo ${po.nama_pemesan}, pembayaran PO kamu sudah diverifikasi.`,
     '',
-    ...detailPo(po, link),
+    detailPo(po, link),
     lunas
       ? 'Status: LUNAS. QR pengambilan merchandise sudah aktif di link riwayat PO.'
       : `Status: DP/cicilan diterima. Nominal cicilan ini: ${po.nominal_cicilan ? formatRupiah(Number(po.nominal_cicilan)) : '-'}. Sisa pembayaran masih ada, silakan lakukan cicilan berikutnya sesuai kesepakatan.`,

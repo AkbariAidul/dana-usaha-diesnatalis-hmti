@@ -119,7 +119,37 @@ export async function POST(request: Request) {
       subtotal: Number(item.subtotal),
     }))
 
-    const nominalCiclian = Number(body.nominal) || null
+    const nominal = Number(body.nominal)
+    if (!Number.isFinite(nominal) || nominal <= 0) {
+      return NextResponse.json({ error: 'Nominal pembayaran wajib diisi' }, { status: 400 })
+    }
+
+    const { data: cicilanValid } = await supabaseAdmin
+      .from('merch_po_cicilan')
+      .select('nominal')
+      .eq('po_id', po.id)
+      .eq('validated', true)
+    const totalValid = (cicilanValid ?? []).reduce((s, c) => s + Number(c.nominal), 0)
+    const sisa = Number(po.total) - totalValid
+    if (nominal > sisa + 0.01) {
+      return NextResponse.json({ error: `Nominal melebihi sisa pembayaran (${sisa.toLocaleString('id-ID')})` }, { status: 400 })
+    }
+
+    const { count } = await supabaseAdmin
+      .from('merch_po_cicilan')
+      .select('*', { count: 'exact', head: true })
+    const noTransaksi = `CCL-${String((count ?? 0) + 1).padStart(4, '0')}`
+
+    const { error: cicilanError } = await supabaseAdmin.from('merch_po_cicilan').insert({
+      po_id: po.id,
+      no_transaksi: noTransaksi,
+      tanggal_bayar: new Date().toISOString(),
+      nominal,
+      metode: po.pembayaran_metode || 'QRIS',
+      bukti_url: buktiUrl,
+      validated: false,
+    })
+    if (cicilanError) throw cicilanError
 
     const { data: updated, error } = await supabaseAdmin
       .from('merch_po')
@@ -133,7 +163,7 @@ export async function POST(request: Request) {
       await kirimNotifPoMenungguVerifikasi(request, {
         ...updated,
         items: itemDetails,
-        nominal_cicilan: nominalCiclian,
+        nominal_cicilan: nominal,
       })
     } catch (notifError) {
       console.error('Notifikasi PO gagal:', notifError)

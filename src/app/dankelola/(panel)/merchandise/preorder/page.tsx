@@ -66,7 +66,7 @@ export default function PreorderPage() {
           try {
             const res = await fetch(`/api/merchandise/preorder/cicilan?po_id=${po.id}`)
             const cicilan = await res.json()
-            return { ...po, cicilan: cicilan ?? [] }
+            return { ...po, cicilan: Array.isArray(cicilan) ? cicilan : [] }
           } catch {
             return { ...po, cicilan: [] }
           }
@@ -117,11 +117,20 @@ export default function PreorderPage() {
   async function toggleValidasi(id: string, validated: boolean) {
     try {
       await sendJSON('/api/merchandise/preorder/cicilan', 'PATCH', { id, validated })
-      toast.success(validated ? 'Cicilan diverifikasi' : 'Cicilan dicabut')
+      toast.success(validated ? 'Pembayaran diverifikasi' : 'Verifikasi dibatalkan')
       await load()
     } catch (e) {
       toast.error((e as Error).message)
     }
+  }
+
+  async function verifikasiPending(po: PreOrder) {
+    const pending = po.cicilan?.find((c) => !c.validated)
+    if (!pending) {
+      toast.error('Tidak ada pembayaran yang menunggu verifikasi. Tambahkan cicilan manual bila bayar tunai.')
+      return
+    }
+    await toggleValidasi(pending.id, true)
   }
 
   if (loading) return <PageSkeleton />
@@ -277,15 +286,20 @@ export default function PreorderPage() {
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap gap-1">
-                      {item.status === 'menunggu_verifikasi' && (
+                      {item.status !== 'lunas' && item.status !== 'batal' && item.status !== 'ditolak' && (
                         <>
-                          <button onClick={() => updateStatus(item.id, 'lunas')} className="rounded bg-green-600 px-2 py-1 text-xs text-white">Lunas</button>
-                          <button onClick={() => updateStatus(item.id, 'dp_diterima')} className="rounded bg-blue-600 px-2 py-1 text-xs text-white">DP 25%</button>
+                          <button
+                            onClick={() => verifikasiPending(item)}
+                            className="rounded bg-green-600 px-2 py-1 text-xs text-white"
+                            title="Verifikasi pembayaran yang diupload pemesan"
+                          >
+                            Verifikasi
+                          </button>
                           <button onClick={() => updateStatus(item.id, 'ditolak')} className="rounded bg-red-600 px-2 py-1 text-xs text-white">Tolak</button>
                         </>
                       )}
-                      {item.status === 'dp_diterima' && (
-                        <button onClick={() => updateStatus(item.id, 'lunas')} className="rounded bg-green-600 px-2 py-1 text-xs text-white">Tandai Lunas</button>
+                      {item.status === 'ditolak' && (
+                        <button onClick={() => updateStatus(item.id, 'menunggu_verifikasi')} className="rounded bg-slate-600 px-2 py-1 text-xs text-white">Buka Lagi</button>
                       )}
                     </div>
                   </td>
