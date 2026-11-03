@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import QRCode from 'qrcode'
 import { toast } from 'sonner'
-import { Check, ChevronDown, Shirt, Trash2, Plus, Minus } from 'lucide-react'
+import { Check, ChevronDown, Clock, Shirt, Trash2, Plus, Minus } from 'lucide-react'
 import { PublicNavbar } from '@/components/public-navbar'
 import { PoStepper } from '@/components/po-stepper'
 import { formatRupiah } from '@/lib/utils'
@@ -286,9 +286,9 @@ export default function PoMerchandisePage() {
 
   return (
     <div className="min-h-screen bg-[#f7f9fc]">
-      <PublicNavbar title="PO Merchandise" />
+      <PublicNavbar title="PO Merchandise" maxWidth="max-w-7xl" />
 
-      <main className="mx-auto max-w-5xl space-y-6 px-4 py-8 pb-28">
+      <main className="mx-auto max-w-7xl space-y-6 px-4 py-8 pb-28 sm:px-6">
         <PoStepper
           steps={[
             { label: 'Katalog', href: '/po-merchandise' },
@@ -305,7 +305,7 @@ export default function PoMerchandisePage() {
               <h1 className="text-2xl font-semibold text-slate-900">Katalog Merchandise</h1>
               <p className="text-sm text-slate-500">Pilih produk yang ingin dipesan.</p>
             </div>
-            <div className="grid auto-rows-fr gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid auto-rows-fr gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {produkList.length === 0 && (
                 <div className="col-span-full rounded-2xl border border-dashed border-slate-200 p-10 text-center text-sm text-slate-500">
                   Belum ada produk.
@@ -360,7 +360,7 @@ export default function PoMerchandisePage() {
 
         {step === 1 && keranjang.length > 0 && (
           <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur-xl">
-            <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
+            <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
               <div>
                 <p className="text-xs text-slate-500">{totalQty} item dipilih</p>
                 <p className="text-lg font-semibold text-violet-600">{formatRupiah(totalKeranjang)}</p>
@@ -373,7 +373,7 @@ export default function PoMerchandisePage() {
         )}
 
         {step === 2 && (
-          <div className="max-w-2xl space-y-4">
+          <div className="max-w-4xl space-y-4">
             <div className="flex items-center justify-between">
               <h1 className="text-2xl font-semibold text-slate-900">Form Pemesan</h1>
               <button onClick={() => setStep(1)} className="text-sm text-slate-600 hover:underline">
@@ -564,7 +564,7 @@ export default function PoMerchandisePage() {
         )}
 
         {step === 3 && (
-          <div className="max-w-2xl space-y-4">
+          <div className="max-w-4xl space-y-4">
             <div className="flex items-center justify-between">
               <h1 className="text-2xl font-semibold text-slate-900">Pembayaran</h1>
               <button onClick={() => setStep(2)} className="text-sm text-slate-600 hover:underline">
@@ -716,13 +716,62 @@ export default function PoMerchandisePage() {
         )}
 
         {step === 5 && pesanan && (
-          <div className="space-y-4 rounded-2xl border border-slate-200/70 bg-white p-10 text-center shadow-sm">
-            <h2 className="text-xl font-semibold text-slate-900">Menunggu Verifikasi</h2>
-            <p className="text-slate-500">Bukti pembayaran sudah dikirim. Simpan link berikut untuk melihat status dan QR pengambilan.</p>
-            <Link href={`/lacak/${pesanan.no_po}?t=${encodeURIComponent(pesanan.t)}`} className="inline-flex rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-medium text-white">
-              Buka Riwayat PO
-            </Link>
-            <p className="text-xs text-slate-400">No. PO: {pesanan.no_po}</p>
+          <div className="mx-auto w-full max-w-4xl">
+            <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm sm:p-8">
+              <div className="flex flex-col items-center text-center">
+                <div className="mb-3 grid h-12 w-12 place-items-center rounded-full bg-amber-100 text-amber-600">
+                  <Clock className="h-6 w-6" />
+                </div>
+                <h2 className="text-xl font-semibold text-slate-900">Menunggu Verifikasi</h2>
+                <p className="mt-1 max-w-xl text-sm text-slate-500">
+                  Bukti pembayaran sudah dikirim. Simpan link berikut untuk melihat status dan QR pengambilan.
+                </p>
+              </div>
+
+              <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-xl bg-slate-50 p-3">
+                  <p className="text-xs text-slate-500">No. PO</p>
+                  <p className="font-mono text-sm font-medium text-slate-900">{pesanan.no_po}</p>
+                </div>
+                <div className="rounded-xl bg-slate-50 p-3">
+                  <p className="text-xs text-slate-500">Total</p>
+                  <p className="font-semibold text-slate-900">{formatRupiah(Number(pesanan.total))}</p>
+                </div>
+                <div className="rounded-xl bg-slate-50 p-3">
+                  <p className="text-xs text-slate-500">Metode</p>
+                  <p className="font-medium text-slate-900">
+                    {form.pembayaran_metode}{form.tipe_pemesan === 'Pengurus Himpunan' ? ` · ${form.pembayaran_tipe === 'nyicil' ? 'Nyicil' : 'Lunas'}` : ''}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 text-left text-xs text-slate-500">
+                    <tr>
+                      <th className="px-3 py-2">Item</th>
+                      <th className="px-3 py-2">Ukuran</th>
+                      <th className="px-3 py-2 text-center">Qty</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {pesanan.items.map((it, i) => (
+                      <tr key={i}>
+                        <td className="px-3 py-2 text-slate-900">{it.produk.nama}</td>
+                        <td className="px-3 py-2 text-slate-600">{it.varian?.nama || '-'}</td>
+                        <td className="px-3 py-2 text-center text-slate-600">{it.qty}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mt-6 flex justify-center">
+                <Link href={`/lacak/${pesanan.no_po}?t=${encodeURIComponent(pesanan.t)}`} className="inline-flex rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-violet-700">
+                  Buka Riwayat PO
+                </Link>
+              </div>
+            </div>
           </div>
         )}
       </main>

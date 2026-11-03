@@ -21,10 +21,24 @@ type PoResult = {
     no_po: string
     nama_pemesan: string
     tipe_pemesan: string
+    kontak: string
     total: number
+    sudah_dibayar: number | null
+    pembayaran_metode: string | null
+    pembayaran_tipe: string | null
     status: string
+    created_at: string
+    catatan_admin: string | null
     picked_up_at: string | null
-    items: Array<{ id: string; ukuran: string | null; qty: number; varian: { nama: string } | null }>
+    items: Array<{
+      id: string
+      ukuran: string | null
+      qty: number
+      harga_satuan: number
+      subtotal: number
+      merchandise: { nama: string } | null
+      varian: { nama: string } | null
+    }>
   }
   sudahDiambil: boolean
 }
@@ -42,6 +56,7 @@ const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm foc
 
 const PESANAN_STATUS: Record<string, string> = {
   menunggu_verifikasi: 'Menunggu Verifikasi',
+  dp_diterima: 'DP Diterima',
   lunas: 'Lunas',
   ditolak: 'Ditolak',
   batal: 'Batal',
@@ -129,7 +144,7 @@ export default function ScanPage() {
           <div
             role="dialog"
             aria-modal="true"
-            className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto overscroll-contain rounded-2xl bg-white p-4 shadow-xl sm:p-5"
+            className={`max-h-[calc(100dvh-2rem)] w-full overflow-y-auto overscroll-contain rounded-2xl bg-white p-4 shadow-xl sm:p-5 ${result.tipe === 'po' ? 'max-w-2xl' : 'max-w-md'}`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-start justify-between gap-3">
@@ -159,23 +174,105 @@ export default function ScanPage() {
               </div>
             )}
 
-            {result.tipe === 'po' && (
-              <div className="space-y-2">
-                <h3 className="text-lg font-semibold text-slate-900">{result.po.no_po}</h3>
-                <p className="text-sm text-slate-500">{result.po.nama_pemesan} · {result.po.tipe_pemesan}</p>
-                <div className="rounded-xl bg-slate-50 p-3 text-sm">
-                  {result.po.items?.map((item) => (
-                    <div key={item.id}>{item.varian?.nama || item.ukuran || 'Item'} × {item.qty}</div>
-                  ))}
+            {result.tipe === 'po' && (() => {
+              const po = result.po
+              const sisa = Math.max(0, Number(po.total) - Number(po.sudah_dibayar ?? 0))
+              return (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-900">{po.no_po}</h3>
+                      <p className="text-sm text-slate-500">{po.nama_pemesan} · {po.tipe_pemesan}</p>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
+                      po.status === 'lunas'
+                        ? 'bg-green-100 text-green-800'
+                        : po.status === 'ditolak' || po.status === 'batal'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-amber-100 text-amber-800'
+                    }`}>
+                      {statusPesananLabel(po.status)}
+                    </span>
+                  </div>
+
+                  <div className="overflow-hidden rounded-xl border border-slate-200">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50 text-left text-xs text-slate-500">
+                        <tr>
+                          <th className="px-3 py-2">Item</th>
+                          <th className="px-3 py-2">Ukuran</th>
+                          <th className="px-3 py-2 text-center">Qty</th>
+                          <th className="px-3 py-2 text-right">Subtotal</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {po.items.map((item) => (
+                          <tr key={item.id}>
+                            <td className="px-3 py-2 text-slate-900">{item.merchandise?.nama || 'Merchandise'}</td>
+                            <td className="px-3 py-2 text-slate-600">{item.varian?.nama || item.ukuran || '-'}</td>
+                            <td className="px-3 py-2 text-center text-slate-600">{item.qty}</td>
+                            <td className="px-3 py-2 text-right font-medium tabular-nums text-slate-900">
+                              {formatRupiah(Number(item.subtotal))}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-xs sm:gap-y-3 sm:p-4 sm:text-sm">
+                    <div>
+                      <dt className="text-xs text-slate-500">Kontak</dt>
+                      <dd className="font-medium text-slate-900">{po.kontak || '-'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Waktu Pesan</dt>
+                      <dd className="text-slate-900">{formatDateTime(po.created_at)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Total</dt>
+                      <dd className="font-semibold text-slate-900">{formatRupiah(Number(po.total))}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Sudah Dibayar</dt>
+                      <dd className="font-medium text-green-700">{formatRupiah(Number(po.sudah_dibayar ?? 0))}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Sisa</dt>
+                      <dd className="font-medium text-orange-600">{formatRupiah(sisa)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Metode</dt>
+                      <dd className="text-slate-900">
+                        {po.pembayaran_metode
+                          ? `${po.pembayaran_metode} · ${po.pembayaran_tipe === 'nyicil' ? 'Nyicil' : 'Lunas'}`
+                          : '-'}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Status Pengambilan</dt>
+                      <dd className="text-slate-900">
+                        {po.picked_up_at ? `Sudah diambil ${formatDateTime(po.picked_up_at)}` : 'Belum diambil'}
+                      </dd>
+                    </div>
+                    {po.catatan_admin && (
+                      <div className="col-span-2">
+                        <dt className="text-xs text-slate-500">Catatan Admin</dt>
+                        <dd className="text-slate-900">{po.catatan_admin}</dd>
+                      </div>
+                    )}
+                  </dl>
+
+                  <button
+                    onClick={() => void lookup(payload, 'confirm')}
+                    disabled={result.sudahDiambil}
+                    className="w-full rounded-xl bg-green-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50 sm:w-auto"
+                  >
+                    {result.sudahDiambil ? 'Sudah Diambil' : 'Tandai Sudah Diambil'}
+                  </button>
                 </div>
-                <p className="text-sm">Total: <b>{formatRupiah(Number(result.po.total))}</b></p>
-                <p className="text-sm">Status: {result.po.status}</p>
-                {result.sudahDiambil && <p className="text-sm text-green-700">Sudah diambil.</p>}
-                <button onClick={() => void lookup(payload, 'confirm')} disabled={result.sudahDiambil} className="mt-2 rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-                  Tandai Sudah Diambil
-                </button>
-              </div>
-            )}
+              )
+            })()}
 
             {result.tipe === 'tiket' && (
               <div className="space-y-3 sm:space-y-4">

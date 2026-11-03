@@ -405,27 +405,33 @@ export default function PreorderPage() {
                             </div>
                           </div>
                         ))}
-                        <div className="flex gap-2">
-                          <input
-                            type="number"
-                            placeholder="Nominal"
-                            value={cicilanForm.nominal}
-                            onChange={(e) => setCicilanForm({ ...cicilanForm, nominal: e.target.value })}
-                            className="w-24 rounded-lg border border-slate-200 px-2 py-1 text-xs"
-                          />
-                          <select
-                            value={cicilanForm.metode}
-                            onChange={(e) => setCicilanForm({ ...cicilanForm, metode: e.target.value })}
-                            className="rounded-lg border border-slate-200 px-2 py-1 text-xs"
-                          >
-                            <option>QRIS</option>
-                            <option>Cash</option>
-                          </select>
-                          <button
-                            onClick={() => tambahCicilan(item.id)}
-                            className="rounded bg-violet-600 px-2 py-1 text-xs text-white"
-                          >Tambah</button>
-                        </div>
+                        {item.status === 'lunas' || sisa <= 0 ? (
+                          <p className="rounded-lg bg-green-50 px-2 py-1.5 text-xs text-green-700">
+                            Pembayaran sudah lunas.
+                          </p>
+                        ) : (
+                          <div className="flex gap-2">
+                            <input
+                              type="number"
+                              placeholder="Nominal"
+                              value={cicilanForm.nominal}
+                              onChange={(e) => setCicilanForm({ ...cicilanForm, nominal: e.target.value })}
+                              className="w-24 rounded-lg border border-slate-200 px-2 py-1 text-xs"
+                            />
+                            <select
+                              value={cicilanForm.metode}
+                              onChange={(e) => setCicilanForm({ ...cicilanForm, metode: e.target.value })}
+                              className="rounded-lg border border-slate-200 px-2 py-1 text-xs"
+                            >
+                              <option>QRIS</option>
+                              <option>Cash</option>
+                            </select>
+                            <button
+                              onClick={() => tambahCicilan(item.id)}
+                              className="rounded bg-violet-600 px-2 py-1 text-xs text-white"
+                            >Tambah</button>
+                          </div>
+                        )}
                       </div>
                     )}
                       </>

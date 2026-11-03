@@ -401,7 +401,7 @@ export function LacakDetail({ kode, token }: { kode: string; token: string }) {
   useEffect(() => { void load() }, [load])
   useLiveRefresh(() => load(true), 3000)
 
-  const lebar = data?.tipe === 'tiket' ? 'max-w-7xl' : 'max-w-5xl'
+  const lebar = 'max-w-7xl'
 
   return (
     <div className="min-h-screen bg-[#f7f9fc]">
