@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Search } from 'lucide-react'
-import { PublicNavbar } from '@/components/public-navbar'
+import { PublicBreadcrumb, PublicNavbar } from '@/components/public-navbar'
 
 export default function LacakPage() {
   const router = useRouter()
@@ -38,13 +38,16 @@ export default function LacakPage() {
         subtitle="Dies Natalis HMTI"
         maxWidth="max-w-3xl"
         action={null}
-        crumbs={[
-          { label: 'Beranda', href: '/' },
-          { label: 'Lacak Pesanan' },
-        ]}
       />
 
       <main className="mx-auto max-w-xl px-4 py-10">
+        <PublicBreadcrumb
+          className="mb-5"
+          items={[
+            { label: 'Beranda', href: '/' },
+            { label: 'Lacak Pesanan' },
+          ]}
+        />
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
           <div className="mb-6">
             <div className="mb-3 grid h-11 w-11 place-items-center rounded-2xl bg-primary-600/10 text-primary-600">

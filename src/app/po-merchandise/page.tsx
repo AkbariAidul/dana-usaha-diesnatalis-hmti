@@ -5,9 +5,9 @@ import Link from 'next/link'
 import QRCode from 'qrcode'
 import { toast } from 'sonner'
 import { Check, ChevronDown, Shirt, Trash2, Plus, Minus } from 'lucide-react'
-import { PublicNavbar } from '@/components/public-navbar'
+import { PublicBreadcrumb, PublicNavbar } from '@/components/public-navbar'
 import { formatRupiah } from '@/lib/utils'
-import { buatQrisDinamis } from '@/lib/qris'
+import { buatQrisDinamis, buatQrisTanpaNominal } from '@/lib/qris'
 import { hitungDiskon } from '@/lib/merch-diskon'
 import type { DiskonRule } from '@/lib/types'
 
@@ -37,7 +37,46 @@ type Pesanan = {
   items: Array<{ produk: { nama: string; gambar_url: string | null }; qty: number; varian?: { nama: string } | null }>
 }
 
+const langkahBreadcrumb = ['Katalog', 'Form Pemesan', 'Pembayaran', 'Instruksi Pembayaran', 'Menunggu Verifikasi']
+
 const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
+
+function BuktiUpload({
+  file,
+  preview,
+  uploading,
+  onFile,
+  onUpload,
+}: {
+  file: File | null
+  preview: string
+  uploading: boolean
+  onFile: (file: File | null) => void
+  onUpload: () => void
+}) {
+  return (
+    <div className="space-y-3 text-left">
+      <label className="block text-sm font-medium text-slate-700">Bukti pembayaran</label>
+      <input
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        onChange={(e) => onFile(e.target.files?.[0] ?? null)}
+        className="block w-full text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-violet-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-violet-700 hover:file:bg-violet-100"
+      />
+      <p className="text-xs text-slate-500">JPG, PNG, atau WebP. Maksimal 5MB.</p>
+      {preview && (
+        <img src={preview} alt="Pratinjau bukti pembayaran" className="max-h-56 w-full rounded-xl object-contain" />
+      )}
+      <button
+        onClick={onUpload}
+        disabled={uploading || !file}
+        className="w-full rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
+      >
+        {uploading ? 'Mengupload...' : 'Upload Bukti Bayar'}
+      </button>
+    </div>
+  )
+}
 
 export default function PoMerchandisePage() {
   const [produkList, setProdukList] = useState<Produk[]>([])
@@ -59,6 +98,7 @@ export default function PoMerchandisePage() {
   })
   const [pesanan, setPesanan] = useState<Pesanan | null>(null)
   const [file, setFile] = useState<File | null>(null)
+  const [preview, setPreview] = useState('')
   const [uploading, setUploading] = useState(false)
   const [pengurusOpen, setPengurusOpen] = useState(false)
 
@@ -91,10 +131,23 @@ export default function PoMerchandisePage() {
       setQr('')
       return
     }
-    QRCode.toDataURL(buatQrisDinamis(qris.qris_payload, totalKeranjang), { width: 320, margin: 2, errorCorrectionLevel: 'H' })
+    const payload = form.pembayaran_tipe === 'lunas'
+      ? buatQrisDinamis(qris.qris_payload, totalKeranjang)
+      : buatQrisTanpaNominal(qris.qris_payload)
+    QRCode.toDataURL(payload, { width: 320, margin: 2, errorCorrectionLevel: 'H' })
       .then(setQr)
       .catch(() => setQr(''))
-  }, [qris, totalKeranjang])
+  }, [qris, totalKeranjang, form.pembayaran_tipe])
+
+  useEffect(() => {
+    if (!file) {
+      setPreview('')
+      return
+    }
+    const url = URL.createObjectURL(file)
+    setPreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [file])
 
   function tambahKeKeranjang(produk: Produk) {
     if (!produk.harga_po) {
@@ -184,6 +237,22 @@ export default function PoMerchandisePage() {
     }
   }
 
+  function pilihBukti(next: File | null) {
+    if (!next) {
+      setFile(null)
+      return
+    }
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(next.type)) {
+      toast.error('Format bukti harus JPG, PNG, atau WebP')
+      return
+    }
+    if (next.size > 5 * 1024 * 1024) {
+      toast.error('Ukuran bukti maksimal 5MB')
+      return
+    }
+    setFile(next)
+  }
+
   async function upload() {
     if (!file || !pesanan) return
     setUploading(true)
@@ -212,15 +281,16 @@ export default function PoMerchandisePage() {
 
   return (
     <div className="min-h-screen bg-[#f7f9fc]">
-      <PublicNavbar
-        title="PO Merchandise"
-        crumbs={[
-          { label: 'Beranda', href: '/' },
-          { label: 'PO Merchandise' },
-        ]}
-      />
+      <PublicNavbar title="PO Merchandise" />
 
       <main className="mx-auto max-w-5xl space-y-6 px-4 py-8 pb-28">
+        <PublicBreadcrumb
+          items={[
+            { label: 'Beranda', href: '/' },
+            { label: 'PO Merchandise', href: '/po-merchandise' },
+            { label: langkahBreadcrumb[step - 1] ?? 'PO Merchandise' },
+          ]}
+        />
         {step === 1 && (
           <>
             <div>
@@ -577,20 +647,33 @@ export default function PoMerchandisePage() {
                 <div className="mx-auto w-fit rounded-2xl border border-slate-200 bg-white p-3">
                   {qr ? <img src={qr} alt="QRIS" className="h-72 w-72 rounded-lg" /> : <div className="h-72 w-72 animate-pulse rounded-lg bg-slate-100" />}
                 </div>
-                <input type="file" accept="image/*,application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="block w-full text-sm" />
-                <button onClick={upload} disabled={uploading || !file} className="w-full rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">
-                  {uploading ? 'Mengupload...' : 'Upload Bukti Bayar'}
-                </button>
+                {form.pembayaran_tipe === 'nyicil' ? (
+                  <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-700">
+                    QRIS ini tidak mengunci nominal. Saat scan, masukkan nominal DP/cicilan yang ingin dibayar.
+                  </p>
+                ) : (
+                  <p className="text-sm text-slate-500">Nominal QRIS otomatis {formatRupiah(totalKeranjang)}.</p>
+                )}
+                <BuktiUpload
+                  file={file}
+                  preview={preview}
+                  uploading={uploading}
+                  onFile={pilihBukti}
+                  onUpload={upload}
+                />
               </div>
             )}
             {form.pembayaran_metode === 'Cash' && (
               <div className="space-y-4 rounded-2xl border border-slate-200/70 bg-white p-6 text-center shadow-sm">
                 <h2 className="text-lg font-semibold text-slate-900">Pembayaran Cash</h2>
                 <p className="text-sm text-slate-500">Serahkan bukti pembayaran tunai ke panitia. Simpan link ini untuk memantau status.</p>
-                <input type="file" accept="image/*,application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="block w-full text-sm" />
-                <button onClick={upload} disabled={uploading || !file} className="w-full rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">
-                  {uploading ? 'Mengupload...' : 'Upload Bukti Bayar'}
-                </button>
+                <BuktiUpload
+                  file={file}
+                  preview={preview}
+                  uploading={uploading}
+                  onFile={pilihBukti}
+                  onUpload={upload}
+                />
               </div>
             )}
           </div>

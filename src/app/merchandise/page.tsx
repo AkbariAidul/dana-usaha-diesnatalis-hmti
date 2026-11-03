@@ -1,5 +1,5 @@
 ﻿import { Image as ImageIcon } from "lucide-react";
-import { PublicNavbar } from "@/components/public-navbar";
+import { PublicBreadcrumb, PublicNavbar } from "@/components/public-navbar";
 import { getMerchandise } from "@/lib/queries";
 import { formatRupiah } from "@/lib/utils";
 import { AutoRefresh } from "@/components/auto-refresh";
@@ -12,16 +12,16 @@ export default async function MerchandisePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <AutoRefresh />
-      <PublicNavbar
-        title="Merchandise"
-        maxWidth="max-w-4xl"
-        crumbs={[
-          { label: "Beranda", href: "/" },
-          { label: "Merchandise" },
-        ]}
-      />
+      <PublicNavbar title="Merchandise" maxWidth="max-w-4xl" />
 
       <main className="max-w-4xl mx-auto px-4 py-8">
+        <PublicBreadcrumb
+          className="mb-5"
+          items={[
+            { label: "Beranda", href: "/" },
+            { label: "Merchandise" },
+          ]}
+        />
         {items.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
             <ImageIcon className="w-12 h-12 mx-auto mb-4 opacity-30" />

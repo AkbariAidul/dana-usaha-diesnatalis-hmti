@@ -5,7 +5,7 @@ import Link from 'next/link'
 import QRCode from 'qrcode'
 import { toast } from 'sonner'
 import { ArrowLeft, CheckCircle2, Clock, QrCode, Upload, X } from 'lucide-react'
-import { PublicNavbar } from '@/components/public-navbar'
+import { PublicBreadcrumb, PublicNavbar } from '@/components/public-navbar'
 import { formatDate, formatDateTime, formatRupiah } from '@/lib/utils'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 
@@ -222,10 +222,53 @@ function BuktiPreview({ url, label = 'Bukti pembayaran', compact = false }: { ur
   )
 }
 
-function BuktiUpload({ kode, token, nominal, onDone }: { kode: string; token: string; nominal?: number; onDone: () => void }) {
+function BuktiUpload({
+  kode,
+  token,
+  nominal,
+  imageOnly = false,
+  onDone,
+}: {
+  kode: string
+  token: string
+  nominal?: number
+  imageOnly?: boolean
+  onDone: () => void
+}) {
   const [file, setFile] = useState<File | null>(null)
+  const [preview, setPreview] = useState('')
   const [nilai, setNilai] = useState(nominal ? String(nominal) : '')
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!imageOnly || !file) {
+      setPreview('')
+      return
+    }
+    const url = URL.createObjectURL(file)
+    setPreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [file, imageOnly])
+
+  function pilihFile(next: File | null) {
+    if (!next) {
+      setFile(null)
+      return
+    }
+    if (!imageOnly) {
+      setFile(next)
+      return
+    }
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(next.type)) {
+      toast.error('Format bukti harus JPG, PNG, atau WebP')
+      return
+    }
+    if (next.size > 5 * 1024 * 1024) {
+      toast.error('Ukuran bukti maksimal 5MB')
+      return
+    }
+    setFile(next)
+  }
 
   async function kirim(e: FormEvent) {
     e.preventDefault()
@@ -266,7 +309,14 @@ function BuktiUpload({ kode, token, nominal, onDone }: { kode: string; token: st
           <input type="number" min={1} placeholder="cth: 50000" value={nilai} onChange={(e) => setNilai(e.target.value)} className={input} />
         </div>
       )}
-      <input type="file" accept="image/*,application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="block w-full text-sm" />
+      <input
+        type="file"
+        accept={imageOnly ? 'image/jpeg,image/png,image/webp' : 'image/*,application/pdf'}
+        onChange={(e) => pilihFile(e.target.files?.[0] ?? null)}
+        className="block w-full text-sm"
+      />
+      {imageOnly && <p className="text-xs text-slate-500">JPG, PNG, atau WebP. Maksimal 5MB.</p>}
+      {preview && <img src={preview} alt="Pratinjau bukti pembayaran" className="max-h-56 w-full rounded-xl object-contain" />}
       <button type="submit" disabled={loading || !file} className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
         {loading ? 'Mengirim...' : 'Kirim Bukti'}
       </button>
@@ -314,14 +364,16 @@ export function LacakDetail({ kode, token }: { kode: string; token: string }) {
             <span className="sm:hidden">Lacak</span>
           </Link>
         }
-        crumbs={[
-          { label: 'Beranda', href: '/' },
-          { label: 'Lacak Pesanan', href: '/lacak' },
-          { label: kode },
-        ]}
       />
 
       <main className={`mx-auto w-full ${lebar} space-y-4 px-4 py-6 sm:px-6 sm:py-8`}>
+        <PublicBreadcrumb
+          items={[
+            { label: 'Beranda', href: '/' },
+            { label: 'Lacak Pesanan', href: '/lacak' },
+            { label: kode },
+          ]}
+        />
         {loading && <div className="h-48 animate-pulse rounded-2xl bg-white" />}
         {error && (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
@@ -574,7 +626,7 @@ function TiketView({ data, token, reload }: { data: Extract<StatusResponse, { ti
 
 function PoView({ data, token, reload }: { data: Extract<StatusResponse, { tipe: 'po' }>; token: string; reload: () => void }) {
   const { po, items, qr } = data
-  const perluUpload = !po.bukti_url || po.status === 'ditolak'
+  const perluUpload = !po.bukti_url || po.status === 'ditolak' || po.status === 'dp_diterima'
 
   return (
     <div className="space-y-4">
@@ -615,6 +667,17 @@ function PoView({ data, token, reload }: { data: Extract<StatusResponse, { tipe:
           <span className="text-slate-500">Total</span>
           <span className="font-semibold text-slate-900">{formatRupiah(Number(po.total))}</span>
         </div>
+        {po.sudah_dibayar > 0 && (
+          <div className="mt-3 grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 text-sm">
+            <div><span className="text-slate-500">Sudah dibayar</span> <span className="font-semibold">{formatRupiah(Number(po.sudah_dibayar))}</span></div>
+            <div><span className="text-slate-500">Sisa</span> <span className="font-semibold">{formatRupiah(Math.max(0, Number(po.total) - Number(po.sudah_dibayar)))}</span></div>
+          </div>
+        )}
+        {po.pembayaran_metode && (
+          <p className="mt-2 text-xs text-slate-500">
+            Pembayaran: {po.pembayaran_metode} · {po.pembayaran_tipe}
+          </p>
+        )}
         {po.catatan_admin && <p className="mt-3 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">{po.catatan_admin}</p>}
         {po.bukti_url && (
           <div className="mt-4 border-t border-slate-100 pt-4">
@@ -648,7 +711,7 @@ function PoView({ data, token, reload }: { data: Extract<StatusResponse, { tipe:
       )}
 
       {perluUpload && po.status !== 'lunas' && (
-        <BuktiUpload kode={data.kode} token={token} onDone={reload} />
+        <BuktiUpload kode={data.kode} token={token} imageOnly onDone={reload} />
       )}
     </div>
   )

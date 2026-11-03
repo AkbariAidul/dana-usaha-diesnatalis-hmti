@@ -2,12 +2,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { PublicNavbar } from '@/components/public-navbar'
+import { PublicBreadcrumb, PublicNavbar } from '@/components/public-navbar'
 import { getJSON, sendJSON } from '@/app/dankelola/api'
 import { hitungHarga, periodeDariTanggal, periodeLabel, KategoriSewa, HargaDasar, FaktorHarga, PeriodeHarga } from '@/lib/types'
 import { formatDate, formatRupiah, todayISO } from '@/lib/utils'
 import { buatQrisDinamis } from '@/lib/qris'
 import QRCode from 'qrcode'
+
+const langkahBreadcrumb = ['Form Pendaftaran', 'Pembayaran DP', 'Bukti Terkirim']
 
 export default function DaftarTenantPublik() {
   const [kategori, setKategori] = useState<Array<{ id: string; kode: string; nama: string }>>([])
@@ -91,17 +93,16 @@ export default function DaftarTenantPublik() {
 
   return (
     <div className="min-h-screen bg-[#f7f9fc]">
-      <PublicNavbar
-        title="Pendaftaran Tenant"
-        subtitle="Dana Usaha HMTI"
-        maxWidth="max-w-4xl"
-        crumbs={[
-          { label: 'Beranda', href: '/' },
-          { label: 'Pendaftaran Tenant' },
-        ]}
-      />
+      <PublicNavbar title="Pendaftaran Tenant" subtitle="Dana Usaha HMTI" maxWidth="max-w-4xl" />
 
       <main className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+        <PublicBreadcrumb
+          items={[
+            { label: 'Beranda', href: '/' },
+            { label: 'Pendaftaran Tenant', href: '/daftar-tenant' },
+            { label: langkahBreadcrumb[step - 1] ?? 'Pendaftaran Tenant' },
+          ]}
+        />
         {step===1 && (
           <div className="rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
             <div className="p-6 border-b border-slate-100">

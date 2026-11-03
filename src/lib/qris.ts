@@ -25,6 +25,30 @@ export function crc16(input: string): string {
   return crc.toString(16).toUpperCase().padStart(4, '0')
 }
 
+export function buatQrisTanpaNominal(payload: string): string {
+  const clean = payload.replace(/\s+/g, '')
+  if (!clean) return clean
+
+  const fields = parsePayload(clean)
+  if (fields.length === 0) return clean
+
+  const map = new Map<string, string>()
+  for (const field of fields) {
+    if (field.id !== '63') map.set(field.id, field.value)
+  }
+  map.set('01', '11')
+  map.delete('54')
+  map.delete('55')
+
+  const body = [...map.entries()]
+    .sort(([a], [b]) => Number(a) - Number(b))
+    .map(([id, value]) => `${id}${String(value.length).padStart(2, '0')}${value}`)
+    .join('')
+
+  const base = `${body}6304`
+  return `${base}${crc16(base)}`
+}
+
 export function buatQrisDinamis(payload: string, nominal: number): string {
   const clean = payload.replace(/\s+/g, '')
   if (!clean || !Number.isFinite(nominal) || nominal <= 0) return clean

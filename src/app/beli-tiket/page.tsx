@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { PublicNavbar } from '@/components/public-navbar'
+import { PublicBreadcrumb, PublicNavbar } from '@/components/public-navbar'
 import { getJSON, sendJSON } from '@/app/dankelola/api'
 import { buatQrisDinamis } from '@/lib/qris'
 import { formatRupiah } from '@/lib/utils'
@@ -35,6 +35,8 @@ const alur = [
   { icon: BadgeCheck, title: 'Terima QR tiket', desc: 'QR aktif setelah pembayaran diverifikasi.' },
   { icon: ScanLine, title: 'Scan di hari H', desc: 'Tunjukkan QR ke petugas saat masuk acara.' },
 ]
+
+const langkahBreadcrumb = ['Pilih Tiket', 'Pembayaran', 'Menunggu Verifikasi']
 
 const input =
   'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm shadow-slate-200/40 outline-none transition placeholder:text-slate-400 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10'
@@ -208,16 +210,17 @@ export default function BeliTiketPublik() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,#f5f3ff,transparent_38%),radial-gradient(circle_at_top_right,#ecfeff,transparent_32%),#f8fafc]">
-      <PublicNavbar
-        title="Beli Tiket"
-        crumbs={[
-          { label: 'Beranda', href: '/' },
-          { label: 'Beli Tiket' },
-        ]}
-        maxWidth="max-w-[1600px]"
-      />
+      <PublicNavbar title="Beli Tiket" maxWidth="max-w-[1600px]" />
 
       <main className="mx-auto max-w-[1600px] px-4 pb-16 pt-6 sm:px-6 sm:pt-10 lg:px-8">
+        <PublicBreadcrumb
+          className="mb-5"
+          items={[
+            { label: 'Beranda', href: '/' },
+            { label: 'Beli Tiket', href: '/beli-tiket' },
+            { label: langkahBreadcrumb[step - 1] ?? 'Beli Tiket' },
+          ]}
+        />
         {step === 1 && (
           <>
             <div className="grid items-start gap-8 lg:grid-cols-[400px_minmax(0,1fr)] xl:grid-cols-[460px_minmax(0,1fr)]">

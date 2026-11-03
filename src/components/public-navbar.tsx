@@ -2,12 +2,11 @@ import Image from 'next/image'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 
-type Crumb = { label: string; href?: string }
+export type Crumb = { label: string; href?: string }
 
 type PublicNavbarProps = {
   title: string
   subtitle?: string
-  crumbs?: Crumb[]
   maxWidth?: string
   sticky?: boolean
   action?: ReactNode
@@ -19,7 +18,6 @@ const actionClass =
 export function PublicNavbar({
   title,
   subtitle = 'In4Days XI · Dies Natalis HMTI',
-  crumbs = [],
   maxWidth = 'max-w-5xl',
   sticky = true,
   action,
@@ -53,30 +51,36 @@ export function PublicNavbar({
           </Link>
           {aksi}
         </div>
-        {crumbs.length > 0 && (
-          <nav aria-label="Breadcrumb" className="mt-2 flex items-center gap-1.5 overflow-x-auto text-xs text-slate-500">
-            {crumbs.map((crumb, idx) => {
-              const last = idx === crumbs.length - 1
-              return (
-                <span key={`${crumb.label}-${idx}`} className="flex shrink-0 items-center gap-1.5">
-                  {idx > 0 && (
-                    <span aria-hidden="true" className="text-slate-300">
-                      /
-                    </span>
-                  )}
-                  {!last && crumb.href ? (
-                    <Link href={crumb.href} className="transition hover:text-primary-700">
-                      {crumb.label}
-                    </Link>
-                  ) : (
-                    <span className={last ? 'font-medium text-slate-700' : ''}>{crumb.label}</span>
-                  )}
-                </span>
-              )
-            })}
-          </nav>
-        )}
       </div>
     </header>
+  )
+}
+
+export function PublicBreadcrumb({ items, className = '' }: { items: Crumb[]; className?: string }) {
+  return (
+    <nav
+      aria-label="Breadcrumb"
+      className={`flex flex-wrap items-center gap-1.5 text-xs text-slate-500 ${className}`}
+    >
+      {items.map((item, idx) => {
+        const last = idx === items.length - 1
+        return (
+          <span key={`${item.label}-${idx}`} className="flex shrink-0 items-center gap-1.5">
+            {idx > 0 && (
+              <span aria-hidden="true" className="text-slate-300">
+                /
+              </span>
+            )}
+            {!last && item.href ? (
+              <Link href={item.href} className="transition hover:text-primary-700">
+                {item.label}
+              </Link>
+            ) : (
+              <span className={last ? 'font-medium text-slate-700' : ''}>{item.label}</span>
+            )}
+          </span>
+        )
+      })}
+    </nav>
   )
 }

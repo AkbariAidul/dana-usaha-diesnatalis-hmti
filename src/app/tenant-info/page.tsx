@@ -1,4 +1,4 @@
-﻿import { PublicNavbar } from "@/components/public-navbar";
+﻿import { PublicBreadcrumb, PublicNavbar } from "@/components/public-navbar";
 
 const kategori = [
   { kode: "KT-01", nama: "Tempat aja", harga: "Rp150.000", include: [] },
@@ -20,16 +20,15 @@ const faktor = [
 export default function TenantInfo() {
   return (
     <div className="min-h-screen bg-gray-50">
-      <PublicNavbar
-        title="Info Open Tenant"
-        maxWidth="max-w-4xl"
-        crumbs={[
-          { label: "Beranda", href: "/" },
-          { label: "Info Tenant" },
-        ]}
-      />
+      <PublicNavbar title="Info Open Tenant" maxWidth="max-w-4xl" />
 
       <main className="max-w-4xl mx-auto px-4 py-8 space-y-8">
+        <PublicBreadcrumb
+          items={[
+            { label: "Beranda", href: "/" },
+            { label: "Info Tenant" },
+          ]}
+        />
         <section className="bg-white rounded-xl shadow p-6">
           <h2 className="text-lg font-semibold mb-4">Kategori Sewa</h2>
           <p className="text-sm text-gray-500 mb-4">Listrik & Trashbag sudah INCLUDE untuk semua kategori</p>

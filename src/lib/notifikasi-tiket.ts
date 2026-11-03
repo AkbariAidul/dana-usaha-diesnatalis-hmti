@@ -25,7 +25,7 @@ function nomorFonnte(value: string) {
   return digits
 }
 
-function baseUrl(request: Request) {
+export function baseUrl(request: Request) {
   const configured = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL
   if (configured) return configured.replace(/\/$/, '')
   const url = new URL(request.url)

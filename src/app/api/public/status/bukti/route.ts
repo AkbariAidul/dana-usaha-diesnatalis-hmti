@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { tipeDariKode, verifyRef } from '@/lib/link-token'
 import { todayISO } from '@/lib/utils'
+import { kirimNotifPoMenungguVerifikasi } from '@/lib/notifikasi-po'
 
 export async function POST(request: Request) {
   try {
@@ -87,18 +88,25 @@ export async function POST(request: Request) {
 
     const { data: po } = await supabaseAdmin
       .from('merch_po')
-      .select('id,status')
+      .select('id,status,no_po,nama_pemesan,kontak,total,sudah_dibayar,pembayaran_metode,pembayaran_tipe')
       .eq('no_po', kode)
       .maybeSingle()
     if (!po) return NextResponse.json({ error: 'Pesanan tidak ditemukan' }, { status: 404 })
     if (po.status === 'lunas') {
       return NextResponse.json({ error: 'Pesanan sudah lunas' }, { status: 400 })
     }
-    const { error } = await supabaseAdmin
+    const { data: updated, error } = await supabaseAdmin
       .from('merch_po')
       .update({ bukti_url: buktiUrl, status: 'menunggu_verifikasi', updated_at: new Date().toISOString() })
       .eq('id', po.id)
+      .select('status,no_po,nama_pemesan,kontak,total,sudah_dibayar,pembayaran_metode,pembayaran_tipe')
+      .single()
     if (error) throw error
+    try {
+      await kirimNotifPoMenungguVerifikasi(request, updated)
+    } catch (notifError) {
+      console.error('Notifikasi PO gagal:', notifError)
+    }
     return NextResponse.json({ success: true, message: 'Bukti terkirim, menunggu verifikasi admin' })
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })

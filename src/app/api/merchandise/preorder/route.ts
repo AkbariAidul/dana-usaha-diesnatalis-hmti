@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { kirimNotifPoTerverifikasi } from '@/lib/notifikasi-po'
 
 export async function GET() {
   try {
@@ -98,7 +99,7 @@ export async function PATCH(request: Request) {
 
     const { data: current } = await supabaseAdmin
       .from('merch_po')
-      .select('total')
+      .select('total,no_po,nama_pemesan,kontak,sudah_dibayar,pembayaran_metode,pembayaran_tipe')
       .eq('id', id)
       .single()
     if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -128,6 +129,13 @@ export async function PATCH(request: Request) {
       .single()
 
     if (error) throw error
+    if (status === 'dp_diterima' || status === 'lunas') {
+      try {
+        await kirimNotifPoTerverifikasi(request, data)
+      } catch (notifError) {
+        console.error('Notifikasi PO gagal:', notifError)
+      }
+    }
     return NextResponse.json(data)
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })
