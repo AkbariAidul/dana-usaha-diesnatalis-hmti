@@ -609,9 +609,9 @@ export default function PoMerchandisePage() {
                 </div>
               ) : (
                 <div className="rounded-xl border border-violet-200 bg-violet-50/60 p-4">
-                  <p className="text-sm font-medium text-slate-900">QRIS · Lunas</p>
+                  <p className="text-sm font-medium text-slate-900">Pembayaran QRIS</p>
                   <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                    Pembayaran untuk umum dilakukan langsung lunas melalui QRIS. Opsi Cash dan Nyicil hanya tersedia untuk Pengurus Himpunan.
+                    Selesaikan pembayaran sebesar total pesanan melalui QRIS, lalu unggah bukti pembayaran agar pesanan dapat diverifikasi.
                   </p>
                 </div>
               )}
@@ -647,7 +647,9 @@ export default function PoMerchandisePage() {
               </div>
               <p className="text-sm"><span className="text-slate-500">Nama</span> : {form.nama_pemesan}</p>
               <p className="text-sm"><span className="text-slate-500">Total</span> : {formatRupiah(Number(pesanan.total))}</p>
-              <p className="text-sm"><span className="text-slate-500">Pembayaran</span> : {form.pembayaran_metode} {form.pembayaran_tipe}</p>
+              {form.tipe_pemesan === 'Pengurus Himpunan' && (
+                <p className="text-sm"><span className="text-slate-500">Pembayaran</span> : {form.pembayaran_metode} · {form.pembayaran_tipe}</p>
+              )}
             </div>
             {form.pembayaran_metode === 'QRIS' && (
               <div className="space-y-4 rounded-2xl border border-slate-200/70 bg-white p-6 text-center shadow-sm">

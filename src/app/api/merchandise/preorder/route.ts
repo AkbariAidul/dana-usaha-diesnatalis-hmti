@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { kirimNotifPoTerverifikasi } from '@/lib/notifikasi-po'
+import { buatQrPayload } from '@/lib/link-token'
 
 export async function GET() {
   try {
@@ -37,6 +38,7 @@ export async function GET() {
       const modalTotal = modalSatuan * totalQty
       return {
         ...po,
+        qr: buatQrPayload('po', po.no_po),
         pengurus: po.pengurus_id ? pengurusMap.get(po.pengurus_id) ?? null : null,
         items: poItems,
         modal_satuan: modalSatuan,

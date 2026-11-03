@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabase'
 import { parseQrPayload } from '@/lib/link-token'
 import { kirimNotifCheckin } from '@/lib/notifikasi-tiket'
+import { kirimNotifPoDiambil } from '@/lib/notifikasi-po'
 import type { DashboardUser } from '@/lib/auth'
 
 async function getSessionUser(): Promise<DashboardUser | null> {
@@ -91,25 +92,41 @@ export async function POST(request: Request) {
       const varianMap = new Map((varian ?? []).map((v) => [v.id, v.nama]))
       const merchandiseMap = new Map((merchandise ?? []).map((m) => [m.id, m]))
 
+      const pickedUpAt = po.picked_up_at ?? (confirm ? new Date().toISOString() : null)
       if (confirm && !po.picked_up_at) {
         const { error } = await supabaseAdmin
           .from('merch_po')
-          .update({ picked_up_at: new Date().toISOString(), picked_up_by: oleh })
+          .update({ picked_up_at: pickedUpAt, picked_up_by: oleh })
           .eq('id', po.id)
         if (error) throw error
+
+        after(() =>
+          kirimNotifPoDiambil(request, {
+            ...po,
+            picked_up_at: pickedUpAt,
+            items: (items ?? []).map((i) => ({
+              nama_produk: merchandiseMap.get(i.merchandise_id ?? '')?.nama ?? 'Item',
+              ukuran: i.varian_id ? varianMap.get(i.varian_id) ?? null : null,
+              qty: Number(i.qty),
+              harga_satuan: Number(i.harga_satuan),
+              subtotal: Number(i.subtotal),
+            })),
+          })
+        )
       }
 
       return NextResponse.json({
         tipe: 'po',
         po: {
           ...po,
+          picked_up_at: pickedUpAt,
           items: (items ?? []).map((i) => ({
             ...i,
             merchandise: i.merchandise_id ? merchandiseMap.get(i.merchandise_id) ?? null : null,
             varian: i.varian_id ? { nama: varianMap.get(i.varian_id) ?? '' } : null,
           })),
         },
-        sudahDiambil: !!po.picked_up_at || confirm,
+        sudahDiambil: !!pickedUpAt,
         confirmed: confirm,
       })
     }

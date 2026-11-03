@@ -1,15 +1,31 @@
 ﻿'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import { Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
 import { useConfirm } from '@/components/confirm-dialog'
 import { BuktiPreviewModal, BuktiThumb } from '@/components/bukti'
 import { Modal } from '@/components/modal'
+import { QrImage } from '@/components/qr-image'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
-import { formatDate, formatRupiah } from '@/lib/utils'
+import { formatDate, formatDateTime, formatRupiah } from '@/lib/utils'
+
+const STATUS_LABEL: Record<string, string> = {
+  menunggu_verifikasi: 'Menunggu Verifikasi',
+  dp_diterima: 'DP Diterima',
+  lunas: 'Lunas',
+  ditolak: 'Ditolak',
+  batal: 'Batal',
+}
+
+function statusClass(status: string) {
+  if (status === 'lunas') return 'bg-green-100 text-green-800'
+  if (status === 'ditolak' || status === 'batal') return 'bg-red-100 text-red-800'
+  if (status === 'dp_diterima') return 'bg-blue-100 text-blue-800'
+  return 'bg-yellow-100 text-yellow-800'
+}
 
 type Item = {
   id: string
@@ -35,6 +51,7 @@ type Cicilan = {
 type PreOrder = {
   id: string
   no_po: string
+  qr: string
   nama_pemesan: string
   kontak: string
   tipe_pemesan: string
@@ -63,8 +80,11 @@ export default function PreorderPage() {
   const [cicilanModal, setCicilanModal] = useState<string | null>(null)
   const [cicilanForm, setCicilanForm] = useState({ nominal: '', metode: 'QRIS' })
   const [preview, setPreview] = useState<string | null>(null)
+  const [qrPreview, setQrPreview] = useState<string | null>(null)
   const [rejectTarget, setRejectTarget] = useState<PreOrder | null>(null)
   const [rejectReason, setRejectReason] = useState('')
+  const [filterTipe, setFilterTipe] = useState('all')
+  const [search, setSearch] = useState('')
 
   async function load() {
     try {
@@ -187,14 +207,40 @@ export default function PreorderPage() {
   const dp = items.filter((i) => i.status === 'dp_diterima').length
   const lunas = items.filter((i) => i.status === 'lunas').length
   const diambil = items.filter((i) => i.picked_up_at).length
+  const totalUmum = items.filter((i) => i.tipe_pemesan === 'Umum').length
+  const totalPengurus = items.filter((i) => i.tipe_pemesan === 'Pengurus Himpunan').length
+  const keyword = search.trim().toLowerCase()
+  const filtered = items.filter((i) => {
+    if (filterTipe !== 'all' && i.tipe_pemesan !== filterTipe) return false
+    if (!keyword) return true
+    return [i.no_po, i.nama_pemesan, i.kontak, ...i.items.map((it) => it.merchandise?.nama ?? '')]
+      .some((v) => v.toLowerCase().includes(keyword))
+  })
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="space-y-3">
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Data Preorder</h1>
-        <div className="flex gap-2">
-          <Link href="/dankelola/merchandise/pengurus" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">Data Pengurus</Link>
-          <Link href="/dankelola/scan" className="rounded-xl bg-primary-600 px-3 py-2 text-sm font-medium text-white">Scan Pickup</Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={filterTipe}
+            onChange={(e) => setFilterTipe(e.target.value)}
+            aria-label="Filter tipe pemesan"
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-primary-400 focus:outline-none"
+          >
+            <option value="all">Semua ({items.length})</option>
+            <option value="Umum">Umum ({totalUmum})</option>
+            <option value="Pengurus Himpunan">Pengurus Himpunan ({totalPengurus})</option>
+          </select>
+          <div className="relative min-w-[12rem] flex-1 sm:max-w-xs">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari no. PO, nama, kontak..."
+              className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-700 focus:border-primary-400 focus:outline-none"
+            />
+          </div>
         </div>
       </div>
 
@@ -221,28 +267,42 @@ export default function PreorderPage() {
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left">
             <tr>
-              <th className="px-3 py-2">No. PO</th>
+              <th className="px-3 py-2">No. PO / QR Pengambilan</th>
               <th className="px-3 py-2">Pemesan</th>
               <th className="px-3 py-2">Item</th>
               <th className="px-3 py-2 text-right">Total</th>
               <th className="px-3 py-2 text-right">Sudah Dibayar</th>
               <th className="px-3 py-2 text-right">Sisa</th>
-              <th className="px-3 py-2">Status</th>
+              <th className="px-3 py-2">Pengambilan</th>
               <th className="px-3 py-2">Pembayaran</th>
               <th className="px-3 py-2">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100/80">
-            {items.length === 0 && <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-400">Belum ada pre-order.</td></tr>}
-            {items.map((item) => {
+            {filtered.length === 0 && (
+              <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-400">
+                {items.length === 0 ? 'Belum ada pre-order.' : 'Tidak ada PO yang cocok.'}
+              </td></tr>
+            )}
+            {filtered.map((item) => {
               const sisa = Math.max(0, Number(item.total) - Number(item.sudah_dibayar ?? 0))
               return (
                 <tr key={item.id} className="hover:bg-slate-50">
-                  <td className="px-3 py-2 font-mono text-xs">{item.no_po}</td>
+                  <td className="px-3 py-2 align-top">
+                    <div className="font-mono text-xs">{item.no_po}</div>
+                    <button
+                      type="button"
+                      onClick={() => setQrPreview(item.qr)}
+                      className="mt-1 block rounded-md border border-slate-200 bg-white p-0.5 transition hover:ring-2 hover:ring-primary-200"
+                      title="Perbesar QR pengambilan"
+                    >
+                      <QrImage value={item.qr} size={64} />
+                    </button>
+                  </td>
                   <td className="px-3 py-2">
                     <div className="font-medium">{item.nama_pemesan}</div>
                     <div className="text-xs text-slate-500">{item.tipe_pemesan} · {item.kontak}</div>
-                    {item.pembayaran_metode && (
+                    {item.tipe_pemesan === 'Pengurus Himpunan' && item.pembayaran_metode && (
                       <div className="text-xs text-slate-400">{item.pembayaran_metode} · {item.pembayaran_tipe === 'nyicil' ? 'nyicil' : 'lunas'}</div>
                     )}
                     {item.pengurus && <div className="text-xs text-slate-400">{item.pengurus.divisi || '-'}</div>}
@@ -259,16 +319,20 @@ export default function PreorderPage() {
                   <td className="px-3 py-2 text-right tabular-nums text-green-600">{formatRupiah(Number(item.sudah_dibayar ?? 0))}</td>
                   <td className="px-3 py-2 text-right tabular-nums text-orange-600">{formatRupiah(sisa)}</td>
                   <td className="px-3 py-2">
-                    <span className={`rounded px-2 py-0.5 text-xs ${
-                      item.status === 'menunggu_verifikasi' ? 'bg-yellow-100 text-yellow-800' :
-                      item.status === 'dp_diterima' ? 'bg-blue-100 text-blue-800' :
-                      item.status === 'lunas' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                      {item.status.replace(/_/g, ' ')}
-                    </span>
-                    {item.picked_up_at && <div className="mt-1 text-xs text-green-700">Diambil {formatDate(item.picked_up_at)}</div>}
+                    {item.picked_up_at ? (
+                      <div>
+                        <span className="rounded bg-green-100 px-2 py-0.5 text-xs text-green-800">Sudah Diambil</span>
+                        <div className="mt-1 whitespace-nowrap text-xs text-slate-500">{formatDateTime(item.picked_up_at)}</div>
+                      </div>
+                    ) : (
+                      <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">Belum Diambil</span>
+                    )}
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-2 align-top">
+                    <span className={`inline-block rounded px-2 py-0.5 text-xs ${statusClass(item.status)}`}>
+                      {STATUS_LABEL[item.status] ?? item.status.replace(/_/g, ' ')}
+                    </span>
+                    <div className="mt-2">
                     {item.pembayaran_tipe !== 'nyicil' ? (
                       item.bukti_url ? (
                         <BuktiThumb url={item.bukti_url} label={`Bukti ${item.no_po}`} onPreview={() => setPreview(item.bukti_url)} />
@@ -344,27 +408,36 @@ export default function PreorderPage() {
                     )}
                       </>
                     )}
+                    </div>
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap gap-1">
                       {item.status === 'ditolak' ? (
-                        <button onClick={() => updateStatus(item.id, 'menunggu_verifikasi')} className="rounded bg-slate-600 px-2 py-1 text-xs text-white">Buka Lagi</button>
-                      ) : item.status === 'batal' || item.status === 'lunas' ? (
-                        <span className="text-xs text-slate-400">—</span>
-                      ) : item.pembayaran_tipe === 'nyicil' ? (
-                        <button
-                          onClick={() => setCicilanModal(cicilanModal === item.id ? null : item.id)}
-                          className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700 hover:bg-slate-200"
-                        >Kelola Cicilan</button>
+                        <>
+                          <span className="rounded bg-red-100 px-2 py-1 text-xs text-red-800">Ditolak</span>
+                          <button onClick={() => updateStatus(item.id, 'menunggu_verifikasi')} className="rounded bg-slate-600 px-2 py-1 text-xs text-white">Buka Lagi</button>
+                        </>
+                      ) : item.status === 'lunas' ? (
+                        <span className="rounded bg-green-100 px-2 py-1 text-xs text-green-800">Lunas</span>
+                      ) : item.status === 'batal' ? (
+                        <span className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-600">Batal</span>
                       ) : (
                         <>
-                          <button
-                            onClick={() => handleVerifikasi(item)}
-                            className="rounded bg-green-600 px-2 py-1 text-xs text-white"
-                            title="Verifikasi pembayaran yang diupload pemesan"
-                          >
-                            Verifikasi
-                          </button>
+                          {item.cicilan?.some((c) => !c.validated) && (
+                            <button
+                              onClick={() => handleVerifikasi(item)}
+                              className="rounded bg-green-600 px-2 py-1 text-xs text-white"
+                              title="Verifikasi pembayaran yang diupload pemesan"
+                            >
+                              Verifikasi
+                            </button>
+                          )}
+                          {item.pembayaran_tipe === 'nyicil' && (
+                            <button
+                              onClick={() => setCicilanModal(cicilanModal === item.id ? null : item.id)}
+                              className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700 hover:bg-slate-200"
+                            >Kelola Cicilan</button>
+                          )}
                           <button onClick={() => openReject(item)} className="rounded bg-red-600 px-2 py-1 text-xs text-white">Tolak</button>
                         </>
                       )}
@@ -378,6 +451,25 @@ export default function PreorderPage() {
       </div>
 
       <BuktiPreviewModal url={preview} onClose={() => setPreview(null)} />
+
+      <Modal
+        open={!!qrPreview}
+        onClose={() => setQrPreview(null)}
+        panelClassName="w-full max-w-xs rounded-2xl bg-white p-5 text-center shadow-xl"
+      >
+        <p className="text-sm font-semibold text-slate-900">QR Pengambilan</p>
+        <div className="mx-auto mt-3 w-fit rounded-xl border border-slate-200 p-3">
+          {qrPreview && <QrImage value={qrPreview} size={256} />}
+        </div>
+        <p className="mt-2 break-all font-mono text-[10px] text-slate-400">{qrPreview}</p>
+        <button
+          type="button"
+          onClick={() => setQrPreview(null)}
+          className="mt-4 w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+        >
+          Tutup
+        </button>
+      </Modal>
 
       <Modal open={!!rejectTarget} onClose={() => setRejectTarget(null)}>
         <h2 className="text-lg font-semibold text-slate-900">Tolak pesanan?</h2>

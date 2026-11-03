@@ -42,12 +42,13 @@ function detailPo(po: PoNotif, link: string) {
   const dibayar = Number(po.sudah_dibayar ?? 0)
   const total = Number(po.total ?? 0)
   const sisa = Math.max(0, total - dibayar)
+  const pengurus = po.tipe_pemesan === 'Pengurus Himpunan'
   const lines: string[] = [
     `Kode PO: ${po.no_po}`,
     `Nama: ${po.nama_pemesan}`,
     `Kategori: ${po.tipe_pemesan}`,
-    po.pembayaran_metode ? `Metode: ${po.pembayaran_metode}` : null,
-    po.pembayaran_tipe ? `Tipe: ${po.pembayaran_tipe}` : null,
+    pengurus && po.pembayaran_metode ? `Metode: ${po.pembayaran_metode}` : null,
+    pengurus && po.pembayaran_tipe ? `Tipe: ${po.pembayaran_tipe}` : null,
     '',
     'Detail Pesanan:',
     detailItem(po.items) || '  (lihat di riwayat)',
@@ -73,6 +74,36 @@ export async function kirimNotifPoMenungguVerifikasi(request: Request, po: PoNot
     'Status: Menunggu verifikasi admin.',
     '',
     'QR pengambilan merchandise aktif setelah pembayaran dinyatakan lunas.',
+    '',
+    PENUTUP,
+  ].join('\n')
+  return kirimWhatsApp(po.kontak, message)
+}
+
+function waktuWib(value: string) {
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return '-'
+  return new Intl.DateTimeFormat('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).format(d)
+}
+
+export async function kirimNotifPoDiambil(request: Request, po: PoNotif & { picked_up_at?: string | null }) {
+  const link = linkPo(request, po.no_po)
+  const message = [
+    `Halo ${po.nama_pemesan}, merchandise PO kamu sudah diambil.`,
+    '',
+    detailPo(po, link),
+    `Status: Sudah diambil${po.picked_up_at ? ` pada ${waktuWib(po.picked_up_at)} WIB` : ''}.`,
+    '',
+    'Terima kasih telah melakukan pre-order merchandise Danus In4Days XI.',
     '',
     PENUTUP,
   ].join('\n')

@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import Link from 'next/link'
-import QRCode from 'qrcode'
 import { toast } from 'sonner'
 import { ArrowLeft, CheckCircle2, Clock, QrCode, Upload, X } from 'lucide-react'
 import { PublicBreadcrumb, PublicNavbar } from '@/components/public-navbar'
+import { QrImage } from '@/components/qr-image'
 import { formatDate, formatDateTime, formatRupiah } from '@/lib/utils'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 
@@ -145,15 +145,6 @@ function StatusBadge({ status }: { status: string }) {
         ? 'bg-blue-100 text-blue-800'
         : 'bg-yellow-100 text-yellow-800'
   return <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${color}`}>{statusLabel(status)}</span>
-}
-
-function QrImage({ value, size = 240 }: { value: string; size?: number }) {
-  const [src, setSrc] = useState('')
-  useEffect(() => {
-    QRCode.toDataURL(value, { width: size, margin: 2, errorCorrectionLevel: 'H' }).then(setSrc).catch(() => setSrc(''))
-  }, [value, size])
-  if (!src) return <div className="animate-pulse rounded-xl bg-slate-100" style={{ width: size, height: size }} />
-  return <img src={src} alt="QR Code" className="rounded-xl" style={{ width: size, height: size }} />
 }
 
 function BuktiPreview({ url, label = 'Bukti pembayaran', compact = false }: { url: string; label?: string; compact?: boolean }) {
@@ -689,7 +680,7 @@ function PoView({ data, token, reload }: { data: Extract<StatusResponse, { tipe:
             <div><span className="text-slate-500">Sisa</span> <span className="font-semibold">{formatRupiah(Math.max(0, Number(po.total) - Number(po.sudah_dibayar)))}</span></div>
           </div>
         )}
-        {po.pembayaran_metode && (
+        {po.tipe_pemesan === 'Pengurus Himpunan' && po.pembayaran_metode && (
           <p className="mt-2 text-xs text-slate-500">
             Pembayaran: {po.pembayaran_metode} · {po.pembayaran_tipe}
           </p>
