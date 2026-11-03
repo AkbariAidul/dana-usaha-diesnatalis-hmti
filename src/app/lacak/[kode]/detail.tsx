@@ -763,7 +763,7 @@ function PoView({ data, token, reload }: { data: Extract<StatusResponse, { tipe:
 
       {po.picked_up_at && (
         <div className="flex items-center gap-2 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
-          <CheckCircle2 className="h-4 w-4" /> Sudah diambil pada {formatDate(po.picked_up_at)}
+          <CheckCircle2 className="h-4 w-4" /> Sudah diambil pada {formatDateTime(po.picked_up_at)}
         </div>
       )}
 
@@ -801,11 +801,7 @@ function PoView({ data, token, reload }: { data: Extract<StatusResponse, { tipe:
                     </span>
                   </div>
                   <div className="text-xs text-slate-500">{formatDateTime(c.tanggal_bayar)} · {c.metode}</div>
-                  {c.bukti_url && (
-                    <a href={c.bukti_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline">
-                      Lihat bukti
-                    </a>
-                  )}
+                  {c.bukti_url && <BuktiPreview url={c.bukti_url} label={`Bukti ${c.no_transaksi}`} compact />}
                 </div>
                 <div className="text-right">
                   <div className="font-semibold text-slate-900">{formatRupiah(Number(c.nominal))}</div>

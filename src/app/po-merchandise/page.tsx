@@ -305,14 +305,14 @@ export default function PoMerchandisePage() {
               <h1 className="text-2xl font-semibold text-slate-900">Katalog Merchandise</h1>
               <p className="text-sm text-slate-500">Pilih produk yang ingin dipesan.</p>
             </div>
-            <div className="grid auto-rows-fr gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
               {produkList.length === 0 && (
                 <div className="col-span-full rounded-2xl border border-dashed border-slate-200 p-10 text-center text-sm text-slate-500">
                   Belum ada produk.
                 </div>
               )}
               {produkList.map((item) => (
-                <div key={item.id} className="flex h-full flex-col rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
+                <div key={item.id} className="flex h-full flex-col rounded-2xl border border-slate-200/70 bg-white p-3 shadow-sm sm:p-4">
                   <div className="mb-3 aspect-square shrink-0 overflow-hidden rounded-xl bg-slate-100">
                     {item.gambar_url ? (
                       <img src={item.gambar_url} alt={item.nama} className="h-full w-full object-cover" />
@@ -339,14 +339,14 @@ export default function PoMerchandisePage() {
                         <div className="text-xs text-slate-500">Produk ini hanya untuk pre-order, tidak dijual saat Hari H.</div>
                       )}
                     </div>
-                    <div className="mt-auto flex items-end justify-between gap-3 pt-3">
+                    <div className="mt-auto flex flex-col gap-2 pt-3 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
                       <span className="text-sm font-semibold text-violet-600">
                         {item.harga_po ? formatRupiah(Number(item.harga_po)) : 'Pre-order belum dibuka'}
                       </span>
                       <button
                         onClick={() => tambahKeKeranjang(item)}
                         disabled={!item.harga_po}
-                        className="flex shrink-0 items-center gap-1 rounded-xl bg-violet-600 px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex w-full shrink-0 items-center justify-center gap-1 rounded-xl bg-violet-600 px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                       >
                         <Plus className="h-4 w-4" /> Tambah
                       </button>
@@ -373,7 +373,7 @@ export default function PoMerchandisePage() {
         )}
 
         {step === 2 && (
-          <div className="max-w-4xl space-y-4">
+          <div className="max-w-6xl space-y-4">
             <div className="flex items-center justify-between">
               <h1 className="text-2xl font-semibold text-slate-900">Form Pemesan</h1>
               <button onClick={() => setStep(1)} className="text-sm text-slate-600 hover:underline">
@@ -381,6 +381,7 @@ export default function PoMerchandisePage() {
               </button>
             </div>
 
+            <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
             <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm">
               <div className="flex items-center justify-between">
                 <h2 className="font-medium text-slate-900">Produk Dipilih</h2>
@@ -554,6 +555,7 @@ export default function PoMerchandisePage() {
                 </div>
               </div>
             </div>
+            </div>
 
             <div className="flex justify-end">
               <button onClick={lanjutPembayaran} className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-medium text-white">
@@ -654,8 +656,19 @@ export default function PoMerchandisePage() {
             {form.pembayaran_metode === 'QRIS' && (
               <div className="space-y-4 rounded-2xl border border-slate-200/70 bg-white p-6 text-center shadow-sm">
                 <h2 className="text-lg font-semibold text-slate-900">Scan QRIS</h2>
-                <div className="mx-auto w-fit rounded-2xl border border-slate-200 bg-white p-3">
-                  {qr ? <img src={qr} alt="QRIS" className="h-72 w-72 rounded-lg" /> : <div className="h-72 w-72 animate-pulse rounded-lg bg-slate-100" />}
+                <div className="mx-auto w-fit rounded-2xl border-4 border-violet-500 bg-white p-3 shadow-lg shadow-violet-100">
+                  {qr ? (
+                    <div className="relative h-72 w-72">
+                      <img src={qr} alt="QRIS" className="h-full w-full rounded-lg" />
+                      <span className="absolute inset-0 flex items-center justify-center">
+                        <span className="grid h-20 w-20 place-items-center rounded-xl bg-white p-1.5 shadow-md ring-1 ring-violet-200">
+                          <img src="/logo-dies.png" alt="Dies Natalis" className="h-full w-full object-contain" />
+                        </span>
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="h-72 w-72 animate-pulse rounded-lg bg-slate-100" />
+                  )}
                 </div>
                 {form.pembayaran_tipe === 'nyicil' ? (
                   <>

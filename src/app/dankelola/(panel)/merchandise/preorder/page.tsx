@@ -396,10 +396,11 @@ export default function PreorderPage() {
                                   </>
                                 )}
                                 {c.bukti_url && (
-                                  <button
-                                    onClick={() => setPreview(c.bukti_url)}
-                                    className="text-primary-600 hover:underline"
-                                  >Bukti</button>
+                                  <BuktiThumb
+                                    url={c.bukti_url}
+                                    label={`Bukti ${c.no_transaksi}`}
+                                    onPreview={() => setPreview(c.bukti_url)}
+                                  />
                                 )}
                               </div>
                             </div>
