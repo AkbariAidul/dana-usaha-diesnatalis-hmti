@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto'
 import { supabase, supabaseAdmin } from './supabase'
 import { todayISO } from './utils'
-import type { Tenant, Pembayaran, KategoriSewa, HargaDasar, FaktorHarga, Acara, Merchandise, Ticket, TicketPeriode, TicketKatalogItem, TicketBundleDiscount, TicketModalItem, PesananTiket, PeriodeHarga } from './types'
+import type { Tenant, Pembayaran, KategoriSewa, HargaDasar, FaktorHarga, Acara, Merchandise, MerchModalItem, Ticket, TicketPeriode, TicketKatalogItem, TicketBundleDiscount, TicketModalItem, PesananTiket, PeriodeHarga } from './types'
 
 // ─── Acara ───────────────────────────────────────────────────────────────────
 
@@ -306,6 +306,32 @@ export async function upsertMerchandise(payload: Partial<Merchandise>) {
 
 export async function deleteMerchandise(id: string) {
   const { error } = await supabaseAdmin.from('merchandise').delete().eq('id', id)
+  if (error) throw error
+}
+
+const MERCH_MODAL_FIELDS = ['nama', 'harga', 'urutan'] as const
+
+export async function getMerchModalItem(): Promise<MerchModalItem[]> {
+  const { data, error } = await supabaseAdmin.from('merch_modal_item').select('*').order('urutan').order('nama')
+  if (error) throw error
+  return (data ?? []) as MerchModalItem[]
+}
+
+export async function upsertMerchModalItem(payload: Partial<MerchModalItem>) {
+  const fields = pickFields(payload as Record<string, unknown>, MERCH_MODAL_FIELDS)
+  if (payload.id) {
+    const { data, error } = await supabaseAdmin
+      .from('merch_modal_item').update(fields).eq('id', payload.id).select().single()
+    if (error) throw error
+    return data
+  }
+  const { data, error } = await supabaseAdmin.from('merch_modal_item').insert(fields).select().single()
+  if (error) throw error
+  return data
+}
+
+export async function deleteMerchModalItem(id: string) {
+  const { error } = await supabaseAdmin.from('merch_modal_item').delete().eq('id', id)
   if (error) throw error
 }
 

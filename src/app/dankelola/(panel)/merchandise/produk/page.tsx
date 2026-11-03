@@ -9,7 +9,7 @@ import { PageSkeleton } from '../../ui'
 import { useConfirm } from '@/components/confirm-dialog'
 import type { Merchandise } from '@/lib/types'
 import { formatRupiah } from '@/lib/utils'
-import { Copy, Image as ImageIcon, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Copy, Image as ImageIcon, Pencil, Plus, Trash2, Wallet } from 'lucide-react'
 
 function formatJadwal(value: string | null) {
   if (!value) return '-'
@@ -145,12 +145,20 @@ export default function ProdukPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Produk & Harga</h1>
           <p className="text-sm text-slate-500">Daftar produk merchandise yang dijual.</p>
         </div>
-        <Link
-          href="/dankelola/merchandise/produk/new"
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-700"
-        >
-          <Plus className="h-4 w-4" /> Tambah Produk
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/dankelola/merchandise/modal"
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-primary-200 hover:text-primary-600"
+          >
+            <Wallet className="h-4 w-4" /> Kelola Modal
+          </Link>
+          <Link
+            href="/dankelola/merchandise/produk/new"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-700"
+          >
+            <Plus className="h-4 w-4" /> Tambah Produk
+          </Link>
+        </div>
       </div>
 
       {selected.size > 0 && (

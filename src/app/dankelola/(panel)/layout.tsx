@@ -16,6 +16,7 @@ const MENU_HREFS = menuConfig.flatMap((group) =>
 
 const MENU_ALIASES: Record<string, string[]> = {
   '/dankelola/ticket/tahap': ['/dankelola/ticket/tipe', '/dankelola/ticket/periode', '/dankelola/ticket/modal'],
+  '/dankelola/merchandise/produk': ['/dankelola/merchandise/modal'],
 }
 
 function matchesPath(pathname: string, href: string, prefix: string) {
@@ -116,6 +117,8 @@ function getBreadcrumbs(pathname: string) {
   } else if (pathname.startsWith('/dankelola/merchandise/produk/')) {
     const action = pathname === '/dankelola/merchandise/produk/new' ? 'Tambah Produk' : 'Edit Produk'
     breadcrumbs.push({ label: action, href: pathname })
+  } else if (pathname === '/dankelola/merchandise/modal') {
+    breadcrumbs.push({ label: 'Kelola Modal', href: pathname })
   }
 
   return breadcrumbs

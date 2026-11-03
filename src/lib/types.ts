@@ -156,6 +156,13 @@ export interface TicketModalItem {
   urutan: number
 }
 
+export interface MerchModalItem {
+  id: string
+  nama: string
+  harga: number
+  urutan: number
+}
+
 export interface PesananTiket {
   id: string
   no_pesanan: string
