@@ -78,6 +78,8 @@ type MerchPo = {
   harga_per_item: number
   total: number
   sudah_dibayar: number
+  pembayaran_metode: string | null
+  pembayaran_tipe: string | null
   status: string
   bukti_url: string | null
   catatan_admin: string | null
