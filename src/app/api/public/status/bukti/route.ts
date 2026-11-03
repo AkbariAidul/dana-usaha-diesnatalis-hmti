@@ -123,6 +123,7 @@ export async function POST(request: Request) {
     if (!Number.isFinite(nominal) || nominal <= 0) {
       return NextResponse.json({ error: 'Nominal pembayaran wajib diisi' }, { status: 400 })
     }
+    const metode = body.metode === 'Cash' ? 'Cash' : 'QRIS'
 
     const { data: cicilanValid } = await supabaseAdmin
       .from('merch_po_cicilan')
@@ -145,7 +146,7 @@ export async function POST(request: Request) {
       no_transaksi: noTransaksi,
       tanggal_bayar: new Date().toISOString(),
       nominal,
-      metode: po.pembayaran_metode || 'QRIS',
+      metode,
       bukti_url: buktiUrl,
       validated: false,
     })
@@ -164,6 +165,7 @@ export async function POST(request: Request) {
         ...updated,
         items: itemDetails,
         nominal_cicilan: nominal,
+        metode_cicilan: metode,
       })
     } catch (notifError) {
       console.error('Notifikasi PO gagal:', notifError)

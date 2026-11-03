@@ -219,7 +219,7 @@ export default function PreorderPage() {
 
   return (
     <div className="space-y-4">
-      <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Data Preorder</h1>
         <div className="flex flex-wrap items-center gap-2">
           <select
@@ -232,7 +232,7 @@ export default function PreorderPage() {
             <option value="Umum">Umum ({totalUmum})</option>
             <option value="Pengurus Himpunan">Pengurus Himpunan ({totalPengurus})</option>
           </select>
-          <div className="relative min-w-[12rem] flex-1 sm:max-w-xs">
+          <div className="relative w-full min-w-[12rem] sm:w-64">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               value={search}

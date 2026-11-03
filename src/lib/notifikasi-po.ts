@@ -22,6 +22,7 @@ type PoNotif = {
   pembayaran_tipe?: string | null
   items?: ItemDetail[]
   nominal_cicilan?: number | null
+  metode_cicilan?: string | null
 }
 
 const PENUTUP = 'Hormat Kami,\nPanitia Danus In4Days XI'
@@ -43,11 +44,12 @@ function detailPo(po: PoNotif, link: string) {
   const total = Number(po.total ?? 0)
   const sisa = Math.max(0, total - dibayar)
   const pengurus = po.tipe_pemesan === 'Pengurus Himpunan'
+  const metode = po.metode_cicilan || po.pembayaran_metode
   const lines: string[] = [
     `Kode PO: ${po.no_po}`,
     `Nama: ${po.nama_pemesan}`,
     `Kategori: ${po.tipe_pemesan}`,
-    pengurus && po.pembayaran_metode ? `Metode: ${po.pembayaran_metode}` : null,
+    pengurus && metode ? `Metode: ${metode}` : null,
     pengurus && po.pembayaran_tipe ? `Tipe: ${po.pembayaran_tipe}` : null,
     '',
     'Detail Pesanan:',

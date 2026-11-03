@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { ArrowLeft, CheckCircle2, Clock, QrCode, Upload, X } from 'lucide-react'
 import { PublicBreadcrumb, PublicNavbar } from '@/components/public-navbar'
 import { QrImage } from '@/components/qr-image'
+import { buatQrisDinamis, buatQrisTanpaNominal } from '@/lib/qris'
 import { formatDate, formatDateTime, formatRupiah } from '@/lib/utils'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 
@@ -233,18 +234,30 @@ function BuktiUpload({
   token,
   nominal,
   imageOnly = false,
+  metodePilihan = false,
+  metodeAwal = 'QRIS',
+  qrisPayload = '',
   onDone,
 }: {
   kode: string
   token: string
   nominal?: number
   imageOnly?: boolean
+  metodePilihan?: boolean
+  metodeAwal?: string
+  qrisPayload?: string
   onDone: () => void
 }) {
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState('')
   const [nilai, setNilai] = useState(nominal ? String(nominal) : '')
+  const [metode, setMetode] = useState(metodeAwal === 'Cash' ? 'Cash' : 'QRIS')
   const [loading, setLoading] = useState(false)
+  const qrValue = metodePilihan && metode === 'QRIS' && qrisPayload
+    ? Number(nilai) > 0
+      ? buatQrisDinamis(qrisPayload, Number(nilai))
+      : buatQrisTanpaNominal(qrisPayload)
+    : ''
 
   useEffect(() => {
     if (!imageOnly || !file) {
@@ -290,7 +303,13 @@ function BuktiUpload({
       const res = await fetch('/api/public/status/bukti', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kode, t: token, bukti_url: up.url, nominal: nominal ? Number(nilai) : undefined }),
+        body: JSON.stringify({
+          kode,
+          t: token,
+          bukti_url: up.url,
+          nominal: nominal ? Number(nilai) : undefined,
+          metode: metodePilihan ? metode : undefined,
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Gagal mengirim bukti')
@@ -313,6 +332,35 @@ function BuktiUpload({
         <div>
           <label className="mb-1 block text-xs font-medium text-slate-600">Nominal</label>
           <input type="number" min={1} placeholder="cth: 50000" value={nilai} onChange={(e) => setNilai(e.target.value)} className={input} />
+        </div>
+      )}
+      {metodePilihan && (
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-600">Metode Pembayaran</label>
+          <div className="grid grid-cols-2 gap-2">
+            {(['QRIS', 'Cash'] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMetode(m)}
+                className={`rounded-xl border px-3 py-2 text-sm font-medium transition ${
+                  metode === m
+                    ? 'border-primary-500 bg-primary-50 text-primary-700 ring-2 ring-primary-500/10'
+                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {qrValue && (
+        <div className="text-center">
+          <p className="mb-2 text-xs font-medium text-slate-600">Scan QRIS berikut untuk membayar</p>
+          <div className="mx-auto w-fit rounded-xl border border-slate-200 bg-white p-3">
+            <QrImage value={qrValue} size={200} />
+          </div>
         </div>
       )}
       <input
@@ -634,6 +682,14 @@ function PoView({ data, token, reload }: { data: Extract<StatusResponse, { tipe:
   const { po, items, qr } = data
   const sisa = Math.max(0, Number(po.total) - Number(po.sudah_dibayar ?? 0))
   const perluUpload = !po.bukti_url || po.status === 'ditolak' || po.status === 'dp_diterima'
+  const [qrisPayload, setQrisPayload] = useState('')
+
+  useEffect(() => {
+    fetch('/api/pengaturan/qris')
+      .then((r) => r.json())
+      .then((d) => setQrisPayload(d.qris_payload ?? ''))
+      .catch(() => {})
+  }, [])
 
   return (
     <div className="space-y-4">
@@ -719,7 +775,16 @@ function PoView({ data, token, reload }: { data: Extract<StatusResponse, { tipe:
       )}
 
       {perluUpload && po.status !== 'lunas' && (
-        <BuktiUpload kode={data.kode} token={token} nominal={sisa} imageOnly onDone={reload} />
+        <BuktiUpload
+          kode={data.kode}
+          token={token}
+          nominal={sisa}
+          imageOnly
+          metodePilihan={po.tipe_pemesan === 'Pengurus Himpunan'}
+          metodeAwal={po.pembayaran_metode ?? 'QRIS'}
+          qrisPayload={qrisPayload}
+          onDone={reload}
+        />
       )}
 
       {po.pembayaran_tipe === 'nyicil' && data.cicilan && data.cicilan.length > 0 && (
