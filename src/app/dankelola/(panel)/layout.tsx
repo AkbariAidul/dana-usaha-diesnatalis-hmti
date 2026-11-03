@@ -116,8 +116,6 @@ function getBreadcrumbs(pathname: string) {
   } else if (pathname.startsWith('/dankelola/merchandise/produk/')) {
     const action = pathname === '/dankelola/merchandise/produk/new' ? 'Tambah Produk' : 'Edit Produk'
     breadcrumbs.push({ label: action, href: pathname })
-  } else if (pathname.startsWith('/dankelola/merchandise/jadwal/')) {
-    breadcrumbs.push({ label: 'Atur Jadwal PO', href: pathname })
   }
 
   return breadcrumbs

@@ -11,9 +11,21 @@ import type { Merchandise } from '@/lib/types'
 
 const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
 
+function toLocalInput(value: string | null) {
+  if (!value) return ''
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function toIso(value: string) {
+  return value ? new Date(value).toISOString() : null
+}
+
 export default function ProdukForm({ id }: { id?: string }) {
   const router = useRouter()
-  const [form, setForm] = useState({ nama: '', deskripsi: '', harga: 0, harga_po: 0, po_unlimited: true, po_stok: 0, stok: 0, stok_unlimited: false, gambar_url: '', aktif: true })
+  const [form, setForm] = useState({ nama: '', deskripsi: '', harga: 0, harga_po: 0, po_mulai: '', po_selesai: '', po_unlimited: true, po_stok: 0, stok: 0, stok_unlimited: false, gambar_url: '', aktif: true })
   const [foto, setFoto] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(Boolean(id))
@@ -36,6 +48,8 @@ export default function ProdukForm({ id }: { id?: string }) {
           deskripsi: found.deskripsi ?? '',
           harga: Number(found.harga),
           harga_po: Number(found.harga_po ?? 0),
+          po_mulai: toLocalInput(found.po_mulai),
+          po_selesai: toLocalInput(found.po_selesai),
           po_unlimited: found.po_unlimited ?? true,
           po_stok: Number(found.po_stok ?? 0),
           stok: Number(found.stok),
@@ -72,6 +86,20 @@ export default function ProdukForm({ id }: { id?: string }) {
       toast.error('Slot pre-order minimal 1')
       return
     }
+    if (form.po_mulai || form.po_selesai) {
+      if (!form.po_mulai || !form.po_selesai) {
+        toast.error('Tanggal mulai dan selesai pre-order wajib diisi')
+        return
+      }
+      if (!form.harga_po) {
+        toast.error('Harga pre-order wajib diisi jika jadwal diatur')
+        return
+      }
+      if (new Date(form.po_selesai).getTime() <= new Date(form.po_mulai).getTime()) {
+        toast.error('Tanggal selesai harus setelah tanggal mulai')
+        return
+      }
+    }
     setSaving(true)
     try {
       let gambarUrl = form.gambar_url.trim() || null
@@ -91,6 +119,8 @@ export default function ProdukForm({ id }: { id?: string }) {
         deskripsi: form.deskripsi.trim() || null,
         harga: Number(form.harga),
         harga_po: Number(form.harga_po) || null,
+        po_mulai: form.po_mulai ? toIso(form.po_mulai) : null,
+        po_selesai: form.po_selesai ? toIso(form.po_selesai) : null,
         po_unlimited: form.po_unlimited,
         po_stok: form.po_unlimited ? 0 : Number(form.po_stok) || 0,
         stok: form.stok_unlimited ? 0 : Number(form.stok) || 0,
@@ -221,6 +251,32 @@ export default function ProdukForm({ id }: { id?: string }) {
               />
               Stok tidak terbatas
             </label>
+          </div>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+          <p className="text-sm font-medium text-slate-700">Jadwal Pre-Order</p>
+          <p className="mt-0.5 text-xs text-slate-500">Kosongkan tanggal untuk menonaktifkan pre-order produk ini.</p>
+          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="po_mulai" className="mb-1 block text-xs font-medium text-slate-500">Mulai PO</label>
+              <input
+                id="po_mulai"
+                type="datetime-local"
+                className={input}
+                value={form.po_mulai}
+                onChange={(e) => setForm({ ...form, po_mulai: e.target.value })}
+              />
+            </div>
+            <div>
+              <label htmlFor="po_selesai" className="mb-1 block text-xs font-medium text-slate-500">Selesai PO</label>
+              <input
+                id="po_selesai"
+                type="datetime-local"
+                className={input}
+                value={form.po_selesai}
+                onChange={(e) => setForm({ ...form, po_selesai: e.target.value })}
+              />
+            </div>
           </div>
         </div>
         <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">

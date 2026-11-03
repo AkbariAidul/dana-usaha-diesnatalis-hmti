@@ -11,6 +11,11 @@ import type { Merchandise } from '@/lib/types'
 import { formatRupiah } from '@/lib/utils'
 import { Image as ImageIcon, Pencil, Plus, Trash2 } from 'lucide-react'
 
+function formatJadwal(value: string | null) {
+  if (!value) return '-'
+  return new Date(value).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })
+}
+
 export default function ProdukPage() {
   const confirm = useConfirm()
   const [items, setItems] = useState<Merchandise[]>([])
@@ -126,6 +131,9 @@ export default function ProdukPage() {
                   <td className="px-5 py-3 text-right tabular-nums">
                     <div className="font-medium text-slate-900">{formatRupiah(Number(item.harga))}</div>
                     {item.harga_po ? <div className="text-xs text-slate-400">PO: {formatRupiah(Number(item.harga_po))}</div> : null}
+                    {item.po_mulai && item.po_selesai ? (
+                      <div className="text-[11px] text-slate-400">{formatJadwal(item.po_mulai)} – {formatJadwal(item.po_selesai)}</div>
+                    ) : null}
                   </td>
                   <td className={`px-5 py-3 text-right font-medium tabular-nums ${item.stok_unlimited || item.stok > 0 ? 'text-slate-700' : 'text-red-600'}`}>
                     {item.stok_unlimited ? 'Tak terbatas' : item.stok}

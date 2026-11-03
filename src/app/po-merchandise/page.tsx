@@ -68,6 +68,7 @@ export default function PoMerchandisePage() {
   }, [])
 
   const totalKeranjang = useMemo(() => keranjang.reduce((s, item) => s + (Number(item.produk.harga_po) * item.qty), 0), [keranjang])
+  const totalQty = useMemo(() => keranjang.reduce((s, item) => s + item.qty, 0), [keranjang])
 
   useEffect(() => {
     if (!qris.qris_payload || !totalKeranjang) {
@@ -102,6 +103,31 @@ export default function PoMerchandisePage() {
     setKeranjang((prev) => prev.filter((_, n) => n !== idx))
   }
 
+  function pilihVarian(idx: number, id: string) {
+    const v = varianList.find((x) => x.id === id)
+    setKeranjang((prev) => prev.map((i, n) => n === idx ? { ...i, varian: v } : i))
+  }
+
+  function validasiPemesan() {
+    if (keranjang.length === 0) {
+      toast.error('Keranjang kosong')
+      return false
+    }
+    if (form.tipe_pemesan === 'Pengurus Himpunan' && !form.pengurus_id) {
+      toast.error('Pilih nama pengurus dari daftar')
+      return false
+    }
+    if (!form.nama_pemesan.trim() || !form.kontak.trim()) {
+      toast.error('Lengkapi nama dan kontak')
+      return false
+    }
+    return true
+  }
+
+  function lanjutPembayaran() {
+    if (validasiPemesan()) setStep(3)
+  }
+
   function pilihPengurus(nama: string) {
     const found = pengurus.find((p) => p.nama === nama)
     setForm({
@@ -114,18 +140,7 @@ export default function PoMerchandisePage() {
   }
 
   async function pesan() {
-    if (keranjang.length === 0) {
-      return toast.error('Keranjang kosong')
-    }
-    if (form.tipe_pemesan === 'Pengurus Himpunan' && !form.pengurus_id) {
-      return toast.error('Pilih nama pengurus dari daftar')
-    }
-    if (!form.nama_pemesan.trim() || !form.kontak.trim()) {
-      return toast.error('Lengkapi nama dan kontak')
-    }
-    if (varianList.length > 0) {
-      // each item in cart may have variant; validation omitted for brevity
-    }
+    if (!validasiPemesan()) return
     try {
       const res = await fetch('/api/public/po', {
         method: 'POST',
@@ -192,7 +207,7 @@ export default function PoMerchandisePage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl space-y-6 px-4 py-8">
+      <main className="mx-auto max-w-5xl space-y-6 px-4 py-8 pb-28">
         {step === 1 && (
           <>
             <div>
@@ -236,67 +251,83 @@ export default function PoMerchandisePage() {
           </>
         )}
 
+        {step === 1 && keranjang.length > 0 && (
+          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur-xl">
+            <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
+              <div>
+                <p className="text-xs text-slate-500">{totalQty} item dipilih</p>
+                <p className="text-lg font-semibold text-violet-600">{formatRupiah(totalKeranjang)}</p>
+              </div>
+              <button onClick={() => setStep(2)} className="rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-violet-700">
+                Lanjutkan ke Pengisian Form Pemesan
+              </button>
+            </div>
+          </div>
+        )}
+
         {step === 2 && (
-          <div className="space-y-4">
+          <div className="max-w-2xl space-y-4">
             <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-semibold text-slate-900">Keranjang</h1>
+              <h1 className="text-2xl font-semibold text-slate-900">Form Pemesan</h1>
               <button onClick={() => setStep(1)} className="text-sm text-slate-600 hover:underline">
                 Kembali ke Katalog
               </button>
             </div>
-            {keranjang.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 p-10 text-center text-sm text-slate-500">
-                Keranjang masih kosong.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {keranjang.map((item, idx) => (
-                  <div key={idx} className="flex flex-wrap items-center gap-4 rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
-                    <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-100">
-                      {item.produk.gambar_url ? (
-                        <img src={item.produk.gambar_url} alt={item.produk.nama} className="h-full w-full object-cover" />
-                      ) : (
-                        <Shirt className="h-6 w-6 text-slate-300" />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-slate-900">{item.produk.nama}</p>
-                      <p className="text-sm text-slate-500">{item.varian?.nama || '-'}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => updateQty(idx, item.qty - 1)} className="rounded-lg border p-1 hover:bg-slate-50"><Minus className="h-4 w-4" /></button>
-                      <span className="w-8 text-center">{item.qty}</span>
-                      <button onClick={() => updateQty(idx, item.qty + 1)} className="rounded-lg border p-1 hover:bg-slate-50"><Plus className="h-4 w-4" /></button>
-                    </div>
-                    <div className="min-w-20 text-right font-semibold text-violet-600">
-                      {formatRupiah(Number(item.produk.harga_po) * item.qty)}
-                    </div>
-                    <button onClick={() => hapusDariKeranjang(idx)} className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600">
-                      <Trash2 className="h-5 w-5" />
-                    </button>
-                  </div>
-                ))}
-                <div className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm">
-                  <span className="font-medium text-slate-700">Total Pembayaran</span>
-                  <span className="text-xl font-semibold text-violet-600">{formatRupiah(totalKeranjang)}</span>
-                </div>
-                <div className="flex justify-end">
-                  <button onClick={() => setStep(3)} className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-medium text-white">
-                    Lanjut ke Pembayaran
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
 
-        {step === 3 && (
-          <div className="max-w-2xl space-y-4">
-            <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-semibold text-slate-900">Pembayaran</h1>
-              <button onClick={() => setStep(2)} className="text-sm text-slate-600 hover:underline">
-                Kembali ke Keranjang
-              </button>
+            <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h2 className="font-medium text-slate-900">Produk Dipilih</h2>
+                <span className="text-sm text-slate-500">{totalQty} item</span>
+              </div>
+              {keranjang.length === 0 ? (
+                <p className="mt-4 text-center text-sm text-slate-500">Keranjang masih kosong.</p>
+              ) : (
+                <div className="mt-4 space-y-3">
+                  {keranjang.map((item, idx) => (
+                    <div key={idx} className="flex flex-wrap items-center gap-3 border-b border-slate-100 pb-3 last:border-0 last:pb-0">
+                      <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-100">
+                        {item.produk.gambar_url ? (
+                          <img src={item.produk.gambar_url} alt={item.produk.nama} className="h-full w-full object-cover" />
+                        ) : (
+                          <Shirt className="h-5 w-5 text-slate-300" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-slate-900">{item.produk.nama}</p>
+                        {varianList.length > 0 ? (
+                          <select
+                            className="mt-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700"
+                            value={item.varian?.id ?? ''}
+                            onChange={(e) => pilihVarian(idx, e.target.value)}
+                          >
+                            <option value="">Pilih varian</option>
+                            {varianList.map((v) => (
+                              <option key={v.id} value={v.id}>{v.nama}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <p className="text-xs text-slate-500">{item.varian?.nama || 'Tanpa varian'}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button onClick={() => updateQty(idx, item.qty - 1)} className="rounded-lg border p-1 hover:bg-slate-50"><Minus className="h-3.5 w-3.5" /></button>
+                        <span className="w-7 text-center text-sm">{item.qty}</span>
+                        <button onClick={() => updateQty(idx, item.qty + 1)} className="rounded-lg border p-1 hover:bg-slate-50"><Plus className="h-3.5 w-3.5" /></button>
+                      </div>
+                      <div className="min-w-20 text-right text-sm font-semibold text-violet-600">
+                        {formatRupiah(Number(item.produk.harga_po) * item.qty)}
+                      </div>
+                      <button onClick={() => hapusDariKeranjang(idx)} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-sm text-slate-500">Total Pembayaran</span>
+                    <span className="font-semibold text-violet-600">{formatRupiah(totalKeranjang)}</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
@@ -353,8 +384,27 @@ export default function PoMerchandisePage() {
                   <input className={input} placeholder="nama@email.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
                 </div>
               </div>
+            </div>
 
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="flex justify-end">
+              <button onClick={lanjutPembayaran} className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-medium text-white">
+                Lanjut ke Pembayaran
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className="max-w-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h1 className="text-2xl font-semibold text-slate-900">Pembayaran</h1>
+              <button onClick={() => setStep(2)} className="text-sm text-slate-600 hover:underline">
+                Kembali ke Form Pemesan
+              </button>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">Metode Pembayaran</label>
                   <div className="grid gap-2 sm:grid-cols-2">

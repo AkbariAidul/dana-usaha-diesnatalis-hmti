@@ -54,7 +54,7 @@ export const menuConfig: MenuGroup[] = [
     children: [
       { label: 'Produk & Harga', href: '/dankelola/merchandise/produk' },
       { label: 'Data Pengurus', href: '/dankelola/merchandise/pengurus' },
-      { label: 'Pre-Order', href: '/dankelola/merchandise/preorder' },
+      { label: 'Data Preorder', href: '/dankelola/merchandise/preorder' },
       { label: 'Produksi & Stok', href: '/dankelola/merchandise/stok' },
       { label: 'Penjualan Hari H', href: '/dankelola/merchandise/kasir' },
     ],

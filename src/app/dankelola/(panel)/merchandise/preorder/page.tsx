@@ -66,7 +66,7 @@ export default function PreorderPage() {
   if (loading) return <PageSkeleton />
   if (error) return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Pre-Order</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Data Preorder</h1>
       <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
         <p className="text-red-600">{error}</p>
         <button onClick={() => window.location.reload()} className="mt-4 text-sm text-red-700 hover:underline">Coba Lagi</button>
@@ -82,9 +82,8 @@ export default function PreorderPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Pre-Order</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Data Preorder</h1>
         <div className="flex gap-2">
-          <Link href="/dankelola/merchandise/jadwal" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">Jadwal PO</Link>
           <Link href="/dankelola/merchandise/pengurus" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">Data Pengurus</Link>
           <Link href="/dankelola/scan" className="rounded-xl bg-primary-600 px-3 py-2 text-sm font-medium text-white">Scan Pickup</Link>
         </div>
