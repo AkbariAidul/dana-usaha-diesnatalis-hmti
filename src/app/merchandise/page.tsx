@@ -7,7 +7,7 @@ import { AutoRefresh } from "@/components/auto-refresh";
 export const dynamic = "force-dynamic";
 
 export default async function MerchandisePage() {
-  const items = await getMerchandise(true); // only aktif
+  const items = (await getMerchandise(true)).filter((item) => Number(item.harga) > 0);
 
   return (
     <div className="min-h-screen bg-gray-50">

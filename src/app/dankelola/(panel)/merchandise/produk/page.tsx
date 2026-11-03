@@ -129,7 +129,9 @@ export default function ProdukPage() {
                     <span className="line-clamp-2">{item.deskripsi || '-'}</span>
                   </td>
                   <td className="px-5 py-3 text-right tabular-nums">
-                    <div className="font-medium text-slate-900">{formatRupiah(Number(item.harga))}</div>
+                    <div className="font-medium text-slate-900">
+                      {Number(item.harga) > 0 ? formatRupiah(Number(item.harga)) : 'Tidak dijual Hari H'}
+                    </div>
                     {item.harga_po ? <div className="text-xs text-slate-400">PO: {formatRupiah(Number(item.harga_po))}</div> : null}
                     {item.po_mulai && item.po_selesai ? (
                       <div className="text-[11px] text-slate-400">{formatJadwal(item.po_mulai)} – {formatJadwal(item.po_selesai)}</div>

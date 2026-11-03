@@ -78,8 +78,8 @@ export default function ProdukForm({ id }: { id?: string }) {
 
   async function simpan(e: FormEvent) {
     e.preventDefault()
-    if (!form.nama.trim() || !form.harga) {
-      toast.error('Nama dan harga wajib diisi')
+    if (!form.nama.trim()) {
+      toast.error('Nama wajib diisi')
       return
     }
     if (!form.po_unlimited && form.po_stok < 1) {
@@ -117,7 +117,7 @@ export default function ProdukForm({ id }: { id?: string }) {
         ...(id ? { id } : {}),
         nama: form.nama.trim(),
         deskripsi: form.deskripsi.trim() || null,
-        harga: Number(form.harga),
+        harga: Number(form.harga) || 0,
         harga_po: Number(form.harga_po) || null,
         po_mulai: form.po_mulai ? toIso(form.po_mulai) : null,
         po_selesai: form.po_selesai ? toIso(form.po_selesai) : null,
@@ -207,13 +207,13 @@ export default function ProdukForm({ id }: { id?: string }) {
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
-            <label htmlFor="harga" className="mb-1 block text-xs font-medium text-slate-500">Harga Hari H (Rp)</label>
+            <label htmlFor="harga" className="mb-1 block text-xs font-medium text-slate-500">Harga Hari H (Rp) — opsional</label>
             <input
               id="harga"
               type="number"
               min={0}
               className={input}
-              placeholder="cth: 75000"
+              placeholder="Kosongkan jika hanya pre-order"
               value={form.harga || ''}
               onChange={(e) => setForm({ ...form, harga: Number(e.target.value) })}
             />
@@ -326,7 +326,7 @@ export default function ProdukForm({ id }: { id?: string }) {
           </Link>
           <button
             type="submit"
-            disabled={saving || !form.nama.trim() || !form.harga}
+            disabled={saving || !form.nama.trim()}
             className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-700 disabled:opacity-50"
           >
             {saving ? 'Menyimpan...' : 'Simpan'}

@@ -45,6 +45,9 @@ export async function POST(request: Request) {
       .maybeSingle()
     if (produkError) throw produkError
     if (!produk) return NextResponse.json({ error: 'Produk tidak ditemukan' }, { status: 404 })
+    if (Number(produk.harga) <= 0) {
+      return NextResponse.json({ error: 'Produk ini tidak dijual pada Hari H' }, { status: 400 })
+    }
 
     const stokAwal = Number(produk.stok)
     if (!produk.stok_unlimited) {

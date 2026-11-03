@@ -31,9 +31,13 @@ export default function KasirPage() {
       getJSON<KasirTransaksi[]>('/api/merchandise/kasir'),
       getJSON<Merchandise[]>('/api/merchandise'),
     ])
+    const produkHariH = daftarProduk.filter((item) => item.aktif && Number(item.harga) > 0)
     setTransaksi(data)
-    setProduk(daftarProduk.filter((item) => item.aktif))
-    setForm((f) => ({ ...f, merchandise_id: f.merchandise_id || daftarProduk.find((item) => item.aktif)?.id || '' }))
+    setProduk(produkHariH)
+    setForm((f) => ({
+      ...f,
+      merchandise_id: produkHariH.some((item) => item.id === f.merchandise_id) ? f.merchandise_id : produkHariH[0]?.id || '',
+    }))
     setError(null)
   }, [])
 
