@@ -150,7 +150,7 @@ export default function ProdukForm({ id }: { id?: string }) {
         </p>
       </div>
 
-      <form onSubmit={simpan} className="max-w-3xl space-y-4 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+      <form onSubmit={simpan} className="max-w-6xl space-y-4 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
             {preview ? (
@@ -205,7 +205,7 @@ export default function ProdukForm({ id }: { id?: string }) {
             onChange={(e) => setForm({ ...form, deskripsi: e.target.value })}
           />
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-3">
           <div>
             <label htmlFor="harga" className="mb-1 block text-xs font-medium text-slate-500">Harga Hari H (Rp)</label>
             <input
@@ -253,6 +253,7 @@ export default function ProdukForm({ id }: { id?: string }) {
             </label>
           </div>
         </div>
+        <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
           <p className="text-sm font-medium text-slate-700">Jadwal Pre-Order</p>
           <p className="mt-0.5 text-xs text-slate-500">Kosongkan tanggal untuk menonaktifkan pre-order produk ini.</p>
@@ -304,6 +305,7 @@ export default function ProdukForm({ id }: { id?: string }) {
               />
             </div>
           )}
+        </div>
         </div>
         <label className="flex items-center gap-2 text-sm text-slate-700">
           <input
