@@ -37,6 +37,8 @@ type PreOrder = {
   tipe_pemesan: string
   total: number
   sudah_dibayar: number
+  pembayaran_metode: string | null
+  pembayaran_tipe: string | null
   status: string
   bukti_url: string | null
   catatan_admin: string | null
@@ -105,7 +107,7 @@ export default function PreorderPage() {
         nominal,
         metode: cicilanForm.metode,
       })
-      toast.success('Cicilan berhasil ditambahkan')
+      toast.success('Pembayaran berhasil ditambahkan')
       setCicilanModal(null)
       setCicilanForm({ nominal: '', metode: 'QRIS' })
       await load()
@@ -127,7 +129,7 @@ export default function PreorderPage() {
   async function verifikasiPending(po: PreOrder) {
     const pending = po.cicilan?.find((c) => !c.validated)
     if (!pending) {
-      toast.error('Tidak ada pembayaran yang menunggu verifikasi. Tambahkan cicilan manual bila bayar tunai.')
+      toast.error('Tidak ada pembayaran yang menunggu verifikasi. Tambahkan pembayaran manual bila bayar tunai.')
       return
     }
     await toggleValidasi(pending.id, true)
@@ -189,7 +191,7 @@ export default function PreorderPage() {
               <th className="px-3 py-2 text-right">Sudah Dibayar</th>
               <th className="px-3 py-2 text-right">Sisa</th>
               <th className="px-3 py-2">Status</th>
-              <th className="px-3 py-2">Cicilan</th>
+              <th className="px-3 py-2">Pembayaran</th>
               <th className="px-3 py-2">Aksi</th>
             </tr>
           </thead>
@@ -203,6 +205,9 @@ export default function PreorderPage() {
                   <td className="px-3 py-2">
                     <div className="font-medium">{item.nama_pemesan}</div>
                     <div className="text-xs text-slate-500">{item.tipe_pemesan} · {item.kontak}</div>
+                    {item.pembayaran_metode && (
+                      <div className="text-xs text-slate-400">{item.pembayaran_metode} · {item.pembayaran_tipe === 'nyicil' ? 'nyicil' : 'lunas'}</div>
+                    )}
                     {item.pengurus && <div className="text-xs text-slate-400">{item.pengurus.divisi || '-'}</div>}
                   </td>
                   <td className="px-3 py-2">
@@ -231,7 +236,7 @@ export default function PreorderPage() {
                       onClick={() => setCicilanModal(cicilanModal === item.id ? null : item.id)}
                       className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700 hover:bg-slate-200"
                     >
-                      {item.cicilan?.length ?? 0} cicilan
+                      {item.cicilan?.length ?? 0} pembayaran
                     </button>
                     {cicilanModal === item.id && (
                       <div className="mt-2 space-y-2">

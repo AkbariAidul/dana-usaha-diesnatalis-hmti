@@ -53,7 +53,9 @@ function detailPo(po: PoNotif, link: string) {
     detailItem(po.items) || '  (lihat di riwayat)',
     '',
     `Total: ${formatRupiah(total)}`,
-    po.nominal_cicilan ? `Cicilan ini: ${formatRupiah(Number(po.nominal_cicilan))}` : null,
+    po.nominal_cicilan
+      ? `${po.pembayaran_tipe === 'nyicil' ? 'Cicilan ini' : 'Pembayaran'}: ${formatRupiah(Number(po.nominal_cicilan))}`
+      : null,
     dibayar > 0 ? `Sudah dibayar: ${formatRupiah(dibayar)}` : null,
     sisa > 0 ? `Sisa: ${formatRupiah(sisa)}` : null,
     '',
@@ -86,7 +88,9 @@ export async function kirimNotifPoTerverifikasi(request: Request, po: PoNotif) {
     detailPo(po, link),
     lunas
       ? 'Status: LUNAS. QR pengambilan merchandise sudah aktif di link riwayat PO.'
-      : `Status: DP/cicilan diterima. Nominal cicilan ini: ${po.nominal_cicilan ? formatRupiah(Number(po.nominal_cicilan)) : '-'}. Sisa pembayaran masih ada, silakan lakukan cicilan berikutnya sesuai kesepakatan.`,
+      : po.pembayaran_tipe === 'nyicil'
+        ? `Status: cicilan diterima. Nominal cicilan ini: ${po.nominal_cicilan ? formatRupiah(Number(po.nominal_cicilan)) : '-'}. Sisa pembayaran masih ada, silakan lakukan cicilan berikutnya.`
+        : `Status: pembayaran diterima. Nominal: ${po.nominal_cicilan ? formatRupiah(Number(po.nominal_cicilan)) : '-'}. Sisa pembayaran masih ada.`,
     '',
     PENUTUP,
   ].join('\n')
