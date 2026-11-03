@@ -115,7 +115,7 @@ export async function POST(request: Request) {
         qty,
         total: hitung.total,
         diskon: hitung.diskon,
-        metode: body.metode || 'Tunai',
+        metode: body.metode === 'QRIS' ? 'QRIS' : 'Tunai',
         dicatat_oleh: kasir.name,
       })
       .select()
