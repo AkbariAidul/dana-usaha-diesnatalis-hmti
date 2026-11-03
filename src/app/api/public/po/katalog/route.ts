@@ -9,7 +9,7 @@ export async function GET() {
       supabaseAdmin.from('merch_varian').select('*').eq('aktif', true).order('urutan'),
       supabaseAdmin
         .from('merchandise')
-        .select('id,nama,deskripsi,gambar_url,harga_po,po_mulai,po_selesai,po_unlimited,po_stok')
+        .select('id,nama,deskripsi,gambar_url,harga_po,po_mulai,po_selesai,po_unlimited,po_stok,varian_ids')
         .eq('aktif', true)
         .order('nama'),
     ])

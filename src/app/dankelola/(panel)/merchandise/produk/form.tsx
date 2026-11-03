@@ -12,6 +12,8 @@ import { normalizeDiskon } from '@/lib/merch-diskon'
 
 const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
 
+type Varian = { id: string; nama: string; urutan: number }
+
 function toLocalInput(value: string | null) {
   if (!value) return ''
   const d = new Date(value)
@@ -26,7 +28,8 @@ function toIso(value: string) {
 
 export default function ProdukForm({ id }: { id?: string }) {
   const router = useRouter()
-  const [form, setForm] = useState({ nama: '', deskripsi: '', warna: '', harga: 0, harga_po: 0, po_mulai: '', po_selesai: '', po_unlimited: true, po_stok: 0, stok: 0, stok_unlimited: false, gambar_url: '', aktif: true, diskon: [] as DiskonRule[] })
+  const [form, setForm] = useState({ nama: '', deskripsi: '', warna: '', harga: 0, harga_po: 0, po_mulai: '', po_selesai: '', po_unlimited: true, po_stok: 0, stok: 0, stok_unlimited: false, gambar_url: '', aktif: true, diskon: [] as DiskonRule[], varian_ids: [] as string[] })
+  const [varianList, setVarianList] = useState<Varian[]>([])
   const [foto, setFoto] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(Boolean(id))
@@ -59,6 +62,7 @@ export default function ProdukForm({ id }: { id?: string }) {
           gambar_url: found.gambar_url ?? '',
           aktif: found.aktif,
           diskon: normalizeDiskon(found.diskon),
+          varian_ids: Array.isArray(found.varian_ids) ? found.varian_ids : [],
         })
       })
       .catch((e) => toast.error((e as Error).message))
@@ -69,6 +73,24 @@ export default function ProdukForm({ id }: { id?: string }) {
       active = false
     }
   }, [id, router])
+
+  useEffect(() => {
+    let active = true
+    getJSON<Varian[]>('/api/merchandise/varian')
+      .then((list) => {
+        if (!active) return
+        setVarianList(list)
+        if (!id) {
+          setForm((current) => current.varian_ids.length > 0
+            ? current
+            : { ...current, varian_ids: list.map((v) => v.id) })
+        }
+      })
+      .catch((e) => toast.error((e as Error).message))
+    return () => {
+      active = false
+    }
+  }, [id])
 
   useEffect(() => {
     if (foto) {
@@ -95,6 +117,15 @@ export default function ProdukForm({ id }: { id?: string }) {
 
   function hapusDiskon(index: number) {
     setForm({ ...form, diskon: form.diskon.filter((_, i) => i !== index) })
+  }
+
+  function toggleVarian(varianId: string) {
+    setForm({
+      ...form,
+      varian_ids: form.varian_ids.includes(varianId)
+        ? form.varian_ids.filter((id) => id !== varianId)
+        : [...form.varian_ids, varianId],
+    })
   }
 
   async function simpan(e: FormEvent) {
@@ -170,6 +201,7 @@ export default function ProdukForm({ id }: { id?: string }) {
         gambar_url: gambarUrl,
         aktif: form.aktif,
         diskon: normalizeDiskon(form.diskon),
+        varian_ids: form.varian_ids,
       })
       toast.success(id ? 'Produk diperbarui' : 'Produk ditambahkan')
       router.push('/dankelola/merchandise/produk')
@@ -246,6 +278,54 @@ export default function ProdukForm({ id }: { id?: string }) {
             value={form.warna}
             onChange={(e) => setForm({ ...form, warna: e.target.value })}
           />
+        </div>
+        <div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <label className="block text-xs font-medium text-slate-500">Ukuran Tersedia</label>
+            {varianList.length > 0 && (
+              <div className="flex gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, varian_ids: varianList.map((v) => v.id) })}
+                  className="font-medium text-primary-600 hover:underline"
+                >
+                  Pilih semua
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, varian_ids: [] })}
+                  className="font-medium text-slate-500 hover:underline"
+                >
+                  Kosongkan
+                </button>
+              </div>
+            )}
+          </div>
+          <p className="mt-0.5 text-xs text-slate-500">Pilih ukuran yang ready untuk produk ini.</p>
+          {varianList.length === 0 ? (
+            <p className="mt-2 text-sm text-slate-400">Belum ada data varian ukuran.</p>
+          ) : (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {varianList.map((v) => {
+                const selected = form.varian_ids.includes(v.id)
+                return (
+                  <button
+                    key={v.id}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => toggleVarian(v.id)}
+                    className={`rounded-xl border px-3 py-1.5 text-sm font-medium transition ${
+                      selected
+                        ? 'border-primary-500 bg-primary-50 text-primary-700'
+                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    {v.nama}
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
         <div>
           <label htmlFor="deskripsi" className="mb-1 block text-xs font-medium text-slate-500">Deskripsi (opsional)</label>

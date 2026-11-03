@@ -112,6 +112,7 @@ export interface Merchandise {
   gambar_url: string | null
   aktif: boolean
   diskon: DiskonRule[] | null
+  varian_ids: string[] | null
 }
 
 export interface Ticket {

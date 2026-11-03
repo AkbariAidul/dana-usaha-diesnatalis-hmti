@@ -44,7 +44,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Nama dan kontak wajib diisi' }, { status: 400 })
     }
 
-    const validatedItems: Array<{ produk: { id: string; nama: string; harga_po: number; gambar_url: string | null; po_unlimited: boolean; po_stok: number; diskon?: unknown }; qty: number; varian?: Varian | null; subtotal: number; diskon: number }> = []
+    const validatedItems: Array<{ produk: { id: string; nama: string; harga_po: number; gambar_url: string | null; po_unlimited: boolean; po_stok: number; diskon?: unknown; varian_ids?: string[] | null }; qty: number; varian?: Varian | null; subtotal: number; diskon: number }> = []
     let total = 0
 
     for (const item of items) {
@@ -83,6 +83,14 @@ export async function POST(request: Request) {
         if (qty > sisa) {
           return NextResponse.json({ error: `Slot pre-order tidak cukup untuk ${produk.nama}` }, { status: 400 })
         }
+      }
+
+      const varianTersedia = Array.isArray(produk.varian_ids) ? produk.varian_ids.map(String) : []
+      if (varianTersedia.length > 0 && !varianId) {
+        return NextResponse.json({ error: `Pilih ukuran untuk ${produk.nama}` }, { status: 400 })
+      }
+      if (varianId && !varianTersedia.includes(varianId)) {
+        return NextResponse.json({ error: `Ukuran tidak tersedia untuk ${produk.nama}` }, { status: 400 })
       }
 
       let varian: { id: string; nama: string } | null = null

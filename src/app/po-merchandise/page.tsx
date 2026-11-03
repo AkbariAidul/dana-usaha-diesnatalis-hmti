@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import QRCode from 'qrcode'
 import { toast } from 'sonner'
-import { ArrowLeft, Shirt, Trash2, Plus, Minus } from 'lucide-react'
+import { ArrowLeft, Check, ChevronDown, Shirt, Trash2, Plus, Minus } from 'lucide-react'
 import { formatRupiah } from '@/lib/utils'
 import { buatQrisDinamis } from '@/lib/qris'
 import { hitungDiskon } from '@/lib/merch-diskon'
@@ -21,6 +21,7 @@ type Produk = {
   harga: number
   harga_po: number | null
   diskon: DiskonRule[] | null
+  varian_ids: string[] | null
 }
 type ItemKeranjang = {
   produk: Produk
@@ -58,6 +59,7 @@ export default function PoMerchandisePage() {
   const [pesanan, setPesanan] = useState<Pesanan | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [pengurusOpen, setPengurusOpen] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -75,6 +77,13 @@ export default function PoMerchandisePage() {
   const totalKeranjang = useMemo(() => keranjang.reduce((s, item) => s + hitungDiskon(item.qty, Number(item.produk.harga_po), item.produk.diskon, 'po').total, 0), [keranjang])
   const totalDiskon = useMemo(() => keranjang.reduce((s, item) => s + hitungDiskon(item.qty, Number(item.produk.harga_po), item.produk.diskon, 'po').diskon, 0), [keranjang])
   const totalQty = useMemo(() => keranjang.reduce((s, item) => s + item.qty, 0), [keranjang])
+  const pengurusTersaring = useMemo(() => {
+    const q = form.nama_pengurus.trim().toLowerCase()
+    if (!q) return pengurus
+    return pengurus.filter((p) =>
+      p.nama.toLowerCase().includes(q) || (p.divisi ?? '').toLowerCase().includes(q)
+    )
+  }, [pengurus, form.nama_pengurus])
 
   useEffect(() => {
     if (!qris.qris_payload || !totalKeranjang) {
@@ -119,6 +128,11 @@ export default function PoMerchandisePage() {
       toast.error('Keranjang kosong')
       return false
     }
+    const belumUkuran = keranjang.find((item) => (item.produk.varian_ids?.length ?? 0) > 0 && !item.varian)
+    if (belumUkuran) {
+      toast.error(`Pilih ukuran untuk ${belumUkuran.produk.nama}`)
+      return false
+    }
     if (form.tipe_pemesan === 'Pengurus Himpunan' && !form.pengurus_id) {
       toast.error('Pilih nama pengurus dari daftar')
       return false
@@ -134,14 +148,13 @@ export default function PoMerchandisePage() {
     if (validasiPemesan()) setStep(3)
   }
 
-  function pilihPengurus(nama: string) {
-    const found = pengurus.find((p) => p.nama === nama)
+  function pilihPengurus(p: Pengurus) {
     setForm({
       ...form,
-      nama_pengurus: nama,
-      pengurus_id: found?.id ?? '',
-      nama_pemesan: found?.nama ?? '',
-      kontak: found?.kontak ?? form.kontak,
+      nama_pengurus: p.nama,
+      pengurus_id: p.id,
+      nama_pemesan: p.nama,
+      kontak: p.kontak ?? form.kontak,
     })
   }
 
@@ -307,6 +320,7 @@ export default function PoMerchandisePage() {
                 <div className="mt-4 space-y-3">
                   {keranjang.map((item, idx) => {
                     const hitung = hitungDiskon(item.qty, Number(item.produk.harga_po), item.produk.diskon, 'po')
+                    const varianProduk = varianList.filter((v) => item.produk.varian_ids?.includes(v.id))
                     return (
                       <div key={idx} className="flex flex-wrap items-center gap-3 border-b border-slate-100 pb-3 last:border-0 last:pb-0">
                         <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-100">
@@ -318,19 +332,19 @@ export default function PoMerchandisePage() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-slate-900">{item.produk.nama}</p>
-                          {varianList.length > 0 ? (
+                          {varianProduk.length > 0 ? (
                             <select
                               className="mt-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700"
                               value={item.varian?.id ?? ''}
                               onChange={(e) => pilihVarian(idx, e.target.value)}
                             >
-                              <option value="">Pilih varian</option>
-                              {varianList.map((v) => (
+                              <option value="">Pilih ukuran</option>
+                              {varianProduk.map((v) => (
                                 <option key={v.id} value={v.id}>{v.nama}</option>
                               ))}
                             </select>
                           ) : (
-                            <p className="text-xs text-slate-500">{item.varian?.nama || 'Tanpa varian'}</p>
+                            <p className="text-xs text-slate-500">{item.varian?.nama || 'Tanpa ukuran'}</p>
                           )}
                         </div>
                         <div className="flex items-center gap-1.5">
@@ -367,7 +381,10 @@ export default function PoMerchandisePage() {
                     <button
                       key={tipe}
                       type="button"
-                      onClick={() => setForm({ ...form, tipe_pemesan: tipe, pengurus_id: '', nama_pengurus: '', nama_pemesan: tipe === 'Umum' ? '' : form.nama_pemesan })}
+                      onClick={() => {
+                        setPengurusOpen(false)
+                        setForm({ ...form, tipe_pemesan: tipe, pengurus_id: '', nama_pengurus: '', nama_pemesan: tipe === 'Umum' ? '' : form.nama_pemesan })
+                      }}
                       className={`rounded-xl border p-3 text-left text-sm ${form.tipe_pemesan === tipe ? 'border-violet-500 bg-violet-50 ring-2 ring-violet-500/10' : 'border-slate-200'}`}
                     >
                       <span className="font-medium text-slate-900">{tipe}</span>
@@ -382,18 +399,53 @@ export default function PoMerchandisePage() {
               {form.tipe_pemesan === 'Pengurus Himpunan' ? (
                 <div className="mb-4">
                   <label className="mb-1 block text-sm font-medium text-slate-700">Nama Pengurus</label>
-                  <input
-                    list="pengurus-list"
-                    className={input}
-                    placeholder="Cari nama pengurus..."
-                    value={form.nama_pengurus}
-                    onChange={(e) => pilihPengurus(e.target.value)}
-                  />
-                  <datalist id="pengurus-list">
-                    {pengurus.map((p) => (
-                      <option key={p.id} value={p.nama}>{p.divisi || ''}</option>
-                    ))}
-                  </datalist>
+                  <div
+                    className="relative"
+                    onBlur={(e) => {
+                      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setPengurusOpen(false)
+                    }}
+                  >
+                    <input
+                      className={`${input} pr-10`}
+                      placeholder="Cari nama atau divisi pengurus..."
+                      value={form.nama_pengurus}
+                      onChange={(e) => {
+                        setForm({ ...form, nama_pengurus: e.target.value, pengurus_id: '' })
+                        setPengurusOpen(true)
+                      }}
+                      onFocus={() => setPengurusOpen(true)}
+                      autoComplete="off"
+                    />
+                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    {pengurusOpen && (
+                      <div className="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                        {pengurusTersaring.length === 0 ? (
+                          <p className="px-3 py-2 text-sm text-slate-500">Pengurus tidak ditemukan.</p>
+                        ) : (
+                          pengurusTersaring.map((p) => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => {
+                                pilihPengurus(p)
+                                setPengurusOpen(false)
+                              }}
+                              className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-violet-50 ${
+                                form.pengurus_id === p.id ? 'bg-violet-50' : ''
+                              }`}
+                            >
+                              <span className="min-w-0">
+                                <span className="block truncate font-medium text-slate-900">{p.nama}</span>
+                                {p.divisi && <span className="block truncate text-xs text-slate-500">{p.divisi}</span>}
+                              </span>
+                              {form.pengurus_id === p.id && <Check className="h-4 w-4 shrink-0 text-violet-600" />}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
                   {pengurus.length === 0 && <p className="mt-1 text-xs text-red-600">Belum ada data pengurus. Hubungi admin.</p>}
                 </div>
               ) : (
@@ -406,7 +458,14 @@ export default function PoMerchandisePage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">Kontak WA</label>
-                  <input className={input} placeholder="08xxxxxxxxxx" value={form.kontak} onChange={(e) => setForm({ ...form, kontak: e.target.value })} />
+                  <input
+                    className={input}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="08xxxxxxxxxx"
+                    value={form.kontak}
+                    onChange={(e) => setForm({ ...form, kontak: e.target.value.replace(/\D/g, '') })}
+                  />
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">Email (opsional)</label>
