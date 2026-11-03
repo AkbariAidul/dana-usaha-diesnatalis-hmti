@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { getJSON } from '../../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
+import { BuktiPreviewModal, BuktiThumb } from '@/components/bukti'
 import type { MerchModalItem } from '@/lib/types'
 import { formatRupiah } from '@/lib/utils'
 
@@ -18,6 +19,7 @@ type KasirTransaksi = {
   diskon: number
   metode: string
   dicatat_oleh: string
+  bukti_url: string | null
 }
 
 export default function KasirPage() {
@@ -25,6 +27,7 @@ export default function KasirPage() {
   const [modalSatuan, setModalSatuan] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [previewBukti, setPreviewBukti] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     const [data, modalItems] = await Promise.all([
@@ -105,11 +108,12 @@ export default function KasirPage() {
               <th className="px-3 py-2 text-right">Modal</th>
               <th className="px-3 py-2 text-right">Keuntungan</th>
               <th className="px-3 py-2">Metode</th>
+              <th className="px-3 py-2">Bukti</th>
               <th className="px-3 py-2">Kasir</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100/80">
-            {transaksi.length === 0 && <tr><td colSpan={8} className="px-3 py-6 text-center text-slate-400">Belum ada transaksi hari ini.</td></tr>}
+            {transaksi.length === 0 && <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-400">Belum ada transaksi hari ini.</td></tr>}
             {transaksi.map((t) => {
               const modal = t.merchandise_id ? modalSatuan * t.qty : 0
               const laba = t.total - modal
@@ -129,6 +133,13 @@ export default function KasirPage() {
                       {t.metode === 'Tunai' ? 'Cash' : t.metode}
                     </span>
                   </td>
+                  <td className="px-3 py-2">
+                    {t.bukti_url ? (
+                      <BuktiThumb url={t.bukti_url} label={`Bukti ${t.produk}`} onPreview={() => setPreviewBukti(t.bukti_url)} />
+                    ) : (
+                      <span className="text-slate-400">-</span>
+                    )}
+                  </td>
                   <td className="px-3 py-2 text-slate-500">{t.dicatat_oleh || '-'}</td>
                 </tr>
               )
@@ -136,6 +147,8 @@ export default function KasirPage() {
           </tbody>
         </table>
       </div>
+
+      <BuktiPreviewModal url={previewBukti} onClose={() => setPreviewBukti(null)} />
     </div>
   )
 }

@@ -52,6 +52,7 @@ export async function GET(request: Request) {
       diskon: Number(item.diskon ?? 0),
       metode: item.metode || 'Tunai',
       dicatat_oleh: item.dicatat_oleh || 'Admin',
+      bukti_url: item.bukti_url || null,
     }))
     
     return NextResponse.json(transformed)
@@ -117,6 +118,7 @@ export async function POST(request: Request) {
         diskon: hitung.diskon,
         metode: body.metode === 'QRIS' ? 'QRIS' : 'Tunai',
         dicatat_oleh: kasir.name,
+        bukti_url: typeof body.bukti_url === 'string' && body.bukti_url.trim() ? body.bukti_url.trim() : null,
       })
       .select()
       .single()

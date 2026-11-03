@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { Camera, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../../api'
 import { PageSkeleton } from '../../../ui'
@@ -19,6 +20,8 @@ export default function KasirNewPage() {
   const [produk, setProduk] = useState<Merchandise[]>([])
   const [kasir, setKasir] = useState('')
   const [qrisPayload, setQrisPayload] = useState('')
+  const [buktiUrl, setBuktiUrl] = useState('')
+  const [uploadingBukti, setUploadingBukti] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({ merchandise_id: '', qty: 1, metode: 'Tunai' })
@@ -71,6 +74,27 @@ export default function KasirNewPage() {
     if (form.qty < 1) setForm((f) => ({ ...f, qty: 1 }))
   }
 
+  async function pilihBukti(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setUploadingBukti(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('folder', 'kasir-bukti')
+      const res = await fetch('/api/upload', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Gagal upload bukti')
+      setBuktiUrl(data.url)
+      toast.success('Bukti pembayaran diunggah')
+    } catch (err) {
+      toast.error((err as Error).message)
+    } finally {
+      setUploadingBukti(false)
+    }
+  }
+
   async function simpan(e: FormEvent) {
     e.preventDefault()
     if (!form.merchandise_id || !form.qty || form.qty < 1) {
@@ -91,6 +115,7 @@ export default function KasirNewPage() {
         merchandise_id: form.merchandise_id,
         qty: form.qty,
         metode: form.metode,
+        bukti_url: form.metode === 'QRIS' ? buktiUrl || null : null,
       })
       toast.success('Transaksi disimpan')
       router.push('/dankelola/merchandise/kasir')
@@ -181,6 +206,43 @@ export default function KasirNewPage() {
                   {qrisPayload ? 'Nominal belum valid.' : 'QRIS belum diatur. Atur dulu di menu Pengaturan QRIS.'}
                 </p>
               )}
+
+              <div className="w-full border-t border-slate-100 pt-3">
+                <p className="mb-2 text-center text-xs font-medium text-slate-500">Bukti Pembayaran (opsional)</p>
+                {buktiUrl ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="relative">
+                      <img src={buktiUrl} alt="Bukti pembayaran QRIS" className="h-40 w-40 rounded-xl border border-slate-200 object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setBuktiUrl('')}
+                        aria-label="Hapus bukti"
+                        className="absolute -right-2 -top-2 rounded-full bg-slate-900 p-1 text-white shadow hover:bg-slate-700"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <label className="cursor-pointer text-xs font-medium text-primary-600 hover:underline">
+                      Ganti foto
+                      <input type="file" accept="image/*" className="hidden" onChange={pilihBukti} disabled={uploadingBukti} />
+                    </label>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                      <Camera className="h-4 w-4" />
+                      Foto Kamera
+                      <input type="file" accept="image/*" capture="environment" className="hidden" onChange={pilihBukti} disabled={uploadingBukti} />
+                    </label>
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                      <Upload className="h-4 w-4" />
+                      Upload Foto
+                      <input type="file" accept="image/*" className="hidden" onChange={pilihBukti} disabled={uploadingBukti} />
+                    </label>
+                  </div>
+                )}
+                {uploadingBukti && <p className="mt-2 text-center text-xs text-slate-500">Mengunggah...</p>}
+              </div>
             </div>
           )}
 
