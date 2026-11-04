@@ -214,8 +214,12 @@ export default function PenjualanPage() {
                       )}
                     </td>
                     <td className="px-5 py-3">
-                      <div className="flex items-center gap-1.5">
-                        {p.status === 'menunggu_verifikasi' ? (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${status.className}`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />
+                          {status.label}
+                        </span>
+                        {p.status === 'menunggu_verifikasi' && (
                           <>
                             <button
                               onClick={() => void handleVerifikasi(p)}
@@ -232,7 +236,8 @@ export default function PenjualanPage() {
                               Tolak
                             </button>
                           </>
-                        ) : p.status === 'lunas' ? (
+                        )}
+                        {p.status === 'lunas' && (
                           <button
                             type="button"
                             onClick={() => setStrukTarget(p)}
@@ -242,11 +247,6 @@ export default function PenjualanPage() {
                             <Download className="h-3.5 w-3.5" />
                             Struk
                           </button>
-                        ) : (
-                          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${status.className}`}>
-                            <span className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />
-                            {status.label}
-                          </span>
                         )}
                       </div>
                     </td>
