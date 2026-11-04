@@ -27,7 +27,7 @@ type PoNotif = {
 
 const PENUTUP = 'Hormat Kami,\nPanitia Danus In4Days XI'
 
-function linkPo(request: Request, kode: string) {
+export function linkPo(request: Request, kode: string) {
   return `${baseUrl(request)}/lacak/${encodeURIComponent(kode)}?t=${encodeURIComponent(signRef('po', kode))}`
 }
 
