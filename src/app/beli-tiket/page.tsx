@@ -137,6 +137,11 @@ export default function BeliTiketPublik() {
   const diskon = bundle ? Number(bundle.diskon_persen) : 0
   const subtotal = tipe ? Number(tipe.harga_aktif) * Number(form.jumlah) : 0
   const total = Math.round(subtotal * (1 - diskon / 100))
+  const tiketTampil = [...katalog.tiket].sort((a, b) => {
+    if (a.buka !== b.buka) return a.buka ? -1 : 1
+    if (a.buka && a.is_hari_h !== b.is_hari_h) return a.is_hari_h ? -1 : 1
+    return 0
+  })
 
   function pilihTipe(t: TicketKatalogItem) {
     if (!t.buka) return
@@ -264,7 +269,7 @@ export default function BeliTiketPublik() {
               </div>
 
               <div className="mt-5 grid gap-4 xl:grid-cols-2">
-                {katalog.tiket.map((t) => {
+                {tiketTampil.map((t) => {
                   const periods = t.periode ?? []
                   const habis = t.sisa === 0
                   const selected = form.tiket_tipe_id === t.id
@@ -420,7 +425,7 @@ export default function BeliTiketPublik() {
                 })}
               </div>
 
-              {katalog.tiket.length === 0 && (
+              {tiketTampil.length === 0 && (
                 <div className="mt-5 rounded-3xl border border-dashed border-slate-200 bg-white/70 p-10 text-center">
                   <Ticket className="mx-auto h-10 w-10 text-slate-300" />
                   <p className="mt-3 text-sm font-medium text-slate-700">Belum ada tiket yang dibuka.</p>
