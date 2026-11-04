@@ -57,7 +57,7 @@ export async function kirimWhatsApp(target: string, message: string) {
     return false
   }
 
-  const nomor = nomorFonnte(target)
+  const nomor = target.includes('@') ? target.trim() : nomorFonnte(target)
   if (!nomor) return false
 
   try {

@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { tipeDariKode, verifyRef } from '@/lib/link-token'
-import { buatStrukPoHtml, namaFileStruk } from '@/lib/struk-po'
+import { buatStrukPoXlsx, namaFileStruk } from '@/lib/struk-po'
+
+export const runtime = 'nodejs'
 
 export async function GET(request: Request) {
   try {
@@ -23,19 +25,20 @@ export async function GET(request: Request) {
     const varianMap = new Map((varian ?? []).map((v) => [v.id, v.nama]))
     const merchandiseMap = new Map((merchandise ?? []).map((m) => [m.id, m.nama]))
 
-    const html = buatStrukPoHtml(
+    const buffer = await buatStrukPoXlsx(
       po,
       (items ?? []).map((item) => ({
         nama: merchandiseMap.get(item.merchandise_id) ?? 'Merchandise',
         ukuran: item.varian_id ? varianMap.get(item.varian_id) ?? item.ukuran : item.ukuran,
         qty: Number(item.qty),
+        harga_satuan: Number(item.harga_satuan),
         subtotal: Number(item.subtotal),
       }))
     )
 
-    return new NextResponse(`\ufeff${html}`, {
+    return new NextResponse(new Uint8Array(buffer), {
       headers: {
-        'Content-Type': 'application/vnd.ms-excel; charset=utf-8',
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'Content-Disposition': `attachment; filename="${namaFileStruk(po.no_po)}"`,
       },
     })

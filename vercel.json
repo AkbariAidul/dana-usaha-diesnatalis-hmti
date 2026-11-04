@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/reminder-tiket",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/reminder-po",
+      "schedule": "0 1 * * *"
     }
   ]
 }
