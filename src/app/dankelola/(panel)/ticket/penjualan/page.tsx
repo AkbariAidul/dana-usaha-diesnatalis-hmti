@@ -232,21 +232,22 @@ export default function PenjualanPage() {
                               Tolak
                             </button>
                           </>
+                        ) : p.status === 'lunas' ? (
+                          <button
+                            type="button"
+                            onClick={() => setStrukTarget(p)}
+                            title={`Lihat struk ${p.no_pesanan}`}
+                            className="inline-flex items-center gap-1 rounded-lg border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-medium text-violet-700 transition hover:bg-violet-100"
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                            Struk
+                          </button>
                         ) : (
                           <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${status.className}`}>
                             <span className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />
                             {status.label}
                           </span>
                         )}
-                        <button
-                          type="button"
-                          onClick={() => setStrukTarget(p)}
-                          title={`Lihat struk ${p.no_pesanan}`}
-                          className="inline-flex items-center gap-1 rounded-lg border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-medium text-violet-700 transition hover:bg-violet-100"
-                        >
-                          <Download className="h-3.5 w-3.5" />
-                          Struk
-                        </button>
                       </div>
                     </td>
                   </tr>

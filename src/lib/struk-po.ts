@@ -199,7 +199,7 @@ async function buatInvoicePdf({
         tCenter('Scan riwayat', qx + QR_SIZE / 2, top - QR_SIZE - 8, font, 7, GRAY)
       }
       tCenter('DANA USAHA HMTI', PAGE_W / 2, top - 20, bold, 18, UNGU)
-      tCenter('In4Days XI - Merchandise & Ticket', PAGE_W / 2, top - 38, font, 9, GRAY)
+      tCenter('In4Days XI - Tenant, Merchandise & Ticket', PAGE_W / 2, top - 38, font, 9, GRAY)
       tCenter(jenis, PAGE_W / 2, top - 56, bold, 10, DARK)
       y = top - 88
     } else {
