@@ -9,7 +9,7 @@ import { useConfirm } from '@/components/confirm-dialog'
 import { BuktiPreviewModal, BuktiThumb } from '@/components/bukti'
 import { Modal } from '@/components/modal'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
-import { formatRupiah } from '@/lib/utils'
+import { formatDateTime, formatRupiah } from '@/lib/utils'
 import type { PesananTiket, TicketPeriode } from '@/lib/types'
 
 const STATUS: Record<PesananTiket['status'], { label: string; className: string; dot: string }> = {
@@ -32,6 +32,7 @@ export default function PenjualanPage() {
   const [preview, setPreview] = useState<string | null>(null)
   const [rejectTarget, setRejectTarget] = useState<PesananTiket | null>(null)
   const [rejectReason, setRejectReason] = useState('')
+  const [strukTarget, setStrukTarget] = useState<PesananTiket | null>(null)
 
   const load = useCallback(async () => {
     const [data, periode] = await Promise.all([
@@ -237,14 +238,15 @@ export default function PenjualanPage() {
                             {status.label}
                           </span>
                         )}
-                        <a
-                          href={`/api/ticket/struk?kode=${encodeURIComponent(p.no_pesanan)}`}
-                          title={`Download struk ${p.no_pesanan}`}
+                        <button
+                          type="button"
+                          onClick={() => setStrukTarget(p)}
+                          title={`Lihat struk ${p.no_pesanan}`}
                           className="inline-flex items-center gap-1 rounded-lg border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-medium text-violet-700 transition hover:bg-violet-100"
                         >
                           <Download className="h-3.5 w-3.5" />
                           Struk
-                        </a>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -280,6 +282,88 @@ export default function PenjualanPage() {
       </section>
 
       <BuktiPreviewModal url={preview} onClose={() => setPreview(null)} />
+
+      <Modal
+        open={!!strukTarget}
+        onClose={() => setStrukTarget(null)}
+        panelClassName="max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl"
+      >
+        {strukTarget && (() => {
+          const subtotal = Number(strukTarget.jumlah) * Number(strukTarget.harga_satuan ?? 0)
+          const total = Number(strukTarget.total)
+          const diskon = Math.max(0, subtotal - total)
+          const dibayar = strukTarget.status === 'lunas' ? total : 0
+          const sisa = Math.max(0, total - dibayar)
+          const status = STATUS[strukTarget.status]
+          return (
+            <>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">Struk {strukTarget.no_pesanan}</h2>
+                  <p className="text-sm text-slate-500">{strukTarget.nama_pembeli}</p>
+                </div>
+                <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${status.className}`}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />
+                  {status.label}
+                </span>
+              </div>
+
+              <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 text-left text-xs text-slate-500">
+                    <tr>
+                      <th className="px-3 py-2">Tiket</th>
+                      <th className="px-3 py-2">Periode</th>
+                      <th className="px-3 py-2 text-center">Qty</th>
+                      <th className="px-3 py-2 text-right">Harga</th>
+                      <th className="px-3 py-2 text-right">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    <tr>
+                      <td className="px-3 py-2">{strukTarget.tiket_nama || 'Tiket'}</td>
+                      <td className="px-3 py-2">{strukTarget.periode_nama || 'Harga dasar'}</td>
+                      <td className="px-3 py-2 text-center">{strukTarget.jumlah}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatRupiah(Number(strukTarget.harga_satuan ?? 0))}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatRupiah(subtotal)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mt-3 grid gap-2 rounded-xl bg-slate-50 p-3 text-sm">
+                {diskon > 0 && (
+                  <div className="flex justify-between"><span className="text-slate-500">Diskon</span><span className="font-medium">{formatRupiah(diskon)}</span></div>
+                )}
+                <div className="flex justify-between"><span className="text-slate-500">Total</span><span className="font-semibold">{formatRupiah(total)}</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">Sudah Dibayar</span><span className="font-medium text-green-700">{formatRupiah(dibayar)}</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">Sisa</span><span className="font-medium text-orange-600">{formatRupiah(sisa)}</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">Tanggal</span><span>{formatDateTime(strukTarget.created_at)}</span></div>
+                <div className="flex justify-between gap-4"><span className="text-slate-500">Kontak</span><span className="text-right">{strukTarget.kontak}</span></div>
+                {strukTarget.email && (
+                  <div className="flex justify-between gap-4"><span className="text-slate-500">Email</span><span className="text-right">{strukTarget.email}</span></div>
+                )}
+              </div>
+
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setStrukTarget(null)}
+                  className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  Tutup
+                </button>
+                <a
+                  href={`/api/ticket/struk?kode=${encodeURIComponent(strukTarget.no_pesanan)}`}
+                  className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+                >
+                  Download PDF
+                </a>
+              </div>
+            </>
+          )
+        })()}
+      </Modal>
 
       <Modal open={!!rejectTarget} onClose={() => setRejectTarget(null)}>
         <h2 className="text-lg font-semibold text-slate-900">Tolak pesanan?</h2>

@@ -163,19 +163,28 @@ export async function GET(request: Request) {
     const message = [
       '*Pengingat Pembayaran PO Merchandise*',
       '',
-      `Batas pre-order: ${formatDate(deadline)} (H-${hari})`,
+      `PO ditutup: ${formatDate(deadline)} (H-${hari})`,
       `Total pengurus belum lunas: ${belumLunas.length} orang`,
       '',
       'Daftar pengurus yang belum melunasi:',
-      ...belumLunas.flatMap((grup, index) => [
-        `${index + 1}. ${grup.nama} - total sisa ${formatRupiah(
-          grup.items.reduce((sum, item) => sum + item.sisa, 0)
-        )}`,
-        ...grup.items.flatMap((item) => [
-          `   ${item.no_po}: sisa ${formatRupiah(item.sisa)}`,
-          `   Bayar/cicil: ${item.link}`,
-        ]),
-      ]),
+      ...belumLunas.flatMap((grup, index) => {
+        if (grup.items.length === 1) {
+          const item = grup.items[0]
+          return [
+            `${index + 1}. ${grup.nama} (${item.no_po}) - sisa ${formatRupiah(item.sisa)}`,
+            `   Bayar/cicil: ${item.link}`,
+          ]
+        }
+        return [
+          `${index + 1}. ${grup.nama} - total sisa ${formatRupiah(
+            grup.items.reduce((sum, item) => sum + item.sisa, 0)
+          )}`,
+          ...grup.items.flatMap((item) => [
+            `   ${item.no_po}: sisa ${formatRupiah(item.sisa)}`,
+            `   Bayar/cicil: ${item.link}`,
+          ]),
+        ]
+      }),
       '',
       'Mohon segera selesaikan pembayaran melalui QRIS/Cash ke panitia sebelum batas pre-order.',
       '',

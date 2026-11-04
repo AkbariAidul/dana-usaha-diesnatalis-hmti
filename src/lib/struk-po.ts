@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs'
 import path from 'path'
-import ExcelJS from 'exceljs'
+import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage, type RGB } from 'pdf-lib'
 
 type InvoiceLine = {
   nama: string
@@ -19,10 +19,40 @@ type InvoiceTotal = {
 
 type InvoiceMeta = [label: string, value: string, label2: string, value2: string]
 
-const UNGU = 'FF7C3AED'
-const UNGU_MUDA = 'FFF5F3FF'
-const ABU = 'FFF8FAFC'
-const GARIS = 'FFE2E8F0'
+const PAGE_W = 595.28
+const PAGE_H = 841.89
+const MARGIN = 36
+const CONTENT_W = PAGE_W - MARGIN * 2
+const COL_X = [MARGIN, 62, 252, 336, 374, 450, PAGE_W - MARGIN] as const
+const COL_W = COL_X.slice(1).map((x, i) => x - COL_X[i])
+
+const UNGU = rgb(124 / 255, 58 / 255, 237 / 255)
+const UNGU_TUA = rgb(76 / 255, 29 / 255, 149 / 255)
+const UNGU_MUDA = rgb(245 / 255, 243 / 255, 255 / 255)
+const ABU = rgb(248 / 255, 250 / 255, 252 / 255)
+const GARIS = rgb(226 / 255, 232 / 255, 240 / 255)
+const DARK = rgb(15 / 255, 23 / 255, 42 / 255)
+const GRAY = rgb(100 / 255, 116 / 255, 139 / 255)
+const WHITE = rgb(1, 1, 1)
+
+function aman(value: string) {
+  return String(value)
+    .replace(/[\u2013\u2014]/g, '-')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201c\u201d]/g, '"')
+    .replace(/[\u00b7\u2022]/g, '-')
+    .replace(/[^\x20-\x7e\xa0-\xff]/g, '?')
+}
+
+function rupiah(value: number) {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    maximumFractionDigits: 0,
+  })
+    .format(Number(value) || 0)
+    .replace(/\u00a0/g, ' ')
+}
 
 function waktu(value: string) {
   const d = new Date(value)
@@ -38,20 +68,24 @@ function waktu(value: string) {
   }).format(d)
 }
 
-function border(cell: ExcelJS.Cell, color = GARIS) {
-  cell.border = {
-    top: { style: 'thin', color: { argb: color } },
-    left: { style: 'thin', color: { argb: color } },
-    bottom: { style: 'thin', color: { argb: color } },
-    right: { style: 'thin', color: { argb: color } },
+function potong(value: string, font: PDFFont, size: number, maxWidth: number) {
+  const text = aman(value)
+  if (font.widthOfTextAtSize(text, size) <= maxWidth) return text
+  let low = 0
+  let high = text.length
+  while (low < high) {
+    const mid = Math.ceil((low + high) / 2)
+    if (font.widthOfTextAtSize(`${text.slice(0, mid)}...`, size) <= maxWidth) low = mid
+    else high = mid - 1
   }
+  return `${text.slice(0, low).trimEnd()}...`
 }
 
 export function namaFileStruk(noInvoice: string) {
-  return `invoice-${noInvoice}.xlsx`
+  return `invoice-${noInvoice}.pdf`
 }
 
-async function buatInvoiceXlsx({
+async function buatInvoicePdf({
   jenis,
   noInvoice,
   meta,
@@ -68,129 +102,203 @@ async function buatInvoiceXlsx({
   totals: InvoiceTotal[]
   note: string
 }): Promise<Buffer> {
-  const wb = new ExcelJS.Workbook()
-  wb.creator = 'Dana Usaha HMTI'
-  wb.created = new Date()
+  const doc = await PDFDocument.create()
+  doc.setTitle(`Invoice ${noInvoice}`)
+  doc.setAuthor('Dana Usaha HMTI')
+  doc.setCreator('Dana Usaha HMTI')
 
-  const ws = wb.addWorksheet('Invoice', {
-    pageSetup: {
-      paperSize: 9,
-      orientation: 'portrait',
-      fitToPage: true,
-      fitToWidth: 1,
-      fitToHeight: 0,
-      margins: { left: 0.5, right: 0.5, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 },
-    },
-  })
-  ws.columns = [{ width: 10 }, { width: 28 }, { width: 16 }, { width: 8 }, { width: 16 }, { width: 18 }]
+  const font = await doc.embedFont(StandardFonts.Helvetica)
+  const bold = await doc.embedFont(StandardFonts.HelveticaBold)
+  const italic = await doc.embedFont(StandardFonts.HelveticaOblique)
 
+  let logo: PDFImage | null = null
   try {
-    const logo = await fs.readFile(path.join(process.cwd(), 'public', 'logo-dies-struk.png'))
-    const logoBuffer = logo.buffer.slice(logo.byteOffset, logo.byteOffset + logo.byteLength) as ArrayBuffer
-    const logoId = wb.addImage({ buffer: logoBuffer, extension: 'png' })
-    ws.addImage(logoId, { tl: { col: 0.15, row: 0.15 }, ext: { width: 66, height: 66 } })
+    const bytes = await fs.readFile(path.join(process.cwd(), 'public', 'logo-dies-struk.png'))
+    logo = await doc.embedPng(bytes)
   } catch {
-    // logo opsional; struk tetap dibuat tanpa logo
+    logo = null
   }
 
-  ws.getRow(1).height = 24
-  ws.getRow(2).height = 18
-  ws.getRow(3).height = 18
-  ws.getRow(4).height = 4
+  let page: PDFPage = doc.addPage([PAGE_W, PAGE_H])
+  let y = 0
 
-  ws.mergeCells('B1:F1')
-  ws.getCell('B1').value = 'DANA USAHA HMTI'
-  ws.getCell('B1').font = { bold: true, size: 18, color: { argb: UNGU } }
-  ws.getCell('B1').alignment = { horizontal: 'center', vertical: 'middle' }
-  ws.mergeCells('B2:F2')
-  ws.getCell('B2').value = 'In4Days XI · Merchandise & Ticket'
-  ws.getCell('B2').font = { size: 10, color: { argb: 'FF64748B' } }
-  ws.getCell('B2').alignment = { horizontal: 'center', vertical: 'middle' }
-  ws.mergeCells('B3:F3')
-  ws.getCell('B3').value = jenis
-  ws.getCell('B3').font = { bold: true, size: 11, color: { argb: 'FF0F172A' } }
-  ws.getCell('B3').alignment = { horizontal: 'center', vertical: 'middle' }
+  const t = (value: string, x: number, baseline: number, f: PDFFont, size: number, color: RGB) => {
+    page.drawText(aman(value), { x, y: baseline, size, font: f, color })
+  }
+  const tRight = (value: string, x: number, baseline: number, f: PDFFont, size: number, color: RGB) => {
+    const text = aman(value)
+    t(text, x - f.widthOfTextAtSize(text, size), baseline, f, size, color)
+  }
+  const tCenter = (value: string, x: number, baseline: number, f: PDFFont, size: number, color: RGB) => {
+    const text = aman(value)
+    t(text, x - f.widthOfTextAtSize(text, size) / 2, baseline, f, size, color)
+  }
+
+  const gambarHeader = (pertama: boolean) => {
+    const top = PAGE_H - MARGIN
+    if (pertama) {
+      if (logo) {
+        const scale = 54 / Math.max(logo.width, logo.height)
+        page.drawImage(logo, {
+          x: MARGIN,
+          y: top - 54,
+          width: logo.width * scale,
+          height: logo.height * scale,
+        })
+      }
+      tCenter('DANA USAHA HMTI', PAGE_W / 2, top - 20, bold, 18, UNGU)
+      tCenter('In4Days XI - Merchandise & Ticket', PAGE_W / 2, top - 38, font, 9, GRAY)
+      tCenter(jenis, PAGE_W / 2, top - 56, bold, 10, DARK)
+      y = top - 88
+    } else {
+      t('DANA USAHA HMTI', MARGIN, top - 12, bold, 12, UNGU)
+      tRight(noInvoice, PAGE_W - MARGIN, top - 12, bold, 9, GRAY)
+      page.drawLine({
+        start: { x: MARGIN, y: top - 22 },
+        end: { x: PAGE_W - MARGIN, y: top - 22 },
+        thickness: 0.5,
+        color: GARIS,
+      })
+      y = top - 40
+    }
+  }
+
+  const gambarHeaderTabel = () => {
+    const height = 20
+    page.drawRectangle({ x: MARGIN, y: y - height, width: CONTENT_W, height, color: UNGU })
+    const labels = ['No', 'Item', detailHeader, 'Qty', 'Harga Satuan', 'Subtotal']
+    labels.forEach((label, index) => {
+      const baseline = y - height + 7
+      if (index === 0) {
+        tCenter(label, COL_X[0] + COL_W[0] / 2, baseline, bold, 8, WHITE)
+      } else if (index >= 3) {
+        tRight(label, COL_X[index] + COL_W[index] - 3, baseline, bold, 8, WHITE)
+      } else {
+        t(label, COL_X[index] + 3, baseline, bold, 8, WHITE)
+      }
+    })
+    y -= height
+  }
+
+  const halamanBaru = () => {
+    page = doc.addPage([PAGE_W, PAGE_H])
+    gambarHeader(false)
+    gambarHeaderTabel()
+  }
+
+  gambarHeader(true)
 
   meta.forEach((row, index) => {
-    const r = 5 + index
-    ws.getRow(r).height = 18
-    ws.mergeCells(`B${r}:C${r}`)
-    ws.mergeCells(`D${r}:E${r}`)
-
-    ws.getCell(`A${r}`).value = row[0]
-    ws.getCell(`A${r}`).font = { size: 9, color: { argb: 'FF64748B' } }
-    ws.getCell(`B${r}`).value = row[1]
-    ws.getCell(`B${r}`).font = { bold: true, size: 10, color: { argb: 'FF0F172A' } }
-    ws.getCell(`B${r}`).alignment = { vertical: 'middle' }
-
-    ws.getCell(`D${r}`).value = row[2]
-    ws.getCell(`D${r}`).font = { size: 9, color: { argb: 'FF64748B' } }
-    ws.getCell(`D${r}`).alignment = { horizontal: 'right', vertical: 'middle' }
-    ws.getCell(`F${r}`).value = row[3]
-    ws.getCell(`F${r}`).font = { bold: true, size: 10, color: { argb: 'FF0F172A' } }
-    ws.getCell(`F${r}`).alignment = { horizontal: 'right', vertical: 'middle' }
-  })
-
-  const headerRow = 10
-  const headers = ['No', 'Item', detailHeader, 'Qty', 'Harga Satuan', 'Subtotal']
-  headers.forEach((label, index) => {
-    const cell = ws.getRow(headerRow).getCell(index + 1)
-    cell.value = label
-    cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } }
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: UNGU } }
-    cell.alignment = { horizontal: index === 0 ? 'center' : index >= 3 ? 'right' : 'left', vertical: 'middle' }
-    border(cell, UNGU)
-  })
-  ws.getRow(headerRow).height = 22
-
-  lines.forEach((line, index) => {
-    const r = headerRow + 1 + index
-    const values = [index + 1, line.nama, line.detail || '-', Number(line.qty), Number(line.harga_satuan), Number(line.subtotal)]
-    values.forEach((value, col) => {
-      const cell = ws.getRow(r).getCell(col + 1)
-      cell.value = value
-      cell.font = { size: 10, color: { argb: 'FF0F172A' } }
-      cell.alignment = { horizontal: col === 0 ? 'center' : col >= 3 ? 'right' : 'left', vertical: 'middle' }
-      if (col >= 4) cell.numFmt = '"Rp" #,##0'
-      border(cell)
-      if (index % 2 === 1) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: ABU } }
+    const rowTop = y - index * 18
+    const baseline = rowTop - 12
+    t(row[0], MARGIN, baseline, font, 8, GRAY)
+    t(potong(row[1], bold, 9, 220), 84, baseline, bold, 9, DARK)
+    tRight(row[2], 330, baseline, font, 8, GRAY)
+    tRight(potong(row[3], bold, 9, 160), PAGE_W - MARGIN, baseline, bold, 9, DARK)
+    page.drawLine({
+      start: { x: MARGIN, y: rowTop - 16 },
+      end: { x: PAGE_W - MARGIN, y: rowTop - 16 },
+      thickness: 0.5,
+      color: GARIS,
     })
-    ws.getRow(r).height = 19
   })
 
-  const totalStart = headerRow + lines.length + 1
-  totals.forEach((total, index) => {
-    const r = totalStart + index
-    ws.mergeCells(`A${r}:D${r}`)
-    ws.mergeCells(`E${r}:F${r}`)
+  y -= meta.length * 18 + 12
+  gambarHeaderTabel()
 
-    const labelCell = ws.getCell(`A${r}`)
-    labelCell.value = total.label
-    labelCell.font = { bold: total.highlight, size: 10, color: { argb: total.highlight ? 'FF4C1D95' : 'FF475569' } }
-    labelCell.alignment = { horizontal: 'right', vertical: 'middle' }
-    if (total.highlight) labelCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: UNGU_MUDA } }
-
-    const valueCell = ws.getCell(`E${r}`)
-    valueCell.value = total.value
-    valueCell.numFmt = '"Rp" #,##0'
-    valueCell.font = { bold: total.highlight, size: total.big ? 12 : 10, color: { argb: total.highlight ? 'FF4C1D95' : 'FF0F172A' } }
-    valueCell.alignment = { horizontal: 'right', vertical: 'middle' }
-    if (total.highlight) valueCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: UNGU_MUDA } }
-    ws.getRow(r).height = total.big ? 24 : 19
+  const rowHeight = 18
+  lines.forEach((line, index) => {
+    if (y - rowHeight < MARGIN + 120) halamanBaru()
+    const values = [
+      String(index + 1),
+      line.nama,
+      line.detail || '-',
+      String(line.qty),
+      rupiah(line.harga_satuan),
+      rupiah(line.subtotal),
+    ]
+    const top = y
+    if (index % 2 === 1) {
+      page.drawRectangle({ x: MARGIN, y: top - rowHeight, width: CONTENT_W, height: rowHeight, color: ABU })
+    }
+    COL_W.forEach((width, col) => {
+      page.drawRectangle({
+        x: COL_X[col],
+        y: top - rowHeight,
+        width,
+        height: rowHeight,
+        borderColor: GARIS,
+        borderWidth: 0.5,
+      })
+      const text = potong(values[col], font, 8.5, width - 6)
+      if (col === 0) {
+        tCenter(text, COL_X[col] + width / 2, top - 12, font, 8.5, DARK)
+      } else if (col >= 3) {
+        tRight(text, COL_X[col] + width - 3, top - 12, font, 8.5, DARK)
+      } else {
+        t(text, COL_X[col] + 3, top - 12, font, 8.5, DARK)
+      }
+    })
+    y -= rowHeight
   })
 
-  const noteRow = totalStart + totals.length + 1
-  ws.mergeCells(`A${noteRow}:F${noteRow}`)
-  ws.getCell(`A${noteRow}`).value = note
-  ws.getCell(`A${noteRow}`).font = { italic: true, size: 9, color: { argb: 'FF94A3B8' } }
-  ws.getCell(`A${noteRow}`).alignment = { wrapText: true, vertical: 'top' }
-  ws.getRow(noteRow).height = 32
+  const tinggiTotal = totals.reduce((sum, total) => sum + (total.big ? 24 : 19), 0)
+  if (y - tinggiTotal - 70 < MARGIN) {
+    page = doc.addPage([PAGE_W, PAGE_H])
+    gambarHeader(false)
+  }
 
-  ws.pageSetup.printArea = `A1:F${noteRow}`
-  ws.headerFooter.oddFooter = `&L${noInvoice}&R&Halaman &P dari &N`
+  y -= 10
+  totals.forEach((total) => {
+    const height = total.big ? 24 : 19
+    if (total.highlight) {
+      page.drawRectangle({ x: MARGIN, y: y - height, width: CONTENT_W, height, color: UNGU_MUDA })
+    }
+    const f = total.highlight ? bold : font
+    const color = total.highlight ? UNGU_TUA : DARK
+    tRight(total.label, 430, y - height + 7, f, 9, total.highlight ? UNGU_TUA : GRAY)
+    tRight(rupiah(total.value), PAGE_W - MARGIN - 4, y - height + 6, f, total.big ? 12 : 9, color)
+    y -= height
+  })
 
-  const buffer = await wb.xlsx.writeBuffer()
-  return Buffer.from(buffer)
+  y -= 14
+  const words = aman(note).split(/\s+/)
+  const noteLines: string[] = []
+  let line = ''
+  for (const word of words) {
+    const next = line ? `${line} ${word}` : word
+    if (italic.widthOfTextAtSize(next, 8.5) > CONTENT_W) {
+      if (line) noteLines.push(line)
+      line = word
+    } else {
+      line = next
+    }
+  }
+  if (line) noteLines.push(line)
+  noteLines.slice(0, 4).forEach((text, index) => {
+    t(text, MARGIN, y - index * 11, italic, 8.5, GRAY)
+  })
+
+  const pages = doc.getPages()
+  pages.forEach((current, index) => {
+    const label = `Halaman ${index + 1} dari ${pages.length}`
+    current.drawLine({
+      start: { x: MARGIN, y: 30 },
+      end: { x: PAGE_W - MARGIN, y: 30 },
+      thickness: 0.5,
+      color: GARIS,
+    })
+    current.drawText(aman(noInvoice), { x: MARGIN, y: 18, size: 8, font, color: GRAY })
+    current.drawText(aman(label), {
+      x: PAGE_W - MARGIN - font.widthOfTextAtSize(aman(label), 8),
+      y: 18,
+      size: 8,
+      font,
+      color: GRAY,
+    })
+  })
+
+  return Buffer.from(await doc.save())
 }
 
 type StrukItem = {
@@ -214,20 +322,28 @@ type StrukPo = {
   created_at: string
 }
 
-export async function buatStrukPoXlsx(po: StrukPo, items: StrukItem[]): Promise<Buffer> {
+const STATUS_PO: Record<string, string> = {
+  menunggu_verifikasi: 'Menunggu Verifikasi',
+  dp_diterima: 'DP Diterima',
+  lunas: 'LUNAS',
+  ditolak: 'Ditolak',
+  batal: 'Dibatalkan',
+}
+
+export async function buatStrukPoPdf(po: StrukPo, items: StrukItem[]): Promise<Buffer> {
   const dibayar = Number(po.sudah_dibayar ?? 0)
   const total = Number(po.total)
   const sisa = Math.max(0, total - dibayar)
 
-  return buatInvoiceXlsx({
+  return buatInvoicePdf({
     jenis: 'INVOICE PRE-ORDER',
     noInvoice: po.no_po,
     detailHeader: 'Ukuran',
     meta: [
       ['Nama', po.nama_pemesan, 'No. Invoice', po.no_po],
       ['Kontak', po.kontak, 'Tanggal', waktu(po.created_at)],
-      ['Kategori', po.tipe_pemesan, 'Status', po.status === 'lunas' ? 'LUNAS' : po.status.replace(/_/g, ' ')],
-      ['Bayar', `${po.pembayaran_metode || '-'} · ${po.pembayaran_tipe === 'nyicil' ? 'Nyicil' : 'Lunas'}`, 'Sisa Tagihan', `Rp ${sisa.toLocaleString('id-ID')}`],
+      ['Kategori', po.tipe_pemesan, 'Status', STATUS_PO[po.status] ?? po.status.replace(/_/g, ' ')],
+      ['Bayar', `${po.pembayaran_metode || '-'} - ${po.pembayaran_tipe === 'nyicil' ? 'Nyicil' : 'Lunas'}`, 'Sisa Tagihan', rupiah(sisa)],
     ],
     lines: items.map((item) => ({
       nama: item.nama,
@@ -268,7 +384,7 @@ const STATUS_TIKET: Record<string, string> = {
   batal: 'Dibatalkan',
 }
 
-export async function buatStrukTiketXlsx(pesanan: StrukTiket): Promise<Buffer> {
+export async function buatStrukTiketPdf(pesanan: StrukTiket): Promise<Buffer> {
   const jumlah = Number(pesanan.jumlah)
   const hargaSatuan = Number(pesanan.harga_satuan)
   const subtotal = jumlah * hargaSatuan
@@ -277,15 +393,15 @@ export async function buatStrukTiketXlsx(pesanan: StrukTiket): Promise<Buffer> {
   const dibayar = pesanan.status === 'lunas' ? total : 0
   const sisa = Math.max(0, total - dibayar)
 
-  return buatInvoiceXlsx({
+  return buatInvoicePdf({
     jenis: 'INVOICE TIKET',
     noInvoice: pesanan.no_pesanan,
     detailHeader: 'Periode',
     meta: [
       ['Nama', pesanan.nama_pembeli, 'No. Invoice', pesanan.no_pesanan],
-      ['Kontak', pesanan.email ? `${pesanan.kontak} · ${pesanan.email}` : pesanan.kontak, 'Tanggal', waktu(pesanan.created_at)],
+      ['Kontak', pesanan.email ? `${pesanan.kontak} - ${pesanan.email}` : pesanan.kontak, 'Tanggal', waktu(pesanan.created_at)],
       ['Tipe Tiket', pesanan.tiket_nama || 'Tiket', 'Status', STATUS_TIKET[pesanan.status] ?? pesanan.status.replace(/_/g, ' ')],
-      ['Periode', pesanan.periode_nama || 'Harga dasar', 'Total Tagihan', `Rp ${total.toLocaleString('id-ID')}`],
+      ['Periode', pesanan.periode_nama || 'Harga dasar', 'Total Tagihan', rupiah(total)],
     ],
     lines: [
       {

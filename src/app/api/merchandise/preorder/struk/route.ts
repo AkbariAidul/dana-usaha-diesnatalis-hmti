@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { buatStrukPoXlsx, namaFileStruk } from '@/lib/struk-po'
+import { buatStrukPoPdf, namaFileStruk } from '@/lib/struk-po'
 
 export const runtime = 'nodejs'
 
@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     const varianMap = new Map((varian ?? []).map((v) => [v.id, v.nama]))
     const merchandiseMap = new Map((merchandise ?? []).map((m) => [m.id, m.nama]))
 
-    const buffer = await buatStrukPoXlsx(
+    const buffer = await buatStrukPoPdf(
       po,
       (items ?? []).map((item) => ({
         nama: merchandiseMap.get(item.merchandise_id) ?? 'Merchandise',
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
 
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
-        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${namaFileStruk(po.no_po)}"`,
       },
     })

@@ -182,6 +182,8 @@ export interface PesananTiket {
   tiket_nama: string | null
   periode_nama: string | null
   jumlah: number
+  harga_satuan: number
+  diskon_persen: number | null
   total: number
   status: 'menunggu_verifikasi' | 'lunas' | 'ditolak' | 'batal'
   bukti_url: string | null

@@ -535,6 +535,8 @@ export async function getTicketPenjualan(): Promise<PesananTiket[]> {
       ...row,
       tiket_nama: tipeId ? tipeById.get(tipeId) ?? null : null,
       periode_nama: periode?.nama ?? null,
+      harga_satuan: Number(row.harga_satuan ?? 0),
+      diskon_persen: row.diskon_persen == null ? null : Number(row.diskon_persen),
       modal_satuan: modalSatuan,
       modal_total: modalSatuan * jumlah,
       keuntungan: Number(row.total ?? 0) - modalSatuan * jumlah,

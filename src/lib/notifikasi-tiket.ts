@@ -47,7 +47,7 @@ function detailPesanan(pesanan: PesananNotif, tipeNama: string, link: string) {
     `Total: ${formatRupiah(Number(pesanan.total))}`,
     '',
     `Riwayat & QR tiket: ${link}`,
-    'Struk pembelian (Excel) bisa diunduh dari halaman riwayat tersebut.',
+    'Struk pembelian (PDF) bisa diunduh dari halaman riwayat tersebut.',
   ].join('\n')
 }
 

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getStrukTiket } from '@/lib/queries'
 import { tipeDariKode, verifyRef } from '@/lib/link-token'
-import { buatStrukPoXlsx, buatStrukTiketXlsx, namaFileStruk } from '@/lib/struk-po'
+import { buatStrukPoPdf, buatStrukTiketPdf, namaFileStruk } from '@/lib/struk-po'
 
 export const runtime = 'nodejs'
 
@@ -19,10 +19,10 @@ export async function GET(request: Request) {
     if (tipe === 'tiket') {
       const pesanan = await getStrukTiket(kode)
       if (!pesanan) return NextResponse.json({ error: 'Pesanan tidak ditemukan' }, { status: 404 })
-      const buffer = await buatStrukTiketXlsx(pesanan)
+      const buffer = await buatStrukTiketPdf(pesanan)
       return new NextResponse(new Uint8Array(buffer), {
         headers: {
-          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Type': 'application/pdf',
           'Content-Disposition': `attachment; filename="${namaFileStruk(pesanan.no_pesanan)}"`,
         },
       })
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
     const varianMap = new Map((varian ?? []).map((v) => [v.id, v.nama]))
     const merchandiseMap = new Map((merchandise ?? []).map((m) => [m.id, m.nama]))
 
-    const buffer = await buatStrukPoXlsx(
+    const buffer = await buatStrukPoPdf(
       po,
       (items ?? []).map((item) => ({
         nama: merchandiseMap.get(item.merchandise_id) ?? 'Merchandise',
@@ -52,7 +52,7 @@ export async function GET(request: Request) {
 
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
-        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${namaFileStruk(po.no_po)}"`,
       },
     })

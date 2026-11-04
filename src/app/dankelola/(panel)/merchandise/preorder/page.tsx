@@ -621,7 +621,7 @@ export default function PreorderPage() {
                 href={`/api/merchandise/preorder/struk?id=${strukTarget.id}`}
                 className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
               >
-                Download Excel
+                Download PDF
               </a>
             </div>
           </>
