@@ -63,6 +63,7 @@ function detailPo(po: PoNotif, link: string) {
     sisa > 0 ? `Sisa: ${formatRupiah(sisa)}` : null,
     '',
     `Riwayat & QR pengambilan: ${link}`,
+    'Struk pembelian (Excel) bisa diunduh dari halaman riwayat tersebut.',
   ].filter((v): v is string => v !== null)
   return lines.join('\n')
 }

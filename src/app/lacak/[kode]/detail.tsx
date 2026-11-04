@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { ArrowLeft, CheckCircle2, Clock, QrCode, Upload, X } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Clock, Download, QrCode, Upload, X } from 'lucide-react'
 import { PublicBreadcrumb, PublicNavbar } from '@/components/public-navbar'
 import { QrImage } from '@/components/qr-image'
 import { buatQrisDinamis, buatQrisTanpaNominal } from '@/lib/qris'
@@ -152,14 +152,6 @@ function BuktiPreview({ url, label = 'Bukti pembayaran', compact = false }: { ur
   const [open, setOpen] = useState(false)
   const [failed, setFailed] = useState(false)
 
-  if (failed) {
-    return (
-      <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary-600 hover:underline">
-        Lihat
-      </a>
-    )
-  }
-
   return (
     <>
       {compact ? (
@@ -175,13 +167,17 @@ function BuktiPreview({ url, label = 'Bukti pembayaran', compact = false }: { ur
             title={`Lihat ${label}`}
             className="group relative block h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 transition hover:ring-2 hover:ring-primary-200"
           >
-            <img
-              src={url}
-              alt={label}
-              decoding="async"
-              className="h-full w-full object-cover"
-              onError={() => setFailed(true)}
-            />
+            {failed ? (
+              <span className="flex h-full w-full items-center justify-center text-[11px] font-medium text-primary-600">Bukti</span>
+            ) : (
+              <img
+                src={url}
+                alt={label}
+                decoding="async"
+                className="h-full w-full object-cover"
+                onError={() => setFailed(true)}
+              />
+            )}
             <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-slate-900/0 text-[10px] font-semibold text-white opacity-0 transition group-hover:bg-slate-900/50 group-hover:opacity-100">
               Lihat
             </span>
@@ -741,6 +737,12 @@ function PoView({ data, token, reload }: { data: Extract<StatusResponse, { tipe:
             Pembayaran: {po.pembayaran_metode} · {po.pembayaran_tipe}
           </p>
         )}
+        <a
+          href={`/api/public/struk?kode=${encodeURIComponent(po.no_po)}&t=${encodeURIComponent(token)}`}
+          className="mt-4 inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700"
+        >
+          <Download className="h-4 w-4" /> Download Struk Excel
+        </a>
         {po.catatan_admin && <p className="mt-3 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">{po.catatan_admin}</p>}
         {po.bukti_url && (
           <div className="mt-4 border-t border-slate-100 pt-4">

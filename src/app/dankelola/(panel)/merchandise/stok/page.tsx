@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
@@ -15,16 +15,35 @@ type StokLog = {
   keterangan: string | null
 }
 
+type PoItem = {
+  id: string
+  ukuran: string | null
+  qty: number
+  merchandise: { nama: string } | null
+  varian: { nama: string } | null
+}
+
+type PoData = {
+  id: string
+  status: string
+  items: PoItem[]
+}
+
 export default function StokPage() {
   const [logs, setLogs] = useState<StokLog[]>([])
+  const [poList, setPoList] = useState<PoData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ produk: '', qty: 1, jenis: 'masuk', keterangan: '' })
 
   const load = useCallback(async () => {
-    const data = await getJSON<StokLog[]>('/api/merchandise/stok')
+    const [data, po] = await Promise.all([
+      getJSON<StokLog[]>('/api/merchandise/stok'),
+      getJSON<PoData[]>('/api/merchandise/preorder').catch(() => []),
+    ])
     setLogs(data)
+    setPoList(Array.isArray(po) ? po : [])
     setError(null)
   }, [])
 
@@ -37,6 +56,27 @@ export default function StokPage() {
       .finally(() => setLoading(false))
   }, [load])
   useLiveRefresh(load)
+
+  const rekap = useMemo(() => {
+    const map = new Map<string, { produk: string; ukuran: string; qty: number; po: Set<string> }>()
+    for (const po of poList) {
+      if (po.status === 'batal' || po.status === 'ditolak') continue
+      for (const item of po.items) {
+        const produk = item.merchandise?.nama ?? 'Merchandise'
+        const ukuran = item.varian?.nama || item.ukuran || '-'
+        const key = `${produk}|${ukuran}`
+        const row = map.get(key) ?? { produk, ukuran, qty: 0, po: new Set<string>() }
+        row.qty += Number(item.qty)
+        row.po.add(po.id)
+        map.set(key, row)
+      }
+    }
+    return [...map.values()]
+      .map((row) => ({ produk: row.produk, ukuran: row.ukuran, qty: row.qty, jumlahPo: row.po.size }))
+      .sort((a, b) => a.produk.localeCompare(b.produk) || a.ukuran.localeCompare(b.ukuran))
+  }, [poList])
+  const totalPo = poList.filter((po) => po.status !== 'batal' && po.status !== 'ditolak').length
+  const totalQtyPo = rekap.reduce((sum, row) => sum + row.qty, 0)
 
   async function tambah() {
     if (!form.produk || !form.qty || form.qty < 1) {
@@ -86,6 +126,46 @@ export default function StokPage() {
           <p className="text-sm text-slate-500">Selisih</p>
           <p className="text-3xl font-bold text-primary-600">{totalMasuk - totalKeluar}</p>
         </div>
+      </div>
+
+      <div className="overflow-x-auto rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-4">
+          <div>
+            <h2 className="font-semibold text-slate-900">Rekap Pre-Order untuk Produksi</h2>
+            <p className="text-xs text-slate-500">Total {totalPo} PO · {totalQtyPo} item (tanpa PO batal/ditolak)</p>
+          </div>
+          <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700">Data cetak</span>
+        </div>
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50 text-left">
+            <tr>
+              <th className="px-3 py-2">Produk</th>
+              <th className="px-3 py-2">Ukuran</th>
+              <th className="px-3 py-2 text-right">Qty</th>
+              <th className="px-3 py-2 text-right">Jumlah PO</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100/80">
+            {rekap.length === 0 && <tr><td colSpan={4} className="px-3 py-6 text-center text-slate-400">Belum ada item pre-order.</td></tr>}
+            {rekap.map((row) => (
+              <tr key={`${row.produk}|${row.ukuran}`} className="hover:bg-slate-50">
+                <td className="px-3 py-2 font-medium">{row.produk}</td>
+                <td className="px-3 py-2">{row.ukuran}</td>
+                <td className="px-3 py-2 text-right font-semibold tabular-nums">{row.qty}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-slate-500">{row.jumlahPo}</td>
+              </tr>
+            ))}
+          </tbody>
+          {rekap.length > 0 && (
+            <tfoot className="bg-slate-50 font-semibold">
+              <tr>
+                <td className="px-3 py-2" colSpan={2}>Total</td>
+                <td className="px-3 py-2 text-right tabular-nums">{totalQtyPo}</td>
+                <td className="px-3 py-2" />
+              </tr>
+            </tfoot>
+          )}
+        </table>
       </div>
 
       {showForm && (

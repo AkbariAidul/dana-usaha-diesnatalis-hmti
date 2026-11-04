@@ -15,14 +15,6 @@ export function BuktiThumb({
 }) {
   const [failed, setFailed] = useState(false)
 
-  if (failed) {
-    return (
-      <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary-600 hover:underline">
-        Lihat
-      </a>
-    )
-  }
-
   return (
     <button
       type="button"
@@ -30,13 +22,17 @@ export function BuktiThumb({
       className="group relative block h-16 w-16 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 transition hover:ring-2 hover:ring-primary-200"
       title="Lihat bukti pembayaran"
     >
-      <img
-        src={url}
-        alt={label}
-        decoding="async"
-        className="h-full w-full object-cover"
-        onError={() => setFailed(true)}
-      />
+      {failed ? (
+        <span className="flex h-full w-full items-center justify-center text-[11px] font-medium text-primary-600">Bukti</span>
+      ) : (
+        <img
+          src={url}
+          alt={label}
+          decoding="async"
+          className="h-full w-full object-cover"
+          onError={() => setFailed(true)}
+        />
+      )}
       <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-slate-900/0 text-[10px] font-semibold text-white opacity-0 transition group-hover:bg-slate-900/50 group-hover:opacity-100">
         Lihat
       </span>

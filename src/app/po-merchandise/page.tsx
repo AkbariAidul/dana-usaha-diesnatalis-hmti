@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { Check, ChevronDown, Clock, Shirt, Trash2, Plus, Minus } from 'lucide-react'
 import { PublicNavbar } from '@/components/public-navbar'
 import { PoStepper } from '@/components/po-stepper'
-import { formatRupiah } from '@/lib/utils'
+import { formatDate, formatRupiah } from '@/lib/utils'
 import { buatQrisDinamis, buatQrisTanpaNominal } from '@/lib/qris'
 import { hitungDiskon } from '@/lib/merch-diskon'
 import type { DiskonRule } from '@/lib/types'
@@ -22,6 +22,8 @@ type Produk = {
   warna: string | null
   harga: number
   harga_po: number | null
+  po_mulai: string | null
+  po_selesai: string | null
   diskon: DiskonRule[] | null
   varian_ids: string[] | null
 }
@@ -332,12 +334,10 @@ export default function PoMerchandisePage() {
                     <div className="min-h-[1.25rem] text-sm text-slate-500">
                       {item.warna ? `Warna: ${item.warna}` : ''}
                     </div>
-                    <div className="mt-1 min-h-[2.5rem]">
-                      {Number(item.harga) > 0 ? (
-                        <div className="text-sm text-slate-500">Harga Hari H: {formatRupiah(Number(item.harga))}</div>
-                      ) : (
-                        <div className="text-xs text-slate-500">Produk ini hanya untuk pre-order, tidak dijual saat Hari H.</div>
-                      )}
+                    <div className="mt-1 min-h-[2.5rem] text-xs text-slate-500">
+                      {item.po_mulai && item.po_selesai
+                        ? `Periode PO: ${formatDate(item.po_mulai)} – ${formatDate(item.po_selesai)}`
+                        : null}
                     </div>
                     <div className="mt-auto flex flex-col gap-2 pt-3 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
                       <span className="text-sm font-semibold text-violet-600">
