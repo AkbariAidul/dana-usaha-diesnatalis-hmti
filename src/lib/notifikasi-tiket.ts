@@ -34,7 +34,7 @@ export function baseUrl(request: Request) {
   return `${proto}://${host}`
 }
 
-function linkTiket(request: Request, kode: string) {
+export function linkTiket(request: Request, kode: string) {
   return `${baseUrl(request)}/lacak/${encodeURIComponent(kode)}?t=${encodeURIComponent(signRef('tiket', kode))}`
 }
 

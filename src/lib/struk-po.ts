@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs'
 import path from 'path'
+import QRCode from 'qrcode'
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage, type RGB } from 'pdf-lib'
 
 type InvoiceLine = {
@@ -23,6 +24,7 @@ const PAGE_W = 595.28
 const PAGE_H = 841.89
 const MARGIN = 36
 const CONTENT_W = PAGE_W - MARGIN * 2
+const QR_SIZE = 64
 const COL_X = [MARGIN, 62, 252, 336, 374, 450, PAGE_W - MARGIN] as const
 const COL_W = COL_X.slice(1).map((x, i) => x - COL_X[i])
 
@@ -93,6 +95,7 @@ async function buatInvoicePdf({
   lines,
   totals,
   note,
+  qrUrl,
 }: {
   jenis: string
   noInvoice: string
@@ -101,6 +104,7 @@ async function buatInvoicePdf({
   lines: InvoiceLine[]
   totals: InvoiceTotal[]
   note: string
+  qrUrl?: string | null
 }): Promise<Buffer> {
   const doc = await PDFDocument.create()
   doc.setTitle(`Invoice ${noInvoice}`)
@@ -117,6 +121,21 @@ async function buatInvoicePdf({
     logo = await doc.embedPng(bytes)
   } catch {
     logo = null
+  }
+
+  let qr: PDFImage | null = null
+  if (qrUrl) {
+    try {
+      const bytes = await QRCode.toBuffer(qrUrl, {
+        type: 'png',
+        width: 256,
+        margin: 1,
+        errorCorrectionLevel: 'M',
+      })
+      qr = await doc.embedPng(bytes)
+    } catch {
+      qr = null
+    }
   }
 
   const noteLines: string[] = []
@@ -165,13 +184,19 @@ async function buatInvoicePdf({
     const top = page.getSize().height - MARGIN
     if (pertama) {
       if (logo) {
-        const scale = 54 / Math.max(logo.width, logo.height)
+        const size = 64
+        const scale = size / Math.max(logo.width, logo.height)
         page.drawImage(logo, {
           x: MARGIN,
-          y: top - 54,
+          y: top - size,
           width: logo.width * scale,
           height: logo.height * scale,
         })
+      }
+      if (qr) {
+        const qx = PAGE_W - MARGIN - QR_SIZE
+        page.drawImage(qr, { x: qx, y: top - QR_SIZE, width: QR_SIZE, height: QR_SIZE })
+        tCenter('Scan riwayat', qx + QR_SIZE / 2, top - QR_SIZE - 8, font, 7, GRAY)
       }
       tCenter('DANA USAHA HMTI', PAGE_W / 2, top - 20, bold, 18, UNGU)
       tCenter('In4Days XI - Merchandise & Ticket', PAGE_W / 2, top - 38, font, 9, GRAY)
@@ -355,7 +380,7 @@ const STATUS_PO: Record<string, string> = {
   batal: 'Dibatalkan',
 }
 
-export async function buatStrukPoPdf(po: StrukPo, items: StrukItem[]): Promise<Buffer> {
+export async function buatStrukPoPdf(po: StrukPo, items: StrukItem[], qrUrl?: string): Promise<Buffer> {
   const dibayar = Number(po.sudah_dibayar ?? 0)
   const total = Number(po.total)
   const sisa = Math.max(0, total - dibayar)
@@ -384,6 +409,7 @@ export async function buatStrukPoPdf(po: StrukPo, items: StrukItem[]): Promise<B
       { label: 'Sisa Tagihan', value: sisa, highlight: true },
     ],
     note: 'Terima kasih telah melakukan pre-order merchandise Danus In4Days XI. Simpan invoice ini sebagai bukti pemesanan dan pengambilan.',
+    qrUrl,
   })
 }
 
@@ -409,7 +435,7 @@ const STATUS_TIKET: Record<string, string> = {
   batal: 'Dibatalkan',
 }
 
-export async function buatStrukTiketPdf(pesanan: StrukTiket): Promise<Buffer> {
+export async function buatStrukTiketPdf(pesanan: StrukTiket, qrUrl?: string): Promise<Buffer> {
   const jumlah = Number(pesanan.jumlah)
   const hargaSatuan = Number(pesanan.harga_satuan)
   const subtotal = jumlah * hargaSatuan
@@ -445,5 +471,6 @@ export async function buatStrukTiketPdf(pesanan: StrukTiket): Promise<Buffer> {
       { label: 'Sisa Tagihan', value: sisa, highlight: true },
     ],
     note: 'Terima kasih telah membeli tiket In4Days XI. Simpan invoice ini sebagai bukti pembelian. QR tiket dapat dilihat pada halaman riwayat pemesanan.',
+    qrUrl,
   })
 }

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getStrukTiket } from '@/lib/queries'
 import { tipeDariKode, verifyRef } from '@/lib/link-token'
+import { linkPo } from '@/lib/notifikasi-po'
+import { linkTiket } from '@/lib/notifikasi-tiket'
 import { buatStrukPoPdf, buatStrukTiketPdf, namaFileStruk } from '@/lib/struk-po'
 
 export const runtime = 'nodejs'
@@ -19,7 +21,7 @@ export async function GET(request: Request) {
     if (tipe === 'tiket') {
       const pesanan = await getStrukTiket(kode)
       if (!pesanan) return NextResponse.json({ error: 'Pesanan tidak ditemukan' }, { status: 404 })
-      const buffer = await buatStrukTiketPdf(pesanan)
+      const buffer = await buatStrukTiketPdf(pesanan, linkTiket(request, kode))
       return new NextResponse(new Uint8Array(buffer), {
         headers: {
           'Content-Type': 'application/pdf',
@@ -47,7 +49,8 @@ export async function GET(request: Request) {
         qty: Number(item.qty),
         harga_satuan: Number(item.harga_satuan),
         subtotal: Number(item.subtotal),
-      }))
+      })),
+      linkPo(request, kode)
     )
 
     return new NextResponse(new Uint8Array(buffer), {
