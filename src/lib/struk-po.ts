@@ -119,7 +119,34 @@ async function buatInvoicePdf({
     logo = null
   }
 
-  let page: PDFPage = doc.addPage([PAGE_W, PAGE_H])
+  const noteLines: string[] = []
+  let noteLine = ''
+  for (const word of aman(note).split(/\s+/)) {
+    const next = noteLine ? `${noteLine} ${word}` : word
+    if (italic.widthOfTextAtSize(next, 8.5) > CONTENT_W) {
+      if (noteLine) noteLines.push(noteLine)
+      noteLine = word
+    } else {
+      noteLine = next
+    }
+  }
+  if (noteLine) noteLines.push(noteLine)
+
+  const tinggiTotal = totals.reduce((sum, total) => sum + (total.big ? 24 : 19), 0)
+  const tinggiIsi =
+    88 +
+    meta.length * 18 +
+    12 +
+    20 +
+    lines.length * 18 +
+    10 +
+    tinggiTotal +
+    14 +
+    Math.min(noteLines.length, 4) * 11
+  const satuHalaman = tinggiIsi + 74 <= PAGE_H
+  const tinggiHalaman = satuHalaman ? tinggiIsi + 74 : PAGE_H
+
+  let page: PDFPage = doc.addPage([PAGE_W, tinggiHalaman])
   let y = 0
 
   const t = (value: string, x: number, baseline: number, f: PDFFont, size: number, color: RGB) => {
@@ -135,7 +162,7 @@ async function buatInvoicePdf({
   }
 
   const gambarHeader = (pertama: boolean) => {
-    const top = PAGE_H - MARGIN
+    const top = page.getSize().height - MARGIN
     if (pertama) {
       if (logo) {
         const scale = 54 / Math.max(logo.width, logo.height)
@@ -208,7 +235,7 @@ async function buatInvoicePdf({
 
   const rowHeight = 18
   lines.forEach((line, index) => {
-    if (y - rowHeight < MARGIN + 120) halamanBaru()
+    if (!satuHalaman && y - rowHeight < MARGIN + 120) halamanBaru()
     const values = [
       String(index + 1),
       line.nama,
@@ -242,8 +269,7 @@ async function buatInvoicePdf({
     y -= rowHeight
   })
 
-  const tinggiTotal = totals.reduce((sum, total) => sum + (total.big ? 24 : 19), 0)
-  if (y - tinggiTotal - 70 < MARGIN) {
+  if (!satuHalaman && y - tinggiTotal - 70 < MARGIN) {
     page = doc.addPage([PAGE_W, PAGE_H])
     gambarHeader(false)
   }
@@ -262,22 +288,21 @@ async function buatInvoicePdf({
   })
 
   y -= 14
-  const words = aman(note).split(/\s+/)
-  const noteLines: string[] = []
-  let line = ''
-  for (const word of words) {
-    const next = line ? `${line} ${word}` : word
-    if (italic.widthOfTextAtSize(next, 8.5) > CONTENT_W) {
-      if (line) noteLines.push(line)
-      line = word
-    } else {
-      line = next
-    }
-  }
-  if (line) noteLines.push(line)
-  noteLines.slice(0, 4).forEach((text, index) => {
+  const noteCount = Math.min(noteLines.length, 4)
+  noteLines.slice(0, noteCount).forEach((text, index) => {
     t(text, MARGIN, y - index * 11, italic, 8.5, GRAY)
   })
+
+  if (!satuHalaman) {
+    const noteBottom = noteCount > 0 ? y - (noteCount - 1) * 11 - 2 : y
+    const delta = noteBottom - 44
+    if (delta > 0) {
+      page.translateContent(0, -delta)
+      const { width, height } = page.getSize()
+      page.setSize(width, height - delta)
+      y -= delta
+    }
+  }
 
   const pages = doc.getPages()
   pages.forEach((current, index) => {
