@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { getStrukTiket } from '@/lib/queries'
 import { tipeDariKode, verifyRef } from '@/lib/link-token'
-import { buatStrukPoXlsx, namaFileStruk } from '@/lib/struk-po'
+import { buatStrukPoXlsx, buatStrukTiketXlsx, namaFileStruk } from '@/lib/struk-po'
 
 export const runtime = 'nodejs'
 
@@ -10,8 +11,21 @@ export async function GET(request: Request) {
     const url = new URL(request.url)
     const kode = String(url.searchParams.get('kode') ?? '').trim().toUpperCase()
     const t = url.searchParams.get('t')
-    if (tipeDariKode(kode) !== 'po' || !verifyRef('po', kode, t)) {
+    const tipe = tipeDariKode(kode)
+    if (!tipe || tipe === 'tenant' || !verifyRef(tipe, kode, t)) {
       return NextResponse.json({ error: 'Link tidak valid' }, { status: 403 })
+    }
+
+    if (tipe === 'tiket') {
+      const pesanan = await getStrukTiket(kode)
+      if (!pesanan) return NextResponse.json({ error: 'Pesanan tidak ditemukan' }, { status: 404 })
+      const buffer = await buatStrukTiketXlsx(pesanan)
+      return new NextResponse(new Uint8Array(buffer), {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename="${namaFileStruk(pesanan.no_pesanan)}"`,
+        },
+      })
     }
 
     const { data: po } = await supabaseAdmin.from('merch_po').select('*').eq('no_po', kode).maybeSingle()

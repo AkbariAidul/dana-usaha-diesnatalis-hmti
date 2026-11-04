@@ -29,8 +29,11 @@ export async function GET(request: Request) {
   if (!auth(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
-    const target = process.env.FONNTE_GROUP_PO || process.env.FONNTE_GROUP_ID
-    if (!target) return NextResponse.json({ sent: false, skipped: 'no_group_target' })
+    const targets = (process.env.FONNTE_GROUP_PO || process.env.FONNTE_GROUP_ID || '')
+      .split(',')
+      .map((target) => target.trim())
+      .filter(Boolean)
+    if (targets.length === 0) return NextResponse.json({ sent: 0, skipped: 'no_group_target' })
 
     const { data: produk } = await supabaseAdmin
       .from('merchandise')
@@ -78,8 +81,11 @@ export async function GET(request: Request) {
       'Panitia Danus In4Days XI',
     ].join('\n')
 
-    const sent = await kirimWhatsApp(target, message)
-    return NextResponse.json({ hari, total: belumLunas.length, sent })
+    let sent = 0
+    for (const target of targets) {
+      if (await kirimWhatsApp(target, message)) sent++
+    }
+    return NextResponse.json({ hari, total: belumLunas.length, groups: targets.length, sent })
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })
   }

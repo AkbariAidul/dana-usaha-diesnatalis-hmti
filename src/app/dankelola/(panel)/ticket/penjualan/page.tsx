@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight, Inbox, Search } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, Inbox, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
 import { PageSkeleton } from '../../ui'
@@ -213,29 +213,39 @@ export default function PenjualanPage() {
                       )}
                     </td>
                     <td className="px-5 py-3">
-                      {p.status === 'menunggu_verifikasi' ? (
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            onClick={() => void handleVerifikasi(p)}
-                            disabled={busyId === p.id}
-                            className="rounded-lg bg-green-600 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-green-700 disabled:opacity-50"
-                          >
-                            Verifikasi
-                          </button>
-                          <button
-                            onClick={() => openReject(p)}
-                            disabled={busyId === p.id}
-                            className="rounded-lg bg-red-600 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-red-700 disabled:opacity-50"
-                          >
-                            Tolak
-                          </button>
-                        </div>
-                      ) : (
-                        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${status.className}`}>
-                          <span className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />
-                          {status.label}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1.5">
+                        {p.status === 'menunggu_verifikasi' ? (
+                          <>
+                            <button
+                              onClick={() => void handleVerifikasi(p)}
+                              disabled={busyId === p.id}
+                              className="rounded-lg bg-green-600 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-green-700 disabled:opacity-50"
+                            >
+                              Verifikasi
+                            </button>
+                            <button
+                              onClick={() => openReject(p)}
+                              disabled={busyId === p.id}
+                              className="rounded-lg bg-red-600 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-red-700 disabled:opacity-50"
+                            >
+                              Tolak
+                            </button>
+                          </>
+                        ) : (
+                          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${status.className}`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />
+                            {status.label}
+                          </span>
+                        )}
+                        <a
+                          href={`/api/ticket/struk?kode=${encodeURIComponent(p.no_pesanan)}`}
+                          title={`Download struk ${p.no_pesanan}`}
+                          className="inline-flex items-center gap-1 rounded-lg border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-medium text-violet-700 transition hover:bg-violet-100"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          Struk
+                        </a>
+                      </div>
                     </td>
                   </tr>
                 )

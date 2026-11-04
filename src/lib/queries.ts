@@ -542,6 +542,47 @@ export async function getTicketPenjualan(): Promise<PesananTiket[]> {
   })
 }
 
+export async function getStrukTiket(noPesanan: string) {
+  const { data: pesanan } = await supabaseAdmin
+    .from('pesanan_tiket')
+    .select('*')
+    .eq('no_pesanan', noPesanan)
+    .maybeSingle()
+  if (!pesanan) return null
+
+  const [{ data: tipe }, { data: periodeList }] = await Promise.all([
+    pesanan.tiket_tipe_id
+      ? supabaseAdmin.from('tiket_tipe').select('nama').eq('id', pesanan.tiket_tipe_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    pesanan.tiket_tipe_id
+      ? supabaseAdmin.from('tiket_periode').select('*').eq('tiket_tipe_id', pesanan.tiket_tipe_id)
+      : Promise.resolve({ data: [] }),
+  ])
+
+  const created = pesanan.created_at ? new Date(String(pesanan.created_at)) : null
+  const tanggal = created && !Number.isNaN(created.getTime())
+    ? created.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' })
+    : ''
+  const periode = ((periodeList ?? []) as TicketPeriode[]).find(
+    (p) => tanggal >= p.tanggal_mulai && tanggal <= p.tanggal_selesai
+  )
+
+  return {
+    no_pesanan: String(pesanan.no_pesanan),
+    nama_pembeli: String(pesanan.nama_pembeli),
+    kontak: String(pesanan.kontak),
+    email: pesanan.email ? String(pesanan.email) : null,
+    jumlah: Number(pesanan.jumlah),
+    harga_satuan: Number(pesanan.harga_satuan),
+    diskon_persen: pesanan.diskon_persen ? Number(pesanan.diskon_persen) : null,
+    total: Number(pesanan.total),
+    status: String(pesanan.status),
+    created_at: String(pesanan.created_at),
+    tiket_nama: tipe?.nama ? String(tipe.nama) : null,
+    periode_nama: periode?.nama ?? null,
+  }
+}
+
 // ─── Audit Log ────────────────────────────────────────────────────────────────
 
 export async function createAuditLog(payload: {
