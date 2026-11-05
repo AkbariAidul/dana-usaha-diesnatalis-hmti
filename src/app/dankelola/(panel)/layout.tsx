@@ -160,6 +160,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const [produkCount, setProdukCount] = useState<number | null>(null)
   const [pengurusCount, setPengurusCount] = useState<number | null>(null)
   const [preorderCount, setPreorderCount] = useState<number | null>(null)
+  const [preorderLunasCount, setPreorderLunasCount] = useState<number | null>(null)
   const [kasirStats, setKasirStats] = useState<{ terjual: number; total: number } | null>(null)
   const [checkinStats, setCheckinStats] = useState<{ terpakai: number; total: number } | null>(null)
   const breadcrumbs = getBreadcrumbs(pathname)
@@ -170,7 +171,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       getJSON<{ status: string }[]>('/api/ticket/checkin'),
       getJSON<unknown[]>('/api/merchandise'),
       getJSON<unknown[]>('/api/pengurus'),
-      getJSON<unknown[]>('/api/merchandise/preorder'),
+      getJSON<{ status: string }[]>('/api/merchandise/preorder'),
       getJSON<{ terjual: number; total: number }>('/api/merchandise/kasir?ringkasan=1'),
     ])
     setTiketTerjual(tipe.reduce((sum, t) => sum + Number(t.terjual ?? 0), 0))
@@ -178,6 +179,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     setProdukCount(merchandise.length)
     setPengurusCount(pengurus.length)
     setPreorderCount(preorder.length)
+    setPreorderLunasCount(preorder.filter((po) => po.status === 'lunas').length)
     setKasirStats({ terjual: kasir.terjual, total: kasir.total })
     setCheckinStats({
       terpakai: checkin.filter((t) => t.status === 'terpakai').length,
@@ -328,6 +330,14 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                       {child.href === '/dankelola/merchandise/preorder' && preorderCount !== null && (
                         <span className="ml-auto min-w-[1.5rem] shrink-0 rounded-full bg-white/20 px-2 py-0.5 text-center text-[10px] font-semibold tabular-nums text-white">
                           {preorderCount}
+                        </span>
+                      )}
+                      {child.href === '/dankelola/merchandise/stok' && preorderLunasCount !== null && (
+                        <span
+                          title={`${preorderLunasCount} preorder lunas siap diproduksi`}
+                          className="ml-auto min-w-[1.5rem] shrink-0 rounded-full bg-white/20 px-2 py-0.5 text-center text-[10px] font-semibold tabular-nums text-white"
+                        >
+                          {preorderLunasCount}
                         </span>
                       )}
                       {child.href === '/dankelola/merchandise/kasir' && kasirStats && (
