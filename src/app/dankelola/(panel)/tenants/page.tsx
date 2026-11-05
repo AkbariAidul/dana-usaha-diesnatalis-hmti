@@ -1,6 +1,7 @@
 ﻿'use client'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Tenant, KategoriSewa, HargaDasar, PeriodeHarga, Pembayaran } from '@/lib/types'
 import { formatRupiah, formatDate } from '@/lib/utils'
@@ -13,6 +14,13 @@ import { useConfirm } from '@/components/confirm-dialog'
 import { Modal } from '@/components/modal'
 
 const today = new Date().toISOString().slice(0, 10)
+
+const emptyForm = {
+  nama_usaha: '', kontak: '', email: '',
+  kategori_sewa_id: '', jenis_usaha: 'F&B' as 'F&B' | 'Non-F&B',
+  tgl_daftar: today,
+  tgl_acara: '', keterangan: '',
+}
 
 type Pendaftaran = {
   id: string
@@ -28,11 +36,20 @@ type Pendaftaran = {
   created_at: string
 }
 
-const emptyForm = {
-  nama_usaha: '', kontak: '', email: '',
-  kategori_sewa_id: '', jenis_usaha: 'F&B' as 'F&B' | 'Non-F&B',
-  tgl_daftar: today,
-  tgl_acara: '', keterangan: '',
+type Row = {
+  key: string
+  kind: 'pendaftaran' | 'tenant'
+  kode: string
+  nama_usaha: string
+  kontak: string
+  kategori: string
+  harga: number
+  dibayar: number
+  status: string
+  tanggal: string
+  detailId?: string
+  pendaftaran?: Pendaftaran
+  pendingBayar: Pembayaran[]
 }
 
 export default function TenantsPage() {
@@ -48,6 +65,8 @@ export default function TenantsPage() {
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [q, setQ] = useState('')
+  const [filterStatus, setFilterStatus] = useState('all')
+  const [page, setPage] = useState(1)
   const [rejectDaftar, setRejectDaftar] = useState<Pendaftaran | null>(null)
   const [rejectCatatan, setRejectCatatan] = useState('')
 
@@ -65,6 +84,7 @@ export default function TenantsPage() {
   useEffect(() => {
     load().catch((e) => toast.error(e.message)).finally(() => setLoading(false))
   }, [])
+  useEffect(() => { setPage(1) }, [q, filterStatus])
   useLiveRefresh(load)
 
   const periode = periodeDariTanggal(form.tgl_daftar, periods)
@@ -168,12 +188,62 @@ export default function TenantsPage() {
     }
   }
 
-  const pendingDaftar = pendaftaran.filter((p) => p.status === 'menunggu_verifikasi')
+  const kategoriNama = (id: string) => kategori.find((k) => k.id === id)?.nama ?? '-'
   const pendingBayar = pembayaran.filter((p) => !p.validated)
 
-  const filtered = tenants.filter(
-    (t) => !q || t.nama_usaha.toLowerCase().includes(q.toLowerCase()) || t.kode_stand.toLowerCase().includes(q.toLowerCase())
-  )
+  const rows: Row[] = [
+    ...pendaftaran
+      .filter((p) => p.status !== 'dp_diterima')
+      .map((p) => ({
+        key: `daftar-${p.id}`,
+        kind: 'pendaftaran' as const,
+        kode: p.kode_pendaftaran,
+        nama_usaha: p.nama_usaha,
+        kontak: p.kontak,
+        kategori: kategoriNama(p.kategori_sewa_id),
+        harga: Number(p.harga_akhir),
+        dibayar: 0,
+        status: p.status,
+        tanggal: p.created_at,
+        pendaftaran: p,
+        pendingBayar: [],
+      })),
+    ...tenants.map((t) => {
+      const pending = pendingBayar.filter((p) => p.tenant_id === t.id)
+      return {
+        key: `tenant-${t.id}`,
+        kind: 'tenant' as const,
+        kode: t.kode_stand,
+        nama_usaha: t.nama_usaha,
+        kontak: t.kontak,
+        kategori: t.kategori_sewa?.nama ?? kategoriNama(t.kategori_sewa_id),
+        harga: Number(t.harga_akhir),
+        dibayar: Number(t.sudah_dibayar),
+        status: t.status,
+        tanggal: t.tgl_daftar,
+        detailId: t.id,
+        pendingBayar: pending,
+      }
+    }),
+  ]
+
+  const menunggu = pendaftaran.filter((p) => p.status === 'menunggu_verifikasi').length
+  const ditolak = pendaftaran.filter((p) => p.status === 'ditolak').length
+  const keyword = q.trim().toLowerCase()
+  const filtered = rows.filter((r) => {
+    if (filterStatus === 'menunggu') {
+      const daftarMenunggu = r.kind === 'pendaftaran' && r.status === 'menunggu_verifikasi'
+      if (!daftarMenunggu && r.pendingBayar.length === 0) return false
+    }
+    if (filterStatus === 'aktif' && r.kind !== 'tenant') return false
+    if (filterStatus === 'ditolak' && r.status !== 'ditolak') return false
+    if (!keyword) return true
+    return [r.kode, r.nama_usaha, r.kontak, r.kategori].some((v) => v.toLowerCase().includes(keyword))
+  })
+  const PER_PAGE = 10
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE))
+  const currentPage = Math.min(page, totalPages)
+  const paginated = filtered.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE)
 
   const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10 text-sm'
   const label = 'block text-sm font-medium mb-1'
@@ -187,6 +257,25 @@ export default function TenantsPage() {
           <button onClick={() => setShowForm(!showForm)} className="bg-primary-600 text-white px-6 py-2.5.5 rounded-xl font-medium transition-all hover:bg-primary-700 hover:shadow-sm hover:shadow-primary-600/20 text-sm hover:bg-primary-700">
             {showForm ? 'Tutup' : '+ Tambah'}
           </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+          <p className="text-sm text-slate-500">Tenant Aktif</p>
+          <p className="text-3xl font-bold text-primary-600">{tenants.length}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+          <p className="text-sm text-slate-500">Menunggu Verifikasi</p>
+          <p className="text-3xl font-bold text-yellow-600">{menunggu}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+          <p className="text-sm text-slate-500">Pembayaran Pending</p>
+          <p className="text-3xl font-bold text-blue-600">{pendingBayar.length}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+          <p className="text-sm text-slate-500">Ditolak</p>
+          <p className="text-3xl font-bold text-red-600">{ditolak}</p>
         </div>
       </div>
 
@@ -232,114 +321,145 @@ export default function TenantsPage() {
         </form>
       )}
 
-      {pendingDaftar.length > 0 && (
-        <div className="overflow-x-auto rounded-2xl border border-amber-200 bg-amber-50/40 shadow-sm">
-          <div className="flex items-center justify-between px-5 py-3">
-            <h2 className="font-semibold text-slate-900">Verifikasi Pendaftaran</h2>
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">{pendingDaftar.length} menunggu</span>
-          </div>
-          <table className="w-full text-sm">
-            <thead className="bg-amber-100/60 text-left text-xs text-slate-600">
-              <tr>
-                <th className="px-5 py-2">Kode</th><th className="px-5 py-2">Usaha</th><th className="px-5 py-2">Kategori</th>
-                <th className="px-5 py-2">Kontak</th><th className="px-5 py-2">Harga</th><th className="px-5 py-2">DP</th>
-                <th className="px-5 py-2">Bukti</th><th className="px-5 py-2">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-amber-100">
-              {pendingDaftar.map((p) => (
-                <tr key={p.id}>
-                  <td className="px-5 py-2 font-mono text-xs">{p.kode_pendaftaran}</td>
-                  <td className="px-5 py-2 font-medium">{p.nama_usaha}</td>
-                  <td className="px-5 py-2">{kategori.find((k) => k.id === p.kategori_sewa_id)?.nama ?? '-'}</td>
-                  <td className="px-5 py-2">{p.kontak}</td>
-                  <td className="px-5 py-2">{formatRupiah(Number(p.harga_akhir))}</td>
-                  <td className="px-5 py-2">{formatRupiah(Number(p.dp_wajib))}</td>
-                  <td className="px-5 py-2">
-                    {p.bukti_url ? <a href={p.bukti_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline">Lihat</a> : '-'}
-                  </td>
-                  <td className="px-5 py-2">
-                    <div className="flex gap-1">
-                      <button onClick={() => verifikasiPendaftaran(p, 'dp_diterima', null)} className="rounded bg-green-600 px-2 py-1 text-xs text-white">Terima</button>
-                      <button onClick={() => { setRejectCatatan(''); setRejectDaftar(p) }} className="rounded bg-red-600 px-2 py-1 text-xs text-white">Tolak</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {pendingBayar.length > 0 && (
-        <div className="overflow-x-auto rounded-2xl border border-blue-200 bg-blue-50/40 shadow-sm">
-          <div className="flex items-center justify-between px-5 py-3">
-            <h2 className="font-semibold text-slate-900">Verifikasi Pembayaran</h2>
-            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">{pendingBayar.length} menunggu</span>
-          </div>
-          <table className="w-full text-sm">
-            <thead className="bg-blue-100/60 text-left text-xs text-slate-600">
-              <tr>
-                <th className="px-5 py-2">Tanggal</th><th className="px-5 py-2">Tenant</th><th className="px-5 py-2">Jenis</th>
-                <th className="px-5 py-2">Nominal</th><th className="px-5 py-2">Metode</th><th className="px-5 py-2">Bukti</th><th className="px-5 py-2">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-blue-100">
-              {pendingBayar.map((p) => (
-                <tr key={p.id}>
-                  <td className="px-5 py-2 text-slate-500">{formatDate(p.tanggal_bayar)}</td>
-                  <td className="px-5 py-2">
-                    <Link href={`/dankelola/tenants/${p.tenant_id}`} className="text-primary-600 hover:underline">
-                      {p.tenants?.nama_usaha ?? tenants.find((t) => t.id === p.tenant_id)?.nama_usaha ?? '-'}
-                    </Link>
-                  </td>
-                  <td className="px-5 py-2">{p.jenis}</td>
-                  <td className="px-5 py-2 font-medium">{formatRupiah(p.nominal)}</td>
-                  <td className="px-5 py-2 text-slate-500">{p.metode || '-'}</td>
-                  <td className="px-5 py-2">
-                    {p.bukti_url ? <a href={p.bukti_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline">Lihat</a> : '-'}
-                  </td>
-                  <td className="px-5 py-2">
-                    <div className="flex gap-1">
-                      <button onClick={() => verifikasiPembayaran(p, 'approve')} className="rounded bg-green-600 px-2 py-1 text-xs text-white">Setujui</button>
-                      <button onClick={() => verifikasiPembayaran(p, 'reject')} className="rounded bg-red-600 px-2 py-1 text-xs text-white">Tolak</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
       <div className="overflow-x-auto rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-4">
+          <h2 className="font-semibold text-slate-900">Data Tenant</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              aria-label="Filter status"
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-primary-400 focus:outline-none"
+            >
+              <option value="all">Semua ({rows.length})</option>
+              <option value="menunggu">Menunggu Verifikasi ({menunggu + pendingBayar.length})</option>
+              <option value="aktif">Tenant Aktif ({tenants.length})</option>
+              <option value="ditolak">Ditolak ({ditolak})</option>
+            </select>
+            <div className="relative w-full min-w-[12rem] sm:w-64">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Cari nama / kode / kontak..."
+                className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-700 focus:border-primary-400 focus:outline-none"
+              />
+            </div>
+          </div>
+        </div>
+
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left">
+          <thead className="bg-slate-50 text-left text-xs text-slate-500">
             <tr>
-              <th className="px-6 py-3">Kode</th><th className="px-6 py-3">Nama</th><th className="px-6 py-3">Kategori</th>
-              <th className="px-6 py-3">Harga</th><th className="px-6 py-3">Dibayar</th><th className="px-6 py-3">Status</th>
-              <th className="px-6 py-3">Daftar</th><th className="px-6 py-3"></th>
+              <th className="px-5 py-3">Kode</th>
+              <th className="px-5 py-3">Tenant</th>
+              <th className="px-5 py-3">Kategori</th>
+              <th className="px-5 py-3 text-right">Total</th>
+              <th className="px-5 py-3 text-right">Dibayar</th>
+              <th className="px-5 py-3">Status</th>
+              <th className="px-5 py-3">Pembayaran</th>
+              <th className="px-5 py-3">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100/80">
             {loading && <TableSkeleton rows={5} cols={8} />}
-            {!loading && filtered.length === 0 && <tr><td colSpan={8} className="px-4 py-6 text-center text-slate-400">Belum ada tenant.</td></tr>}
-            {filtered.map((t) => (
-              <tr key={t.id} className="hover:bg-slate-50">
-                <td className="px-6 py-3 font-mono text-xs">{t.kode_stand}</td>
-                <td className="px-6 py-3"><Link href={`/dankelola/tenants/${t.id}`} className="text-primary-600 hover:underline">{t.nama_usaha}</Link></td>
-                <td className="px-6 py-3">{t.kategori_sewa?.nama ?? '-'}</td>
-                <td className="px-6 py-3">{formatRupiah(t.harga_akhir)}</td>
-                <td className="px-6 py-3">{formatRupiah(t.sudah_dibayar)}</td>
-                <td className="px-6 py-3"><span className={`px-2 py-0.5 rounded-full text-xs ${STATUS_COLOR[t.status]}`}>{STATUS_LABEL[t.status]}</span></td>
-                <td className="px-6 py-3 text-slate-500">{formatDate(t.tgl_daftar)}</td>
-                <td className="px-6 py-3 text-right">
-                  <button onClick={() => hapus(t.id)} className="text-red-600 hover:underline text-xs">Hapus</button>
+            {!loading && filtered.length === 0 && (
+              <tr><td colSpan={8} className="px-5 py-6 text-center text-slate-400">
+                {rows.length === 0 ? 'Belum ada tenant.' : 'Tidak ada tenant yang cocok.'}
+              </td></tr>
+            )}
+            {paginated.map((r) => (
+              <tr key={r.key} className="hover:bg-slate-50">
+                <td className="px-5 py-3 align-top">
+                  <div className="font-mono text-xs">{r.kode}</div>
+                  <div className="mt-1 text-xs text-slate-400">{formatDate(r.tanggal)}</div>
+                </td>
+                <td className="px-5 py-3 align-top">
+                  {r.detailId ? (
+                    <Link href={`/dankelola/tenants/${r.detailId}`} className="font-medium text-primary-600 hover:underline">{r.nama_usaha}</Link>
+                  ) : (
+                    <div className="font-medium">{r.nama_usaha}</div>
+                  )}
+                  <div className="text-xs text-slate-500">{r.kontak}</div>
+                </td>
+                <td className="px-5 py-3 align-top">{r.kategori}</td>
+                <td className="px-5 py-3 align-top text-right tabular-nums">{formatRupiah(r.harga)}</td>
+                <td className="px-5 py-3 align-top text-right tabular-nums">{formatRupiah(r.dibayar)}</td>
+                <td className="px-5 py-3 align-top">
+                  {r.kind === 'pendaftaran' ? (
+                    <span className={`inline-block rounded px-2 py-0.5 text-xs ${r.status === 'ditolak' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                      {r.status === 'ditolak' ? 'Ditolak' : 'Menunggu Verifikasi'}
+                    </span>
+                  ) : (
+                    <span className={`inline-block rounded px-2 py-0.5 text-xs ${STATUS_COLOR[r.status]}`}>{STATUS_LABEL[r.status] ?? r.status}</span>
+                  )}
+                </td>
+                <td className="px-5 py-3 align-top">
+                  {r.kind === 'pendaftaran' ? (
+                    r.pendaftaran?.bukti_url ? (
+                      <a href={r.pendaftaran.bukti_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline">Bukti DP</a>
+                    ) : <span className="text-xs text-slate-400">—</span>
+                  ) : r.pendingBayar.length === 0 ? (
+                    <span className="text-xs text-slate-400">—</span>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {r.pendingBayar.map((p) => (
+                        <div key={p.id} className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-medium text-slate-700">{p.jenis} · {formatRupiah(p.nominal)}</span>
+                            {p.bukti_url && <a href={p.bukti_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline">Bukti</a>}
+                          </div>
+                          <div className="mt-1 flex gap-1">
+                            <button onClick={() => verifikasiPembayaran(p, 'approve')} className="rounded bg-green-600 px-2 py-0.5 text-xs text-white">Setujui</button>
+                            <button onClick={() => verifikasiPembayaran(p, 'reject')} className="rounded bg-red-600 px-2 py-0.5 text-xs text-white">Tolak</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </td>
+                <td className="px-5 py-3 align-top">
+                  {r.kind === 'pendaftaran' && r.pendaftaran ? (
+                    <div className="flex flex-wrap gap-1">
+                      <button onClick={() => verifikasiPendaftaran(r.pendaftaran!, 'dp_diterima', null)} className="rounded bg-green-600 px-2 py-1 text-xs text-white">Terima</button>
+                      <button onClick={() => { setRejectCatatan(''); setRejectDaftar(r.pendaftaran!) }} className="rounded bg-red-600 px-2 py-1 text-xs text-white">Tolak</button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      <Link href={`/dankelola/tenants/${r.detailId}`} className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700 hover:bg-slate-200">Detail</Link>
+                      <button onClick={() => hapus(r.detailId!)} className="rounded bg-red-50 px-2 py-1 text-xs text-red-600 hover:bg-red-100">Hapus</button>
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+
+        <div className="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-slate-500">
+            Menampilkan {filtered.length === 0 ? 0 : (currentPage - 1) * PER_PAGE + 1}–{Math.min(currentPage * PER_PAGE, filtered.length)} dari {filtered.length} tenant
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              aria-label="Halaman sebelumnya"
+              className="rounded-lg border border-slate-200 p-1.5 text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="text-xs font-medium text-slate-600">{currentPage} / {totalPages}</span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              aria-label="Halaman berikutnya"
+              className="rounded-lg border border-slate-200 p-1.5 text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
       </div>
 
       <Modal open={!!rejectDaftar} onClose={() => setRejectDaftar(null)}>
