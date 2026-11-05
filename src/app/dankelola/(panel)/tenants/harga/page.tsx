@@ -25,7 +25,6 @@ export default function HargaPage() {
   const [periods, setPeriods] = useState<PeriodeHarga[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [togglingId, setTogglingId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     const [m, b] = await Promise.all([
@@ -68,16 +67,13 @@ export default function HargaPage() {
   }
 
   async function toggleAktif(k: KategoriSewa) {
-    if (togglingId) return
-    setTogglingId(k.id)
+    const aktif = k.aktif === false
+    setKategori((prev) => prev.map((p) => (p.id === k.id ? { ...p, aktif } : p)))
     try {
-      await sendJSON('/api/master/kategori', 'POST', { id: k.id, aktif: k.aktif === false })
-      toast.success(k.aktif === false ? 'Paket diaktifkan' : 'Paket dinonaktifkan')
-      await load()
+      await sendJSON('/api/master/kategori', 'POST', { id: k.id, aktif })
     } catch (e) {
+      setKategori((prev) => prev.map((p) => (p.id === k.id ? { ...p, aktif: !aktif } : p)))
       toast.error((e as Error).message)
-    } finally {
-      setTogglingId(null)
     }
   }
 
@@ -200,12 +196,13 @@ export default function HargaPage() {
                       type="button"
                       role="switch"
                       aria-checked={aktif}
-                      disabled={togglingId === k.id}
                       onClick={() => toggleAktif(k)}
-                      className={`inline-flex h-6 w-11 items-center rounded-full p-0.5 transition-colors disabled:opacity-50 ${aktif ? 'bg-primary-600' : 'bg-slate-300'}`}
+                      className="group inline-flex items-center"
                       title={aktif ? 'Nonaktifkan paket' : 'Aktifkan paket'}
                     >
-                      <span className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${aktif ? 'translate-x-5' : 'translate-x-0'}`} />
+                      <span className={`relative h-5 w-9 rounded-full transition-colors ${aktif ? 'bg-green-500' : 'bg-slate-300'}`}>
+                        <span className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${aktif ? 'translate-x-4' : 'translate-x-0'}`} />
+                      </span>
                     </button>
                   </td>
                   <td className="px-4 py-3">

@@ -51,6 +51,7 @@ export default function DaftarTenantPublik() {
     kategori_sewa_id: '', jenis_usaha: 'F&B' as 'F&B' | 'Non-F&B', jumlah_tenant: '1',
   })
   const [addonQty, setAddonQty] = useState<Record<string, number>>({})
+  const [addonOwn, setAddonOwn] = useState<Record<string, number>>({})
   const [pilihanQty, setPilihanQty] = useState<Record<string, number>>({})
   const [tipeBayar, setTipeBayar] = useState<'lunas' | 'nyicil'>('nyicil')
   const [nominalNyicil, setNominalNyicil] = useState('')
@@ -103,13 +104,6 @@ export default function DaftarTenantPublik() {
     return Number(hd?.harga ?? 0)
   }, [form.kategori_sewa_id, form.jenis_usaha, hargaDasar, periode])
 
-  const addonTotal = useMemo(() => {
-    return Object.entries(addonQty).reduce((sum, [id, qty]) => {
-      const item = addons.find((p) => p.id === id)
-      return sum + Number(item?.harga_sewa ?? 0) * qty
-    }, 0)
-  }, [addonQty, addons])
-
   const pilihanPerTenant = useMemo(() => {
     return Object.entries(pilihanQty).reduce((sum, [id, qty]) => {
       const item = paketPilihan.find((p) => p.id === id)
@@ -118,6 +112,16 @@ export default function DaftarTenantPublik() {
   }, [pilihanQty, paketPilihan])
 
   const jumlahTenant = Math.max(1, Number(form.jumlah_tenant) || 1)
+  const addonTerpilih = addons
+    .map((item) => {
+      if (addonQty[item.id] === undefined) return { item, qty: 0 }
+      const otomatis = item.jenis === 'Tenda' || item.jenis === 'Meja'
+      if (!otomatis) return { item, qty: Math.max(1, Number(addonQty[item.id]) || 1) }
+      const bawaSendiri = Math.min(jumlahTenant, Math.max(0, Number(addonOwn[item.id]) || 0))
+      return { item, qty: Math.max(0, jumlahTenant - bawaSendiri) }
+    })
+    .filter(({ qty }) => qty > 0)
+  const addonTotal = addonTerpilih.reduce((sum, { item, qty }) => sum + Number(item.harga_sewa) * qty, 0)
   const subtotalPaket = (baseHarga + pilihanPerTenant) * jumlahTenant
   const bundleAktif = [...paketBundles]
     .filter((b) => jumlahTenant >= Number(b.jumlah_min))
@@ -176,7 +180,7 @@ export default function DaftarTenantPublik() {
       const res = await sendJSON('/api/public/tenant', 'POST', {
         ...form,
         jumlah_tenant: jumlahTenant,
-        addon: Object.entries(addonQty).map(([id, qty]) => ({ id, qty })),
+        addon: addonTerpilih.map(({ item, qty }) => ({ id: item.id, qty })),
         pilihan: Object.entries(pilihanQty).map(([id, qty]) => ({ id, qty })),
         periode_daftar: periode,
       })
@@ -259,6 +263,14 @@ export default function DaftarTenantPublik() {
                   <p className="text-sm font-medium text-slate-900">Pilih paket & item yang mau disewa</p>
                   <p className="text-xs text-slate-500">Semua pilihan paket tercentang otomatis. Hilangkan centang untuk item yang tidak diambil.</p>
                 </div>
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary-200 bg-primary-50/50 px-3 py-2">
+                  <label className="flex min-w-0 flex-1 items-center gap-2 text-sm">
+                    <input type="checkbox" checked disabled className="h-4 w-4 shrink-0 rounded border-slate-300 text-primary-600" />
+                    <span className="truncate font-medium text-slate-800">{selectedKategori?.nama ?? 'Tempat / Stand'}</span>
+                    <span className="shrink-0 text-xs text-slate-500">{formatRupiah(baseHarga)} / tenant</span>
+                  </label>
+                  <span className="text-xs font-medium text-slate-600">{jumlahTenant} tempat</span>
+                </div>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {paketPilihan.map((item) => {
                     const checked = pilihanQty[item.id] !== undefined
@@ -287,6 +299,9 @@ export default function DaftarTenantPublik() {
                   )}
                   {addons.map((item) => {
                     const checked = addonQty[item.id] !== undefined
+                    const otomatis = item.jenis === 'Tenda' || item.jenis === 'Meja'
+                    const bawaSendiri = Math.min(jumlahTenant, Math.max(0, Number(addonOwn[item.id]) || 0))
+                    const qtyOtomatis = Math.max(0, jumlahTenant - bawaSendiri)
                     return (
                       <div key={item.id} className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 ${checked ? 'border-primary-200 bg-primary-50/50' : 'border-slate-100'}`}>
                         <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-sm">
@@ -294,16 +309,34 @@ export default function DaftarTenantPublik() {
                           <span className="truncate font-medium text-slate-800">{item.nama}</span>
                           <span className="shrink-0 text-xs text-slate-500">{formatRupiah(Number(item.harga_sewa))}</span>
                         </label>
-                        {checked && (
-                          <input
-                            type="number"
-                            min={1}
-                            max={99}
-                            className="w-14 rounded-lg border border-slate-200 px-2 py-1 text-center text-sm"
-                            value={addonQty[item.id]}
-                            onChange={(e) => setAddonQty({ ...addonQty, [item.id]: Math.max(1, Math.min(99, Number(e.target.value) || 1)) })}
-                          />
-                        )}
+                        {checked && (otomatis ? (
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                            <label className="flex items-center gap-1">
+                              Bawa sendiri
+                              <input
+                                type="number"
+                                min={0}
+                                max={jumlahTenant}
+                                className="w-12 rounded-lg border border-slate-200 px-2 py-1 text-center text-sm"
+                                value={addonOwn[item.id] ?? ''}
+                                onChange={(e) => setAddonOwn({ ...addonOwn, [item.id]: Math.max(0, Math.min(jumlahTenant, Number(e.target.value) || 0)) })}
+                              />
+                            </label>
+                            <span className="font-medium text-slate-700">Sewa {qtyOtomatis} unit</span>
+                          </div>
+                        ) : (
+                          <label className="flex items-center gap-1 text-xs text-slate-500">
+                            Jumlah
+                            <input
+                              type="number"
+                              min={1}
+                              max={99}
+                              className="w-14 rounded-lg border border-slate-200 px-2 py-1 text-center text-sm"
+                              value={addonQty[item.id]}
+                              onChange={(e) => setAddonQty({ ...addonQty, [item.id]: Math.max(1, Math.min(99, Number(e.target.value) || 1)) })}
+                            />
+                          </label>
+                        ))}
                       </div>
                     )
                   })}

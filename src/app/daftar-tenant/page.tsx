@@ -168,19 +168,19 @@ export default function InfoTenantPage() {
         />
         <PoStepper steps={STEP} currentStep={1} />
 
-        <div className="grid items-start gap-8 lg:grid-cols-[340px_minmax(0,1fr)] xl:grid-cols-[380px_minmax(0,1fr)]">
-          <section className="lg:sticky lg:top-24 lg:self-start">
+        <div className="space-y-6">
+          <section>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-600">Alur pendaftaran</p>
             <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">Dari pilih paket sampai QR tenant aktif</h2>
-            <p className="mt-2 text-sm leading-relaxed text-slate-500">
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-500">
               Lima langkah singkat. Pembayaran pertama minimal 50%, QR venue aktif setelah pembayaran mencapai 80%.
             </p>
 
-            <div className="mt-5 space-y-2.5">
+            <div className="mt-4 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-5">
               {ALUR.map((item, index) => {
                 const Icon = item.icon
                 return (
-                  <div key={item.title} className="relative flex gap-3 rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm shadow-slate-200/40">
+                  <div key={item.title} className="relative flex gap-3 rounded-2xl border border-slate-200/70 bg-white p-3.5 shadow-sm shadow-slate-200/40">
                     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary-50 text-primary-700">
                       <Icon className="h-4.5 w-4.5" />
                     </span>
@@ -196,7 +196,7 @@ export default function InfoTenantPage() {
               })}
             </div>
             {katalog.acara?.batas_pelunasan && (
-              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+              <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
                 Batas akhir pembayaran: <span className="font-semibold">{katalog.acara.batas_pelunasan}</span>
               </div>
             )}
@@ -229,7 +229,7 @@ export default function InfoTenantPage() {
                   return (
                     <article key={k.id} className={`overflow-hidden rounded-2xl border bg-white shadow-sm shadow-slate-200/40 ${habis ? 'border-slate-200 opacity-75' : 'border-slate-200/70'}`}>
                       <div className="grid gap-3 p-3.5 sm:grid-cols-[88px_minmax(0,1fr)_auto] sm:items-center">
-                        <div className="h-24 w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-50 sm:h-[88px] sm:w-[88px]">
+                        <div className="aspect-[4/5] w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
                           {k.thumbnail_url ? (
                             <img src={k.thumbnail_url} alt={k.nama} className="h-full w-full object-cover" />
                           ) : (

@@ -103,7 +103,14 @@ function getBreadcrumbs(pathname: string) {
   }
 
   // Sub-pages that extend the active page
-  if (pathname.startsWith('/dankelola/ticket/tipe/')) {
+  if (pathname === '/dankelola/tenants/peralatan' || pathname === '/dankelola/tenants/pembayaran') {
+    breadcrumbs.length = 1
+    breadcrumbs.push({ label: 'Paket & Harga', href: '/dankelola/tenants/harga' })
+    breadcrumbs.push({
+      label: pathname === '/dankelola/tenants/peralatan' ? 'Kelola Modal' : 'Batas Pembayaran',
+      href: pathname,
+    })
+  } else if (pathname.startsWith('/dankelola/ticket/tipe/')) {
     const action = pathname === '/dankelola/ticket/tipe/new' ? 'Tambah Tipe' : 'Edit Tipe'
     breadcrumbs.push({ label: action, href: pathname })
   } else if (pathname.startsWith('/dankelola/ticket/periode/')) {

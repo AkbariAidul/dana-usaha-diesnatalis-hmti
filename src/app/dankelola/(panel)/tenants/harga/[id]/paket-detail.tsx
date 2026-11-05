@@ -456,10 +456,10 @@ export default function PaketDetail({
             <label className={label}>Slot Tenant</label>
             <input disabled={readOnly} type="number" min={0} className={input} placeholder="0 = tanpa batas" value={form.slot_tenant} onChange={(e) => setForm({ ...form, slot_tenant: e.target.value })} />
           </div>
-          <div className="w-40">
-            <label className={label}>Selisih Non-F&B (Rp)</label>
+          <div className="w-44">
+            <label className={label}>Non-F&B lebih murah (Rp)</label>
             <input disabled={readOnly} type="number" min={0} className={input} placeholder="cth: 50000 = 50 ribu" value={form.selisih_nonfnb} onChange={(e) => setForm({ ...form, selisih_nonfnb: e.target.value })} />
-            <p className="mt-1 text-[10px] text-slate-400">Harga Non-F&B = harga F&B − selisih.</p>
+            <p className="mt-1 text-[10px] text-slate-400">Harga F&B dari periode. Non-F&B = harga periode − selisih.</p>
           </div>
         </div>
         <div className="flex justify-end gap-2">
@@ -611,9 +611,9 @@ export default function PaketDetail({
                 <div><label className={label}>Mulai</label><input type="date" className={input} value={periodForm.tanggal_mulai} onChange={(e) => setPeriodForm({ ...periodForm, tanggal_mulai: e.target.value })} /></div>
                 <div><label className={label}>Selesai</label><input type="date" className={input} value={periodForm.tanggal_selesai} onChange={(e) => setPeriodForm({ ...periodForm, tanggal_selesai: e.target.value })} /></div>
                 <div>
-                  <label className={label}>Harga F&B</label>
+                  <label className={label}>Harga</label>
                   <input type="number" min={0} className={input} placeholder="cth: 500000" value={periodForm.harga_fnb} onChange={(e) => setPeriodForm({ ...periodForm, harga_fnb: e.target.value })} />
-                  <p className="mt-1 text-[10px] text-slate-400">Non-F&B: {formatRupiah(Math.max(0, (Number(periodForm.harga_fnb) || 0) - (Number(paket?.selisih_nonfnb) || 0)))}</p>
+                  <p className="mt-1 text-[10px] text-slate-400">F&B periode ini · Non-F&B: {formatRupiah(Math.max(0, (Number(periodForm.harga_fnb) || 0) - (Number(paket?.selisih_nonfnb) || 0)))}</p>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={simpanPeriode} disabled={savingPeriode} className="flex-1 rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
