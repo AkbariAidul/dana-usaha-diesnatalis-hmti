@@ -22,6 +22,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
+    const { pilihan: pilihanBody, ...dataBody } = body
     const tglDaftar = todayISO()
     const [periods, hargaDasar, kategori, acara] = await Promise.all([
       getPeriodeHarga(),
@@ -66,6 +67,28 @@ export async function POST(request: Request) {
         })
         .filter((a: TenantAddon | null): a is TenantAddon => a !== null)
     }
+    const pilihanReq = Array.isArray(pilihanBody)
+      ? Array.from(new Set(pilihanBody.map(String))).slice(0, 20)
+      : []
+    if (pilihanReq.length > 0) {
+      const { data: items } = await supabaseAdmin
+        .from('kategori_pilihan')
+        .select('id, nama, harga, kategori_sewa_id')
+        .in('id', pilihanReq)
+      const pilihanAddon = (items ?? [])
+        .filter((item: { kategori_sewa_id: string }) => item.kategori_sewa_id === body.kategori_sewa_id)
+        .map((item: { id: string; nama: string; harga: number }) => {
+          const hargaSatuan = Number(item.harga)
+          return {
+            id: item.id,
+            nama: item.nama,
+            qty: 1,
+            harga_satuan: hargaSatuan,
+            subtotal: hargaSatuan,
+          }
+        })
+      addon = [...addon, ...pilihanAddon]
+    }
     const addonTotal = addon.reduce((sum, a) => sum + a.subtotal, 0)
     const kategoriItem = kategori.find((k) => k.id === body.kategori_sewa_id)
     const lokasi = kategoriItem?.kode === 'KT-02' ? 'Strategis 1' : 'Reguler'
@@ -78,7 +101,7 @@ export async function POST(request: Request) {
     }, 0)
     const kode = `TP-${String(maxKode + 1).padStart(4, '0')}`
     const payload = {
-      ...body,
+      ...dataBody,
       jenis_usaha: jenisUsaha,
       asal: 'Internal Kampus',
       lokasi,

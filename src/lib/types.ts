@@ -8,6 +8,14 @@ export interface KategoriSewa {
   include_trashbag: boolean
 }
 
+export interface KategoriPilihan {
+  id: string
+  kategori_sewa_id: string
+  nama: string
+  harga: number
+  urutan: number
+}
+
 export interface KategoriBundleDiscount {
   id: string
   kategori_sewa_id: string

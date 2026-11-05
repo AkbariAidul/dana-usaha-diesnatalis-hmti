@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 
 import { PublicBreadcrumb, PublicNavbar } from '@/components/public-navbar'
 import { getJSON, sendJSON } from '@/app/dankelola/api'
-import { periodeDariTanggal, periodeLabel, KategoriSewa, HargaDasar, PeriodeHarga, Peralatan, TenantAddon } from '@/lib/types'
+import { periodeDariTanggal, periodeLabel, KategoriSewa, KategoriPilihan, HargaDasar, PeriodeHarga, Peralatan, TenantAddon } from '@/lib/types'
 import { kategoriTenant } from '@/lib/tenant'
 import { formatDate, formatRupiah, todayISO } from '@/lib/utils'
 import { buatQrisDinamis } from '@/lib/qris'
@@ -17,6 +17,8 @@ export default function DaftarTenantPublik() {
   const [kategori, setKategori] = useState<KategoriSewa[]>([])
   const [hargaDasar, setHargaDasar] = useState<HargaDasar[]>([])
   const [peralatan, setPeralatan] = useState<Peralatan[]>([])
+  const [pilihan, setPilihan] = useState<KategoriPilihan[]>([])
+  const [pilihanDipilih, setPilihanDipilih] = useState<string[]>([])
   const [periods, setPeriods] = useState<PeriodeHarga[]>([])
   const [acara, setAcara] = useState<{ tanggal_acara: string } | null>(null)
   const [qris, setQris] = useState<Record<string, string>>({})
@@ -35,13 +37,15 @@ export default function DaftarTenantPublik() {
     Promise.all([
       getJSON<{ kategori: KategoriSewa[]; hargaDasar: HargaDasar[]; periode: PeriodeHarga[] }>('/api/master'),
       getJSON<Peralatan[]>('/api/peralatan'),
+      getJSON<KategoriPilihan[]>('/api/public/tenant/pilihan').catch(() => []),
       getJSON<Record<string, string>>('/api/pengaturan/qris'),
       getJSON<{ tanggal_acara: string } | null>('/api/acara')
-    ]).then(([m, p, q, a]) => {
+    ]).then(([m, p, pi, q, a]) => {
       const list = kategoriTenant(m.kategori || [])
       setKategori(list)
       setHargaDasar(m.hargaDasar || [])
       setPeralatan(p || [])
+      setPilihan(pi || [])
       setPeriods(m.periode || [])
       setQris(q)
       setAcara(a)
@@ -56,6 +60,14 @@ export default function DaftarTenantPublik() {
   const periode = periodeDariTanggal(todayISO(), periods)
   const addons = useMemo(() => peralatan.filter((p) => Number(p.harga_sewa) > 0), [peralatan])
   const selectedKategori = kategori.find((k) => k.id === form.kategori_sewa_id)
+  const paketPilihan = useMemo(
+    () => pilihan.filter((p) => p.kategori_sewa_id === form.kategori_sewa_id),
+    [pilihan, form.kategori_sewa_id]
+  )
+  const pilihanTerpilih = useMemo(
+    () => paketPilihan.filter((p) => pilihanDipilih.includes(p.id)),
+    [paketPilihan, pilihanDipilih]
+  )
 
   const baseHarga = useMemo(() => {
     if (!periode || !form.kategori_sewa_id) return 0
@@ -71,8 +83,13 @@ export default function DaftarTenantPublik() {
     }, 0)
   }, [addonQty, addons])
 
-  const harga = baseHarga + addonTotal
+  const pilihanTotal = pilihanTerpilih.reduce((sum, p) => sum + Number(p.harga), 0)
+  const harga = baseHarga + addonTotal + pilihanTotal
   const dp = Math.ceil(harga / 2)
+
+  useEffect(() => {
+    setPilihanDipilih([])
+  }, [form.kategori_sewa_id])
 
   useEffect(() => {
     const nominal = pendaftaran?.dp_wajib
@@ -99,6 +116,7 @@ export default function DaftarTenantPublik() {
       const res = await sendJSON('/api/public/tenant', 'POST', {
         ...form,
         addon: Object.entries(addonQty).map(([id, qty]) => ({ id, qty })),
+        pilihan: pilihanDipilih,
         periode_daftar: periode,
         harga_akhir: harga,
         dp_wajib: dp,
@@ -188,6 +206,28 @@ export default function DaftarTenantPublik() {
                       </div>
                     )
                   })}
+                  {paketPilihan.length > 0 && (
+                    <div className="space-y-2 border-t border-slate-200 pt-3">
+                      <p className="text-sm font-medium text-slate-900">Pilihan Paket</p>
+                      {paketPilihan.map((item) => {
+                        const checked = pilihanDipilih.includes(item.id)
+                        return (
+                          <label key={item.id} className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2 cursor-pointer ${checked ? 'border-primary-200 bg-primary-50/50' : 'border-slate-100'}`}>
+                            <span className="flex flex-1 items-center gap-2 text-sm">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(e) => setPilihanDipilih((prev) => e.target.checked ? [...prev, item.id] : prev.filter((id) => id !== item.id))}
+                                className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                              />
+                              <span className="font-medium text-slate-800">{item.nama}</span>
+                            </span>
+                            <span className="text-xs text-slate-500">{Number(item.harga) > 0 ? formatRupiah(Number(item.harga)) : 'Gratis'}</span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -201,6 +241,7 @@ export default function DaftarTenantPublik() {
                   <p className="text-sm text-slate-500">Tempat</p>
                   <p className="text-lg font-semibold text-primary-600">{formatRupiah(baseHarga)}</p>
                   {addonTotal > 0 && <p className="text-xs text-slate-500">Item lain: {formatRupiah(addonTotal)}</p>}
+                  {pilihanTotal > 0 && <p className="text-xs text-slate-500">Pilihan paket: {formatRupiah(pilihanTotal)}</p>}
                   <p className="text-sm font-semibold text-slate-900">Total: {formatRupiah(harga)}</p>
                   <p className="text-xs text-slate-500">DP 50% {formatRupiah(dp)}</p>
                 </div>

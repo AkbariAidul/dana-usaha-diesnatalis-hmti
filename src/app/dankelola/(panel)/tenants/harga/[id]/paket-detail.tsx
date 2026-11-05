@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { Pencil, Trash2 } from 'lucide-react'
 import { getJSON, sendJSON } from '../../../../api'
 import { PageSkeleton } from '../../../ui'
-import type { KategoriSewa, KategoriBundleDiscount, HargaDasar, PeriodeHarga } from '@/lib/types'
+import type { KategoriSewa, KategoriPilihan, KategoriBundleDiscount, HargaDasar, PeriodeHarga } from '@/lib/types'
 import { periodeDariTanggal } from '@/lib/types'
 import { formatRupiah, formatDate, todayISO } from '@/lib/utils'
 import { useConfirm } from '@/components/confirm-dialog'
@@ -18,6 +18,7 @@ const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm foc
 const label = 'mb-1 block text-xs font-medium text-slate-500'
 
 const emptyPeriode = { id: '', nama: '', tanggal_mulai: '', tanggal_selesai: '', harga: '' }
+const emptyPilihan = { id: '', nama: '', harga: '' }
 const emptyBundle = { id: '', jumlah_min: '', diskon_nominal: '', diskon_persen: '' }
 
 export default function PaketDetail({
@@ -37,23 +38,27 @@ export default function PaketDetail({
   const [paket, setPaket] = useState<KategoriSewa | null>(null)
   const [hargaDasar, setHargaDasar] = useState<HargaDasar[]>([])
   const [periods, setPeriods] = useState<PeriodeHarga[]>([])
+  const [pilihanList, setPilihanList] = useState<KategoriPilihan[]>([])
   const [bundles, setBundles] = useState<KategoriBundleDiscount[]>([])
   const [form, setForm] = useState({ nama: '', keterangan: '', thumbnail_url: '', include_listrik: true, include_trashbag: true })
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null)
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null)
   const [periodForm, setPeriodForm] = useState(emptyPeriode)
+  const [pilihanForm, setPilihanForm] = useState(emptyPilihan)
   const [bundleForm, setBundleForm] = useState(emptyBundle)
   const [loading, setLoading] = useState(!isNew)
   const [savingInfo, setSavingInfo] = useState(false)
   const [savingPeriode, setSavingPeriode] = useState(false)
+  const [savingPilihan, setSavingPilihan] = useState(false)
   const [savingBundle, setSavingBundle] = useState(false)
 
   useEffect(() => {
     if (isNew) return
     if (!id) return
     ;(async () => {
-      const [m, allBundles] = await Promise.all([
+      const [m, allPilihan, allBundles] = await Promise.all([
         getJSON<Master>('/api/master'),
+        getJSON<KategoriPilihan[]>('/api/tenant/pilihan').catch(() => []),
         getJSON<KategoriBundleDiscount[]>('/api/tenant/bundle').catch(() => []),
       ])
       const found = (m.kategori || []).find((k) => k.id === id)
@@ -68,6 +73,7 @@ export default function PaketDetail({
       })
       setHargaDasar(m.hargaDasar || [])
       setPeriods(m.periode || [])
+      setPilihanList(allPilihan)
       setBundles(allBundles)
     })()
       .catch((e) => toast.error((e as Error).message))
@@ -95,12 +101,18 @@ export default function PaketDetail({
     return map
   }, [hargaDasar, paket?.id])
 
+  const paketPilihan = paket ? pilihanList.filter((p) => p.kategori_sewa_id === paket.id) : []
   const paketBundles = paket ? bundles.filter((b) => b.kategori_sewa_id === paket.id) : []
 
   async function reloadHarga() {
     const m = await getJSON<Master>('/api/master')
     setHargaDasar(m.hargaDasar || [])
     setPeriods(m.periode || [])
+  }
+
+  async function reloadPilihan() {
+    const p = await getJSON<KategoriPilihan[]>('/api/tenant/pilihan').catch(() => [])
+    setPilihanList(p)
   }
 
   async function reloadBundles() {
@@ -143,8 +155,8 @@ export default function PaketDetail({
       })
       setThumbnailFile(null)
       if (!paket) {
-        await Promise.all([reloadHarga(), reloadBundles()])
-        toast.success('Paket dibuat. Tambahkan periode harga & diskon bundle di bawah.')
+        await Promise.all([reloadHarga(), reloadPilihan(), reloadBundles()])
+        toast.success('Paket dibuat. Tambahkan periode, pilihan, & diskon bundle di bawah.')
         return
       }
       toast.success('Paket diperbarui')
@@ -218,6 +230,55 @@ export default function PaketDetail({
       if (periodForm.id === p.id) resetPeriodeForm()
       await reloadHarga()
       toast.success('Periode dihapus')
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
+  }
+
+  function resetPilihanForm() {
+    setPilihanForm(emptyPilihan)
+  }
+
+  function editPilihan(p: KategoriPilihan) {
+    setPilihanForm({ id: p.id, nama: p.nama, harga: String(p.harga) })
+  }
+
+  async function simpanPilihan() {
+    if (!paket || readOnly) return
+    const nama = pilihanForm.nama.trim()
+    const harga = Number(pilihanForm.harga)
+    if (!nama) { toast.error('Nama pilihan wajib diisi'); return }
+    if (!Number.isFinite(harga) || harga < 0) { toast.error('Harga tidak valid'); return }
+    setSavingPilihan(true)
+    try {
+      await sendJSON('/api/tenant/pilihan', 'POST', {
+        ...(pilihanForm.id ? { id: pilihanForm.id } : {}),
+        kategori_sewa_id: paket.id,
+        nama,
+        harga,
+      })
+      await reloadPilihan()
+      resetPilihanForm()
+      toast.success(pilihanForm.id ? 'Pilihan paket diperbarui' : 'Pilihan paket ditambahkan')
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setSavingPilihan(false)
+    }
+  }
+
+  async function hapusPilihan(p: KategoriPilihan) {
+    const ok = await confirm({
+      title: 'Hapus pilihan paket?',
+      description: `Pilihan "${p.nama}" akan dihapus permanen.`,
+      confirmText: 'Hapus',
+    })
+    if (!ok) return
+    try {
+      await sendJSON('/api/tenant/pilihan', 'DELETE', { id: p.id })
+      if (pilihanForm.id === p.id) resetPilihanForm()
+      await reloadPilihan()
+      toast.success('Pilihan paket dihapus')
     } catch (e) {
       toast.error((e as Error).message)
     }
@@ -304,33 +365,34 @@ export default function PaketDetail({
 
       <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm space-y-4">
         <h2 className="font-semibold text-slate-900">Informasi Paket</h2>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-          <div className="h-24 w-[76px] shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
-            {thumbnailPreview ? (
-              <img src={thumbnailPreview} alt="Thumbnail paket" className="h-full w-full object-cover" />
-            ) : (
-              <div className="grid h-full w-full place-items-center text-[10px] text-slate-400">4:5</div>
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <label className={label}>Thumbnail</label>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+          <div className="w-[100px] shrink-0 space-y-2">
+            <div className="h-32 w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+              {thumbnailPreview ? (
+                <img src={thumbnailPreview} alt="Thumbnail paket" className="h-full w-full object-cover" />
+              ) : (
+                <div className="grid h-full w-full place-items-center text-[10px] text-slate-400">4:5</div>
+              )}
+            </div>
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp"
               disabled={readOnly}
               onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)}
-              className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-slate-700 disabled:opacity-50"
+              className="block w-full text-[10px] text-slate-500 file:mr-1 file:rounded file:border-0 file:bg-slate-100 file:px-1.5 file:py-1 file:text-[10px] file:font-medium file:text-slate-700 disabled:opacity-50"
             />
-            <p className="mt-1 text-xs text-slate-400">JPG/PNG/WebP maks. 5MB. Tampil di halaman Open Tenant.</p>
+            <p className="text-[10px] leading-tight text-slate-400">JPG/PNG/WebP maks. 5MB.</p>
           </div>
-        </div>
-        <div>
-          <label className={label}>Nama Paket</label>
-          <input disabled={readOnly} className={input} value={form.nama} onChange={(e) => setForm({ ...form, nama: e.target.value })} />
-        </div>
-        <div>
-          <label className={label}>Keterangan</label>
-          <textarea disabled={readOnly} rows={2} className={input} value={form.keterangan} onChange={(e) => setForm({ ...form, keterangan: e.target.value })} />
+          <div className="min-w-0 flex-1 space-y-3">
+            <div>
+              <label className={label}>Nama Paket</label>
+              <input disabled={readOnly} className={input} value={form.nama} onChange={(e) => setForm({ ...form, nama: e.target.value })} />
+            </div>
+            <div>
+              <label className={label}>Keterangan</label>
+              <textarea disabled={readOnly} rows={4} className={input} value={form.keterangan} onChange={(e) => setForm({ ...form, keterangan: e.target.value })} />
+            </div>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-4">
           <label className="flex items-center gap-2 text-sm">
@@ -358,6 +420,66 @@ export default function PaketDetail({
             </>
           )}
         </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm space-y-3">
+        <div>
+          <h2 className="font-semibold text-slate-900">Pilihan Paket</h2>
+          <p className="text-sm text-slate-500">Fasilitas tambahan per paket. Tampil sebagai checkbox di form pendaftaran tenant.</p>
+        </div>
+        {!paket ? (
+          <p className="text-sm text-slate-400">Simpan informasi dasar terlebih dahulu untuk menambahkan pilihan paket.</p>
+        ) : (
+          <>
+            {paketPilihan.length === 0 ? (
+              <p className="text-sm text-slate-400">Belum ada pilihan paket.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 text-left text-xs text-slate-600">
+                    <tr>
+                      <th className="px-3 py-2">Pilihan</th>
+                      <th className="px-3 py-2">Harga</th>
+                      {!readOnly && <th className="px-3 py-2">Aksi</th>}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100/80">
+                    {paketPilihan.map((p) => (
+                      <tr key={p.id} className="hover:bg-slate-50">
+                        <td className="px-3 py-2 font-medium">{p.nama}</td>
+                        <td className="px-3 py-2 font-semibold text-primary-600">{formatRupiah(Number(p.harga))}</td>
+                        {!readOnly && (
+                          <td className="px-3 py-2">
+                            <div className="flex gap-1">
+                              <button onClick={() => editPilihan(p)} className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-primary-600" title="Edit">
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                              <button onClick={() => hapusPilihan(p)} className="grid h-7 w-7 place-items-center rounded-lg text-red-500 transition-colors hover:bg-red-50 hover:text-red-600" title="Hapus">
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {!readOnly && (
+              <div className="grid gap-3 border-t border-slate-100 pt-3 md:grid-cols-3 md:items-end">
+                <div><label className={label}>Nama Pilihan</label><input className={input} placeholder="cth: Meja + Kursi" value={pilihanForm.nama} onChange={(e) => setPilihanForm({ ...pilihanForm, nama: e.target.value })} /></div>
+                <div><label className={label}>Harga (Rp)</label><input type="number" min={0} className={input} placeholder="cth: 100000" value={pilihanForm.harga} onChange={(e) => setPilihanForm({ ...pilihanForm, harga: e.target.value })} /></div>
+                <div className="flex gap-2">
+                  <button onClick={simpanPilihan} disabled={savingPilihan} className="flex-1 rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+                    {savingPilihan ? 'Menyimpan...' : pilihanForm.id ? 'Simpan' : '+ Tambah Pilihan'}
+                  </button>
+                  {pilihanForm.id && <button onClick={resetPilihanForm} className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600">Batal</button>}
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm space-y-3">

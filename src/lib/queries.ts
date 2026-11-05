@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto'
 import { supabase, supabaseAdmin } from './supabase'
 import { todayISO } from './utils'
-import type { Tenant, Pembayaran, KategoriSewa, KategoriBundleDiscount, HargaDasar, FaktorHarga, Acara, Merchandise, MerchModalItem, Ticket, TicketPeriode, TicketKatalogItem, TicketBundleDiscount, TicketModalItem, PesananTiket, PeriodeHarga } from './types'
+import type { Tenant, Pembayaran, KategoriSewa, KategoriPilihan, KategoriBundleDiscount, HargaDasar, FaktorHarga, Acara, Merchandise, MerchModalItem, Ticket, TicketPeriode, TicketKatalogItem, TicketBundleDiscount, TicketModalItem, PesananTiket, PeriodeHarga } from './types'
 
 // ─── Acara ───────────────────────────────────────────────────────────────────
 
@@ -44,6 +44,34 @@ export async function upsertKategoriSewa(payload: Partial<KategoriSewa>) {
 
 export async function deleteKategoriSewa(id: string) {
   const { error } = await supabaseAdmin.from('kategori_sewa').delete().eq('id', id)
+  if (error) throw error
+}
+
+const KATEGORI_PILIHAN_FIELDS = ['kategori_sewa_id', 'nama', 'harga', 'urutan'] as const
+
+export async function getKategoriPilihan(kategoriId?: string): Promise<KategoriPilihan[]> {
+  let query = supabaseAdmin.from('kategori_pilihan').select('*').order('urutan').order('nama')
+  if (kategoriId) query = query.eq('kategori_sewa_id', kategoriId)
+  const { data, error } = await query
+  if (error) throw error
+  return (data ?? []) as KategoriPilihan[]
+}
+
+export async function upsertKategoriPilihan(payload: Partial<KategoriPilihan>) {
+  const fields = pickFields(payload as Record<string, unknown>, KATEGORI_PILIHAN_FIELDS)
+  if (payload.id) {
+    const { data, error } = await supabaseAdmin
+      .from('kategori_pilihan').update(fields).eq('id', payload.id).select().single()
+    if (error) throw error
+    return data
+  }
+  const { data, error } = await supabaseAdmin.from('kategori_pilihan').insert(fields).select().single()
+  if (error) throw error
+  return data
+}
+
+export async function deleteKategoriPilihan(id: string) {
+  const { error } = await supabaseAdmin.from('kategori_pilihan').delete().eq('id', id)
   if (error) throw error
 }
 
