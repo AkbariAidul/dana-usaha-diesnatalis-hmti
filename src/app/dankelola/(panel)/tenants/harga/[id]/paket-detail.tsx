@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { Pencil, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Pencil, Trash2 } from 'lucide-react'
 import { getJSON, sendJSON } from '../../../../api'
 import { PageSkeleton } from '../../../ui'
 import type { KategoriSewa, KategoriPilihan, KategoriBundleDiscount, HargaDasar, PeriodeHarga } from '@/lib/types'
@@ -17,7 +17,7 @@ type Master = { kategori: KategoriSewa[]; hargaDasar: HargaDasar[]; periode: Per
 const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10 disabled:bg-slate-50 disabled:text-slate-500'
 const label = 'mb-1 block text-xs font-medium text-slate-500'
 
-const emptyPeriode = { id: '', nama: '', tanggal_mulai: '', tanggal_selesai: '', harga: '' }
+const emptyPeriode = { id: '', nama: '', tanggal_mulai: '', tanggal_selesai: '', harga_fnb: '', harga_nonfnb: '' }
 const emptyPilihan = { id: '', nama: '', harga: '' }
 const emptyBundle = { id: '', jumlah_min: '', diskon_nominal: '', diskon_persen: '' }
 
@@ -40,7 +40,7 @@ export default function PaketDetail({
   const [periods, setPeriods] = useState<PeriodeHarga[]>([])
   const [pilihanList, setPilihanList] = useState<KategoriPilihan[]>([])
   const [bundles, setBundles] = useState<KategoriBundleDiscount[]>([])
-  const [form, setForm] = useState({ nama: '', keterangan: '', thumbnail_url: '', include_listrik: true, include_trashbag: true })
+  const [form, setForm] = useState({ nama: '', keterangan: '', thumbnail_url: '', include_listrik: true, include_trashbag: true, slot_tenant: '' })
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null)
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null)
   const [periodForm, setPeriodForm] = useState(emptyPeriode)
@@ -70,6 +70,7 @@ export default function PaketDetail({
         thumbnail_url: found.thumbnail_url ?? '',
         include_listrik: found.include_listrik,
         include_trashbag: found.include_trashbag,
+        slot_tenant: String(found.slot_tenant ?? 0),
       })
       setHargaDasar(m.hargaDasar || [])
       setPeriods(m.periode || [])
@@ -92,11 +93,11 @@ export default function PaketDetail({
 
   const activeKode = periodeDariTanggal(todayISO(), periods)
 
-  const hargaByKode = useMemo(() => {
+  const hargaByKey = useMemo(() => {
     const map = new Map<string, HargaDasar>()
     for (const h of hargaDasar) {
       if (h.kategori_sewa_id !== paket?.id) continue
-      if (!map.has(h.periode) || h.jenis_usaha === 'F&B') map.set(h.periode, h)
+      map.set(`${h.periode}|${h.jenis_usaha}`, h)
     }
     return map
   }, [hargaDasar, paket?.id])
@@ -143,6 +144,7 @@ export default function PaketDetail({
         thumbnail_url: thumbnailUrl,
         include_listrik: form.include_listrik,
         include_trashbag: form.include_trashbag,
+        slot_tenant: Math.max(0, Number(form.slot_tenant) || 0),
       }) as KategoriSewa
 
       setPaket(saved)
@@ -152,6 +154,7 @@ export default function PaketDetail({
         thumbnail_url: saved.thumbnail_url ?? '',
         include_listrik: saved.include_listrik,
         include_trashbag: saved.include_trashbag,
+        slot_tenant: String(saved.slot_tenant ?? 0),
       })
       setThumbnailFile(null)
       if (!paket) {
@@ -172,13 +175,15 @@ export default function PaketDetail({
   }
 
   function editPeriode(p: PeriodeHarga) {
-    const existing = hargaByKode.get(p.kode)
+    const fnb = hargaByKey.get(`${p.kode}|F&B`)
+    const nonfnb = hargaByKey.get(`${p.kode}|Non-F&B`)
     setPeriodForm({
       id: p.id,
       nama: p.nama,
       tanggal_mulai: p.tanggal_mulai,
       tanggal_selesai: p.tanggal_selesai,
-      harga: existing ? String(existing.harga) : '',
+      harga_fnb: fnb ? String(fnb.harga) : '',
+      harga_nonfnb: nonfnb ? String(nonfnb.harga) : '',
     })
   }
 
@@ -187,8 +192,10 @@ export default function PaketDetail({
     if (!periodForm.nama.trim()) { toast.error('Nama periode wajib diisi'); return }
     if (!periodForm.tanggal_mulai || !periodForm.tanggal_selesai) { toast.error('Tanggal wajib diisi'); return }
     if (periodForm.tanggal_selesai < periodForm.tanggal_mulai) { toast.error('Tanggal selesai harus setelah mulai'); return }
-    const harga = Number(periodForm.harga)
-    if (!periodForm.harga.trim() || !Number.isFinite(harga) || harga < 0) { toast.error('Harga wajib diisi'); return }
+    const hargaFnb = Number(periodForm.harga_fnb)
+    const hargaNonFnb = Number(periodForm.harga_nonfnb)
+    if (!periodForm.harga_fnb.trim() || !Number.isFinite(hargaFnb) || hargaFnb < 0) { toast.error('Harga F&B wajib diisi'); return }
+    if (!periodForm.harga_nonfnb.trim() || !Number.isFinite(hargaNonFnb) || hargaNonFnb < 0) { toast.error('Harga Non-F&B wajib diisi'); return }
     setSavingPeriode(true)
     try {
       const saved = await sendJSON('/api/master/periode', 'POST', {
@@ -197,15 +204,16 @@ export default function PaketDetail({
         tanggal_mulai: periodForm.tanggal_mulai,
         tanggal_selesai: periodForm.tanggal_selesai,
       }) as PeriodeHarga
+      const hargaPerJenis = { 'F&B': hargaFnb, 'Non-F&B': hargaNonFnb } as const
       for (const jenis of ['F&B', 'Non-F&B'] as const) {
         const existing = hargaDasar.find((h) => h.kategori_sewa_id === paket.id && h.periode === saved.kode && h.jenis_usaha === jenis)
-        if (existing && Number(existing.harga) === harga) continue
+        if (existing && Number(existing.harga) === hargaPerJenis[jenis]) continue
         await sendJSON('/api/master/harga', 'POST', {
           id: existing?.id,
           kategori_sewa_id: paket.id,
           jenis_usaha: jenis,
           periode: saved.kode,
-          harga,
+          harga: hargaPerJenis[jenis],
         })
       }
       await reloadHarga()
@@ -264,6 +272,27 @@ export default function PaketDetail({
       toast.error((e as Error).message)
     } finally {
       setSavingPilihan(false)
+    }
+  }
+
+  async function movePilihan(p: KategoriPilihan, arah: -1 | 1) {
+    if (!paket || readOnly) return
+    const index = paketPilihan.findIndex((item) => item.id === p.id)
+    const target = index + arah
+    if (index < 0 || target < 0 || target >= paketPilihan.length) return
+    const next = [...paketPilihan]
+    ;[next[index], next[target]] = [next[target], next[index]]
+    try {
+      await Promise.all(next.map((item, i) => sendJSON('/api/tenant/pilihan', 'POST', {
+        id: item.id,
+        kategori_sewa_id: paket.id,
+        nama: item.nama,
+        harga: Number(item.harga),
+        urutan: i,
+      })))
+      await reloadPilihan()
+    } catch (e) {
+      toast.error((e as Error).message)
     }
   }
 
@@ -403,6 +432,10 @@ export default function PaketDetail({
             <input disabled={readOnly} type="checkbox" checked={form.include_trashbag} onChange={(e) => setForm({ ...form, include_trashbag: e.target.checked })} />
             <span>Termasuk trashbag</span>
           </label>
+          <div className="w-32">
+            <label className={label}>Slot Tenant</label>
+            <input disabled={readOnly} type="number" min={0} className={input} placeholder="0 = tanpa batas" value={form.slot_tenant} onChange={(e) => setForm({ ...form, slot_tenant: e.target.value })} />
+          </div>
         </div>
         <div className="flex justify-end gap-2">
           {readOnly ? (
@@ -451,6 +484,12 @@ export default function PaketDetail({
                         {!readOnly && (
                           <td className="px-3 py-2">
                             <div className="flex gap-1">
+                              <button onClick={() => movePilihan(p, -1)} disabled={paketPilihan[0]?.id === p.id} className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-primary-600 disabled:opacity-30" title="Naikkan">
+                                <ArrowUp className="h-3.5 w-3.5" />
+                              </button>
+                              <button onClick={() => movePilihan(p, 1)} disabled={paketPilihan[paketPilihan.length - 1]?.id === p.id} className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-primary-600 disabled:opacity-30" title="Turunkan">
+                                <ArrowDown className="h-3.5 w-3.5" />
+                              </button>
                               <button onClick={() => editPilihan(p)} className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-primary-600" title="Edit">
                                 <Pencil className="h-3.5 w-3.5" />
                               </button>
@@ -485,7 +524,7 @@ export default function PaketDetail({
       <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm space-y-3">
         <div>
           <h2 className="font-semibold text-slate-900">Periode Harga</h2>
-          <p className="text-sm text-slate-500">Satu harga total per periode. Berlaku untuk F&B dan Non-F&B.</p>
+          <p className="text-sm text-slate-500">Harga per periode dibedakan untuk tenant F&B dan Non-F&B.</p>
         </div>
         {!paket ? (
           <p className="text-sm text-slate-400">Simpan informasi dasar terlebih dahulu untuk menambahkan periode harga.</p>
@@ -500,13 +539,15 @@ export default function PaketDetail({
                     <tr>
                       <th className="px-3 py-2">Nama</th>
                       <th className="px-3 py-2">Periode</th>
-                      <th className="px-3 py-2">Harga</th>
+                      <th className="px-3 py-2">F&B</th>
+                      <th className="px-3 py-2">Non-F&B</th>
                       {!readOnly && <th className="px-3 py-2">Aksi</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100/80">
                     {periods.map((p) => {
-                      const existing = hargaByKode.get(p.kode)
+                      const fnb = hargaByKey.get(`${p.kode}|F&B`)
+                      const nonfnb = hargaByKey.get(`${p.kode}|Non-F&B`)
                       return (
                         <tr key={p.id} className="hover:bg-slate-50">
                           <td className="px-3 py-2 font-medium">
@@ -515,7 +556,10 @@ export default function PaketDetail({
                           </td>
                           <td className="px-3 py-2 text-slate-500">{formatDate(p.tanggal_mulai)} – {formatDate(p.tanggal_selesai)}</td>
                           <td className="px-3 py-2 font-semibold text-primary-600">
-                            {existing ? formatRupiah(existing.harga) : <span className="text-slate-400">Belum diatur</span>}
+                            {fnb ? formatRupiah(fnb.harga) : <span className="text-slate-400">Belum diatur</span>}
+                          </td>
+                          <td className="px-3 py-2 font-semibold text-primary-600">
+                            {nonfnb ? formatRupiah(nonfnb.harga) : <span className="text-slate-400">Belum diatur</span>}
                           </td>
                           {!readOnly && (
                             <td className="px-3 py-2">
@@ -537,11 +581,12 @@ export default function PaketDetail({
               </div>
             )}
             {!readOnly && (
-              <div className="grid gap-3 border-t border-slate-100 pt-3 md:grid-cols-5 md:items-end">
+              <div className="grid gap-3 border-t border-slate-100 pt-3 md:grid-cols-6 md:items-end">
                 <div><label className={label}>Nama</label><input className={input} value={periodForm.nama} onChange={(e) => setPeriodForm({ ...periodForm, nama: e.target.value })} placeholder="Early Bird" /></div>
                 <div><label className={label}>Mulai</label><input type="date" className={input} value={periodForm.tanggal_mulai} onChange={(e) => setPeriodForm({ ...periodForm, tanggal_mulai: e.target.value })} /></div>
                 <div><label className={label}>Selesai</label><input type="date" className={input} value={periodForm.tanggal_selesai} onChange={(e) => setPeriodForm({ ...periodForm, tanggal_selesai: e.target.value })} /></div>
-                <div><label className={label}>Harga (Rp)</label><input type="number" min={0} className={input} placeholder="cth: 500000" value={periodForm.harga} onChange={(e) => setPeriodForm({ ...periodForm, harga: e.target.value })} /></div>
+                <div><label className={label}>Harga F&B</label><input type="number" min={0} className={input} placeholder="cth: 500000" value={periodForm.harga_fnb} onChange={(e) => setPeriodForm({ ...periodForm, harga_fnb: e.target.value })} /></div>
+                <div><label className={label}>Harga Non-F&B</label><input type="number" min={0} className={input} placeholder="cth: 400000" value={periodForm.harga_nonfnb} onChange={(e) => setPeriodForm({ ...periodForm, harga_nonfnb: e.target.value })} /></div>
                 <div className="flex gap-2">
                   <button onClick={simpanPeriode} disabled={savingPeriode} className="flex-1 rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
                     {savingPeriode ? 'Menyimpan...' : periodForm.id ? 'Simpan' : '+ Tambah Periode'}

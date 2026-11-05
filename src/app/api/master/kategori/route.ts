@@ -21,6 +21,7 @@ export async function POST(request: Request) {
       thumbnail_url: body.thumbnail_url ? String(body.thumbnail_url) : null,
       include_listrik: Boolean(body.include_listrik),
       include_trashbag: Boolean(body.include_trashbag),
+      slot_tenant: Math.max(0, Number(body.slot_tenant) || 0),
     }
 
     if (body.id) {

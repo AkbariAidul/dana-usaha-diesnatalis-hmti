@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     if (tipe === 'tenant') {
       const { data: tenant } = await supabaseAdmin
         .from('tenants')
-        .select('id,harga_akhir,sudah_dibayar')
+        .select('id,harga_akhir,dp_wajib,sudah_dibayar')
         .eq('kode_stand', kode)
         .maybeSingle()
       if (!tenant) {
@@ -43,6 +43,9 @@ export async function POST(request: Request) {
       const sisa = Number(tenant.harga_akhir) - totalValid
       if (nominal > sisa + 0.01) {
         return NextResponse.json({ error: 'Nominal melebihi sisa pembayaran' }, { status: 400 })
+      }
+      if (totalValid + nominal < Math.ceil(Number(tenant.harga_akhir) / 2) - 0.01) {
+        return NextResponse.json({ error: 'Pembayaran pertama minimal 50% dari total' }, { status: 400 })
       }
 
       const { count } = await supabaseAdmin

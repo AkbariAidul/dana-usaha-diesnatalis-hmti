@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { PublicBreadcrumb, PublicNavbar } from '@/components/public-navbar'
+import { PoStepper } from '@/components/po-stepper'
 import { getJSON, sendJSON } from '@/app/dankelola/api'
 import { buatQrisDinamis } from '@/lib/qris'
 import { formatRupiah } from '@/lib/utils'
@@ -226,6 +227,7 @@ export default function BeliTiketPublik() {
             { label: langkahBreadcrumb[step - 1] ?? 'Beli Tiket' },
           ]}
         />
+        <PoStepper steps={[{ label: 'Pilih Tiket' }, { label: 'Pembayaran' }, { label: 'QR Tiket' }]} currentStep={step} />
         {step === 1 && (
           <>
             <div className="grid items-start gap-8 lg:grid-cols-[400px_minmax(0,1fr)] xl:grid-cols-[460px_minmax(0,1fr)]">

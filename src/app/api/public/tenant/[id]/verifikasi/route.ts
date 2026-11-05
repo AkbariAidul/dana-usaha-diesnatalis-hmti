@@ -45,6 +45,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           periode_daftar: data.periode_daftar,
           harga_akhir: Number(data.harga_akhir),
           dp_wajib: Number(data.dp_wajib),
+          jumlah_tenant: Number(data.jumlah_tenant ?? 1),
           sudah_dibayar: 0,
           tgl_daftar: data.tgl_daftar,
           tgl_acara: data.tgl_acara,
@@ -68,24 +69,30 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           .eq('jenis', 'DP')
           .maybeSingle()
 
+        const nominalMasuk = Math.max(Number(data.dp_wajib), Number(data.nominal_bayar) || Number(data.dp_wajib))
         if (!dp) {
           await createPembayaran({
             tenant_id: tenantId,
             tanggal_bayar: todayISO(),
-            jenis: 'DP',
-            nominal: Number(data.dp_wajib),
+            jenis: nominalMasuk >= Number(data.harga_akhir) ? 'Pelunasan' : 'DP',
+            nominal: nominalMasuk,
             metode: 'QRIS',
             no_ref: null,
             bukti_url: data.bukti_url,
             dicatat_oleh: 'Admin',
-            keterangan: 'DP dari pendaftaran publik',
+            keterangan: data.pembayaran_tipe === 'lunas' ? 'Pembayaran lunas dari pendaftaran publik' : 'DP dari pendaftaran publik',
             validated: true,
           })
         }
 
         await supabaseAdmin
+          .from('tenants')
+          .update({ sudah_dibayar: nominalMasuk })
+          .eq('id', tenantId)
+
+        await supabaseAdmin
           .from('pendaftaran_tenant_pub')
-          .update({ sudah_dibayar: Number(data.dp_wajib) })
+          .update({ sudah_dibayar: nominalMasuk })
           .eq('id', id)
       }
     }

@@ -19,12 +19,17 @@ export async function POST(request: Request) {
     const harga = Number(body.harga ?? 0)
     if (!Number.isFinite(harga) || harga < 0) throw new Error('Harga tidak valid')
 
+    const daftar = await getKategoriPilihan(body.kategori_sewa_id)
+    const urutan = body.urutan === undefined
+      ? daftar.reduce((max, item) => Math.max(max, Number(item.urutan) || 0), -1) + 1
+      : Number(body.urutan)
+
     const data = await upsertKategoriPilihan({
       id: body.id,
       kategori_sewa_id: body.kategori_sewa_id,
       nama,
       harga,
-      urutan: Number(body.urutan ?? 0),
+      urutan,
     })
     await createAuditLog({
       aksi: body.id ? 'UPDATE_TENANT_PILIHAN' : 'CREATE_TENANT_PILIHAN',

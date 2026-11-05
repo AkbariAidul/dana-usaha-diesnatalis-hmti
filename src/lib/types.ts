@@ -6,6 +6,7 @@ export interface KategoriSewa {
   thumbnail_url: string | null
   include_listrik: boolean
   include_trashbag: boolean
+  slot_tenant: number
 }
 
 export interface KategoriPilihan {
@@ -83,6 +84,7 @@ export interface Tenant {
   harga_akhir: number
   dp_wajib: number
   sudah_dibayar: number
+  jumlah_tenant: number
   tgl_daftar: string
   tgl_dp: string | null
   tgl_acara: string | null

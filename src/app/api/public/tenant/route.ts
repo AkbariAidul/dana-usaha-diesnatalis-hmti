@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { getPeriodeHarga, getHargaDasar, getKategoriSewa, getAcara } from '@/lib/queries'
+import { getPeriodeHarga, getHargaDasar, getKategoriSewa, getAcara, getKategoriBundleDiscount } from '@/lib/queries'
 import { periodeDariTanggal, type TenantAddon } from '@/lib/types'
 import { getPeralatanMeta } from '@/lib/peralatan'
 import { todayISO } from '@/lib/utils'
@@ -24,22 +24,40 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { pilihan: pilihanBody, ...dataBody } = body
     const tglDaftar = todayISO()
-    const [periods, hargaDasar, kategori, acara] = await Promise.all([
+    const [periods, hargaDasar, kategori, acara, bundles] = await Promise.all([
       getPeriodeHarga(),
       getHargaDasar(),
       getKategoriSewa(),
       getAcara(),
+      getKategoriBundleDiscount(),
     ])
     const periode = periodeDariTanggal(tglDaftar, periods)
     if (!periode) {
       return NextResponse.json({ error: 'Tanggal daftar di luar periode open tenant' }, { status: 400 })
     }
-    const jenisUsaha = 'F&B'
+    const jenisUsaha = body.jenis_usaha === 'Non-F&B' ? 'Non-F&B' : 'F&B'
+    const jumlahTenant = Math.max(1, Math.min(99, Number(body.jumlah_tenant) || 1))
     const hargaDasarItem = hargaDasar.find(
       (h) => h.kategori_sewa_id === body.kategori_sewa_id && h.jenis_usaha === jenisUsaha && h.periode === periode
     )
     if (!hargaDasarItem) {
-      return NextResponse.json({ error: 'Harga untuk kategori dan periode ini belum diatur' }, { status: 400 })
+      return NextResponse.json({ error: 'Harga untuk kategori, jenis usaha, dan periode ini belum diatur' }, { status: 400 })
+    }
+    const kategoriItem = kategori.find((k) => k.id === body.kategori_sewa_id)
+    if (!kategoriItem) {
+      return NextResponse.json({ error: 'Kategori tidak ditemukan' }, { status: 400 })
+    }
+    const slot = Number(kategoriItem.slot_tenant) || 0
+    if (slot > 0) {
+      const { data: terpakai } = await supabaseAdmin
+        .from('pendaftaran_tenant_pub')
+        .select('jumlah_tenant')
+        .eq('kategori_sewa_id', body.kategori_sewa_id)
+        .not('status', 'in', '("ditolak","batal")')
+      const used = (terpakai ?? []).reduce((sum: number, row: { jumlah_tenant?: number }) => sum + Number(row.jumlah_tenant ?? 1), 0)
+      if (used + jumlahTenant > slot) {
+        return NextResponse.json({ error: `Slot kategori tersisa ${Math.max(0, slot - used)}` }, { status: 400 })
+      }
     }
 
     const addonReq = Array.isArray(body.addon) ? body.addon.slice(0, 20) : []
@@ -67,32 +85,48 @@ export async function POST(request: Request) {
         })
         .filter((a: TenantAddon | null): a is TenantAddon => a !== null)
     }
+    const addonLainTotal = addon.reduce((sum, a) => sum + a.subtotal, 0)
     const pilihanReq = Array.isArray(pilihanBody)
-      ? Array.from(new Set(pilihanBody.map(String))).slice(0, 20)
+      ? pilihanBody
+          .map((p: { id?: string; qty?: number }) => ({ id: String(p.id ?? ''), qty: Math.max(1, Math.min(99, Number(p.qty) || 1)) }))
+          .filter((p: { id: string }) => p.id)
+          .slice(0, 20)
       : []
+    let pilihanPerTenant = 0
     if (pilihanReq.length > 0) {
+      const ids = pilihanReq.map((p: { id: string }) => p.id)
       const { data: items } = await supabaseAdmin
         .from('kategori_pilihan')
         .select('id, nama, harga, kategori_sewa_id')
-        .in('id', pilihanReq)
-      const pilihanAddon = (items ?? [])
-        .filter((item: { kategori_sewa_id: string }) => item.kategori_sewa_id === body.kategori_sewa_id)
-        .map((item: { id: string; nama: string; harga: number }) => {
+        .in('id', ids)
+      const byId = new Map((items ?? []).map((item: { id: string; nama: string; harga: number; kategori_sewa_id: string }) => [item.id, item]))
+      const pilihanAddon = pilihanReq
+        .map((req: { id: string; qty: number }) => {
+          const item = byId.get(req.id)
+          if (!item || item.kategori_sewa_id !== body.kategori_sewa_id) return null
           const hargaSatuan = Number(item.harga)
+          const subtotal = hargaSatuan * req.qty * jumlahTenant
+          pilihanPerTenant += hargaSatuan * req.qty
           return {
             id: item.id,
             nama: item.nama,
-            qty: 1,
+            qty: req.qty,
             harga_satuan: hargaSatuan,
-            subtotal: hargaSatuan,
+            subtotal,
           }
         })
+        .filter((a: TenantAddon | null): a is TenantAddon => a !== null)
       addon = [...addon, ...pilihanAddon]
     }
-    const addonTotal = addon.reduce((sum, a) => sum + a.subtotal, 0)
-    const kategoriItem = kategori.find((k) => k.id === body.kategori_sewa_id)
-    const lokasi = kategoriItem?.kode === 'KT-02' ? 'Strategis 1' : 'Reguler'
-    const harga = Math.round(Number(hargaDasarItem.harga)) + addonTotal
+    const lokasi = kategoriItem.kode === 'KT-02' ? 'Strategis 1' : 'Reguler'
+    const subtotalPaket = (Number(hargaDasarItem.harga) + pilihanPerTenant) * jumlahTenant
+    const bundle = [...bundles]
+      .filter((b) => b.kategori_sewa_id === body.kategori_sewa_id && jumlahTenant >= Number(b.jumlah_min))
+      .sort((a, b) => Number(b.jumlah_min) - Number(a.jumlah_min))[0]
+    const diskon = bundle
+      ? Math.min(subtotalPaket, Number(bundle.diskon_nominal) + subtotalPaket * (Number(bundle.diskon_persen) / 100))
+      : 0
+    const harga = Math.max(0, Math.round(subtotalPaket - diskon) + addonLainTotal)
 
     const existing = await supabaseAdmin.from('pendaftaran_tenant_pub').select('kode_pendaftaran')
     const maxKode = (existing.data || []).reduce((m: number, t: { kode_pendaftaran: string }) => {
@@ -103,6 +137,7 @@ export async function POST(request: Request) {
     const payload = {
       ...dataBody,
       jenis_usaha: jenisUsaha,
+      jumlah_tenant: jumlahTenant,
       asal: 'Internal Kampus',
       lokasi,
       addon,
