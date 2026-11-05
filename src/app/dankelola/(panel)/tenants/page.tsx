@@ -2,9 +2,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import type { Tenant, KategoriSewa, HargaDasar, FaktorHarga, PeriodeHarga } from '@/lib/types'
+import type { Tenant, KategoriSewa, HargaDasar, PeriodeHarga } from '@/lib/types'
 import { formatRupiah, formatDate } from '@/lib/utils'
-import { STATUS_LABEL, STATUS_COLOR, hitungHarga, periodeDariTanggal, periodeLabel } from '@/lib/types'
+import { STATUS_LABEL, STATUS_COLOR, periodeDariTanggal, periodeLabel } from '@/lib/types'
+import { kategoriTenant, lokasiUntukKategori } from '@/lib/tenant'
 import { getJSON, sendJSON } from '../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { TableSkeleton } from '../ui'
@@ -15,8 +16,6 @@ const today = new Date().toISOString().slice(0, 10)
 const emptyForm = {
   nama_usaha: '', kontak: '', email: '',
   kategori_sewa_id: '', jenis_usaha: 'F&B' as 'F&B' | 'Non-F&B',
-  asal: 'Internal Kampus' as 'Internal Kampus' | 'Eksternal',
-  lokasi: 'Reguler' as 'Reguler' | 'Strategis 1' | 'Strategis 2',
   tgl_daftar: today,
   tgl_acara: '', keterangan: '',
 }
@@ -26,7 +25,6 @@ export default function TenantsPage() {
   const [tenants, setTenants] = useState<Tenant[]>([])
   const [kategori, setKategori] = useState<KategoriSewa[]>([])
   const [hargaDasar, setHargaDasar] = useState<HargaDasar[]>([])
-  const [faktor, setFaktor] = useState<FaktorHarga[]>([])
   const [periods, setPeriods] = useState<PeriodeHarga[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -37,9 +35,9 @@ export default function TenantsPage() {
   async function load() {
     const [t, m] = await Promise.all([
       getJSON<Tenant[]>('/api/tenants'),
-      getJSON<{ kategori: KategoriSewa[]; hargaDasar: HargaDasar[]; faktor: FaktorHarga[]; periode: PeriodeHarga[] }>('/api/master'),
+      getJSON<{ kategori: KategoriSewa[]; hargaDasar: HargaDasar[]; periode: PeriodeHarga[] }>('/api/master'),
     ])
-    setTenants(t); setKategori(m.kategori); setHargaDasar(m.hargaDasar); setFaktor(m.faktor); setPeriods(m.periode || [])
+    setTenants(t); setKategori(kategoriTenant(m.kategori || [])); setHargaDasar(m.hargaDasar); setPeriods(m.periode || [])
   }
 
   useEffect(() => {
@@ -52,21 +50,22 @@ export default function TenantsPage() {
   const harga = useMemo(() => {
     const hd = hargaDasar.find(
       (h) => h.kategori_sewa_id === form.kategori_sewa_id && h.jenis_usaha === form.jenis_usaha && h.periode === periode
-    )
-    if (!hd) return 0
-    const fa = faktor.find((f) => f.tipe === 'asal' && f.nilai === form.asal)?.multiplier ?? 1
-    const fl = faktor.find((f) => f.tipe === 'lokasi' && f.nilai === form.lokasi)?.multiplier ?? 1
-    return hitungHarga(hd.harga, fa, fl)
-  }, [form, hargaDasar, faktor, periode])
+    ) ?? hargaDasar.find((h) => h.kategori_sewa_id === form.kategori_sewa_id && h.periode === periode)
+    return Number(hd?.harga ?? 0)
+  }, [form.kategori_sewa_id, form.jenis_usaha, hargaDasar, periode])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!periode) { toast.error('Tanggal daftar di luar periode open tenant'); return }
     setSaving(true)
     try {
+      const selectedKategori = kategori.find((k) => k.id === form.kategori_sewa_id)
       await sendJSON('/api/tenants', 'POST', {
         ...form,
         email: form.email || null,
+        asal: 'Internal Kampus',
+        lokasi: lokasiUntukKategori(selectedKategori?.kode),
+        addon: [],
         periode_daftar: periode,
         tgl_dp: null,
         tgl_acara: form.tgl_acara || null,
@@ -137,18 +136,6 @@ export default function TenantsPage() {
             <label className={label}>Jenis Usaha</label>
             <select className={input} value={form.jenis_usaha} onChange={(e) => setForm({ ...form, jenis_usaha: e.target.value as 'F&B' | 'Non-F&B' })}>
               <option value="F&B">F&B</option><option value="Non-F&B">Non-F&B</option>
-            </select>
-          </div>
-          <div>
-            <label className={label}>Asal</label>
-            <select className={input} value={form.asal} onChange={(e) => setForm({ ...form, asal: e.target.value as typeof form.asal })}>
-              <option>Internal Kampus</option><option>Eksternal</option>
-            </select>
-          </div>
-          <div>
-            <label className={label}>Lokasi</label>
-            <select className={input} value={form.lokasi} onChange={(e) => setForm({ ...form, lokasi: e.target.value as typeof form.lokasi })}>
-              <option>Reguler</option><option>Strategis 1</option><option>Strategis 2</option>
             </select>
           </div>
           <div><label className={label}>Tanggal Daftar</label><input type="date" required className={input} value={form.tgl_daftar} onChange={(e) => setForm({ ...form, tgl_daftar: e.target.value })} /></div>

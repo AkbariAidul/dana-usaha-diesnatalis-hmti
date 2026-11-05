@@ -4,10 +4,11 @@ import { getPeralatanMeta, savePeralatanMeta, getKomposisiPeralatan, saveKomposi
 
 type Item = { id: string; nama: string; jenis: string; jumlah: number; status: string } & Record<string, unknown>
 
-function withMeta(item: Item, meta: Record<string, { harga_satuan: number; vendor: string }>) {
+function withMeta(item: Item, meta: Record<string, { harga_satuan: number; harga_sewa?: number; vendor: string }>) {
   return {
     ...item,
     harga_satuan: Number(meta[item.id]?.harga_satuan ?? 0),
+    harga_sewa: Number(meta[item.id]?.harga_sewa ?? 0),
     vendor: meta[item.id]?.vendor ?? '',
   }
 }
@@ -48,7 +49,11 @@ export async function POST(request: Request) {
       item = data as Item
     }
     const meta = await getPeralatanMeta()
-    meta[item.id] = { harga_satuan: Number(body.harga_satuan) || 0, vendor: body.vendor || '' }
+    meta[item.id] = {
+      harga_satuan: Number(body.harga_satuan) || 0,
+      harga_sewa: Number(body.harga_sewa) || 0,
+      vendor: body.vendor || '',
+    }
     await savePeralatanMeta(meta)
     return NextResponse.json(withMeta(item, meta), { status: 201 })
   } catch (err: unknown) {
@@ -69,9 +74,10 @@ export async function PATCH(request: Request) {
     if (error) throw error
 
     const meta = await getPeralatanMeta()
-    if (body.harga_satuan !== undefined || body.vendor !== undefined) {
+    if (body.harga_satuan !== undefined || body.harga_sewa !== undefined || body.vendor !== undefined) {
       meta[body.id] = {
         harga_satuan: Number(body.harga_satuan ?? meta[body.id]?.harga_satuan ?? 0),
+        harga_sewa: Number(body.harga_sewa ?? meta[body.id]?.harga_sewa ?? 0),
         vendor: body.vendor ?? meta[body.id]?.vendor ?? '',
       }
       await savePeralatanMeta(meta)

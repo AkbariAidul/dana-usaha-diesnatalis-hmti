@@ -8,12 +8,13 @@ import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
-import type { KategoriSewa, HargaDasar, FaktorHarga, PeriodeHarga, Peralatan, KomposisiPeralatan } from '@/lib/types'
+import type { KategoriSewa, HargaDasar, PeriodeHarga, Peralatan, KomposisiPeralatan } from '@/lib/types'
 import { periodeDariTanggal } from '@/lib/types'
+import { kategoriTenant } from '@/lib/tenant'
 import { formatRupiah, formatDate } from '@/lib/utils'
 import { useConfirm } from '@/components/confirm-dialog'
 
-type Master = { kategori: KategoriSewa[]; hargaDasar: HargaDasar[]; faktor: FaktorHarga[]; periode: PeriodeHarga[] }
+type Master = { kategori: KategoriSewa[]; hargaDasar: HargaDasar[]; periode: PeriodeHarga[] }
 
 const TIPE = ['F&B', 'Non-F&B'] as const
 const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
@@ -23,7 +24,6 @@ export default function HargaPage() {
   const confirm = useConfirm()
   const [kategori, setKategori] = useState<KategoriSewa[]>([])
   const [hargaDasar, setHargaDasar] = useState<HargaDasar[]>([])
-  const [faktor, setFaktor] = useState<FaktorHarga[]>([])
   const [periods, setPeriods] = useState<PeriodeHarga[]>([])
   const [peralatan, setPeralatan] = useState<Peralatan[]>([])
   const [komposisi, setKomposisi] = useState<KomposisiPeralatan>({})
@@ -57,9 +57,8 @@ export default function HargaPage() {
     ])
     if (!force && dirtyRef.current) return
     const list = m.periode || []
-    setKategori(m.kategori || [])
+    setKategori(kategoriTenant(m.kategori || []))
     setHargaDasar(m.hargaDasar || [])
-    setFaktor(m.faktor || [])
     setPeriods(list)
     setPeralatan(items || [])
     setKomposisi(komp || {})
@@ -177,16 +176,15 @@ export default function HargaPage() {
     if (!selected) return
     const rows: Array<Partial<HargaDasar>> = []
     for (const k of kategori) {
+      const value = Number(edits[k.id])
+      if (edits[k.id] === undefined || edits[k.id].trim() === '') continue
+      if (!Number.isFinite(value) || value < 0) {
+        toast.error('Harga tidak valid')
+        return
+      }
       for (const jenis of TIPE) {
-        const key = `${k.id}|${jenis}`
-        if (edits[key] === undefined || edits[key].trim() === '') continue
-        const value = Number(edits[key])
-        if (!Number.isFinite(value) || value < 0) {
-          toast.error('Harga tidak valid')
-          return
-        }
-        const existing = hargaByKey.get(key)
-        if (existing && existing.harga === value) continue
+        const existing = hargaByKey.get(`${k.id}|${jenis}`)
+        if (existing && Number(existing.harga) === value) continue
         rows.push({ id: existing?.id, kategori_sewa_id: k.id, jenis_usaha: jenis, periode: selected.kode, harga: value })
       }
     }
@@ -297,8 +295,11 @@ export default function HargaPage() {
       <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="font-semibold">Harga per Kategori</h2>
-            <p className="text-sm text-slate-500">{selected ? `${selected.nama} · ${formatDate(selected.tanggal_mulai)} – ${formatDate(selected.tanggal_selesai)}` : 'Pilih periode terlebih dahulu'}</p>
+            <h2 className="font-semibold">Harga Sewa per Kategori</h2>
+            <p className="text-sm text-slate-500">
+              {selected ? `${selected.nama} · ${formatDate(selected.tanggal_mulai)} – ${formatDate(selected.tanggal_selesai)}` : 'Pilih periode terlebih dahulu'}
+            </p>
+            <p className="text-xs text-slate-400">Satu harga total per kategori. Harga ini dipakai untuk F&B dan Non-F&B.</p>
           </div>
           <div className="flex items-center gap-2">
             <select className={`${input} w-auto`} value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
@@ -314,36 +315,33 @@ export default function HargaPage() {
             <thead className="bg-slate-50">
               <tr>
                 <th className="px-3 py-2 text-left">Kategori</th>
-                {TIPE.map((t) => <th key={t} className="px-3 py-2 text-right">{t}</th>)}
+                <th className="px-3 py-2 text-right">Total Harga Sewa</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100/80">
-              {kategori.map((k) => (
-                <tr key={k.id}>
-                  <td className="px-3 py-2">
-                    <p className="font-medium">{k.nama}</p>
-                    <p className="font-mono text-xs text-slate-400">{k.kode}</p>
-                  </td>
-                  {TIPE.map((jenis) => {
-                    const key = `${k.id}|${jenis}`
-                    const existing = hargaByKey.get(key)
-                    return (
-                      <td key={jenis} className="px-3 py-2">
-                        <input
-                          type="number"
-                          min={0}
-                          disabled={!selected}
-                          className={`${input} text-right disabled:bg-slate-50`}
-                          placeholder="Belum diatur"
-                          value={edits[key] ?? (existing ? String(existing.harga) : '')}
-                          onChange={(e) => setEdits({ ...edits, [key]: e.target.value })}
-                        />
-                        {existing && <p className="mt-1 text-right text-xs text-slate-400">{formatRupiah(existing.harga)}</p>}
-                      </td>
-                    )
-                  })}
-                </tr>
-              ))}
+              {kategori.map((k) => {
+                const existing = hargaByKey.get(`${k.id}|F&B`) ?? hargaByKey.get(`${k.id}|Non-F&B`)
+                return (
+                  <tr key={k.id}>
+                    <td className="px-3 py-2">
+                      <p className="font-medium">{k.nama}</p>
+                      <p className="font-mono text-xs text-slate-400">{k.kode}</p>
+                    </td>
+                    <td className="px-3 py-2">
+                      <input
+                        type="number"
+                        min={0}
+                        disabled={!selected}
+                        className={`${input} text-right disabled:bg-slate-50`}
+                        placeholder="Belum diatur"
+                        value={edits[k.id] ?? (existing ? String(existing.harga) : '')}
+                        onChange={(e) => setEdits({ ...edits, [k.id]: e.target.value })}
+                      />
+                      {existing && <p className="mt-1 text-right text-xs text-slate-400">{formatRupiah(existing.harga)}</p>}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -425,13 +423,15 @@ export default function HargaPage() {
               <tr>
                 <th className="px-3 py-2 text-left">Kategori</th>
                 <th className="px-3 py-2 text-right">Modal Paket</th>
-                {TIPE.map((t) => <th key={t} className="px-3 py-2 text-right">{t}</th>)}
-                {TIPE.map((t) => <th key={`${t}-laba`} className="px-3 py-2 text-right">Untung {t}</th>)}
+                <th className="px-3 py-2 text-right">Harga Sewa</th>
+                <th className="px-3 py-2 text-right">Untung</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100/80">
               {kategori.map((k) => {
                 const modal = modalByKategori.get(k.id) || 0
+                const harga = hargaByKey.get(`${k.id}|F&B`) ?? hargaByKey.get(`${k.id}|Non-F&B`)
+                const laba = (harga?.harga ?? 0) - modal
                 return (
                   <tr key={k.id}>
                     <td className="px-3 py-2">
@@ -439,20 +439,10 @@ export default function HargaPage() {
                       <p className="font-mono text-xs text-slate-400">{k.kode}</p>
                     </td>
                     <td className="px-3 py-2 text-right">{formatRupiah(modal)}</td>
-                    {TIPE.map((jenis) => {
-                      const harga = hargaByKey.get(`${k.id}|${jenis}`)
-                      return <td key={jenis} className="px-3 py-2 text-right">{harga ? formatRupiah(harga.harga) : <span className="text-slate-400">-</span>}</td>
-                    })}
-                    {TIPE.map((jenis) => {
-                      const harga = hargaByKey.get(`${k.id}|${jenis}`)
-                      if (!harga) return <td key={`${jenis}-laba`} className="px-3 py-2 text-right text-slate-400">-</td>
-                      const laba = harga.harga - modal
-                      return (
-                        <td key={`${jenis}-laba`} className={`px-3 py-2 text-right font-semibold ${laba >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {formatRupiah(laba)}
-                        </td>
-                      )
-                    })}
+                    <td className="px-3 py-2 text-right">{harga ? formatRupiah(harga.harga) : <span className="text-slate-400">-</span>}</td>
+                    <td className={`px-3 py-2 text-right font-semibold ${!harga ? 'text-slate-400' : laba >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {harga ? formatRupiah(laba) : '-'}
+                    </td>
                   </tr>
                 )
               })}
@@ -481,31 +471,6 @@ export default function HargaPage() {
                   <td className="px-3 py-2">{k.nama}</td>
                   <td className="px-3 py-2">{k.include_listrik ? '✓' : '-'}</td>
                   <td className="px-3 py-2">{k.include_trashbag ? '✓' : '-'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-        <h2 className="font-semibold mb-4">Faktor Penyesuaian Harga</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="px-3 py-2 text-left">Tipe</th>
-                <th className="px-3 py-2 text-left">Nilai</th>
-                <th className="px-3 py-2 text-right">Multiplier</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100/80">
-              {faktor.length === 0 && <tr><td colSpan={3} className="px-3 py-6 text-center text-slate-400">Belum ada faktor harga.</td></tr>}
-              {faktor.map((f) => (
-                <tr key={f.id}>
-                  <td className="px-3 py-2 capitalize">{f.tipe}</td>
-                  <td className="px-3 py-2">{f.nilai}</td>
-                  <td className="px-3 py-2 text-right font-mono">{f.multiplier}x</td>
                 </tr>
               ))}
             </tbody>

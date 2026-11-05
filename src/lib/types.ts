@@ -37,10 +37,19 @@ export interface Peralatan {
   jumlah: number
   status: 'tersedia' | 'dipinjam' | 'rusak'
   harga_satuan: number
+  harga_sewa?: number
   vendor: string
 }
 
 export type KomposisiPeralatan = Record<string, Record<string, number>>
+
+export interface TenantAddon {
+  id: string
+  nama: string
+  qty: number
+  harga_satuan: number
+  subtotal: number
+}
 
 export interface Tenant {
   id: string
@@ -61,6 +70,7 @@ export interface Tenant {
   tgl_acara: string | null
   status: 'daftar' | 'dp' | 'cicil' | 'lunas' | 'batal' | 'menunggak'
   keterangan: string | null
+  addon?: TenantAddon[] | null
   kategori_sewa?: { kode: string; nama: string }
 }
 

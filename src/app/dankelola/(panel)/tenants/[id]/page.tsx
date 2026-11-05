@@ -109,7 +109,6 @@ export default function TenantDetailPage() {
     ['Email', tenant.email ?? '-'],
     ['Kategori', tenant.kategori_sewa?.nama ?? '-'],
     ['Jenis Usaha', tenant.jenis_usaha],
-    ['Asal', tenant.asal],
     ['Lokasi', tenant.lokasi],
     ['Periode', periodeLabel(tenant.periode_daftar, periods)],
     ['Harga Akhir', formatRupiah(tenant.harga_akhir)],
@@ -119,6 +118,9 @@ export default function TenantDetailPage() {
     ['Tgl DP', tenant.tgl_dp ? formatDate(tenant.tgl_dp) : '-'],
     ['Tgl Acara', tenant.tgl_acara ? formatDate(tenant.tgl_acara) : '-'],
   ]
+  if (tenant.addon?.length) {
+    info.push(['Add-on', tenant.addon.map((a) => `${a.nama} x${a.qty}`).join(', ')])
+  }
 
   const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10 text-sm'
   const label = 'block text-sm font-medium mb-1'

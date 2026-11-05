@@ -14,7 +14,7 @@ import { useConfirm } from '@/components/confirm-dialog'
 
 const JENIS = ['Tenda', 'Meja', 'Kursi', 'Lilin', 'Generator', 'Sound', 'Lainnya']
 const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
-const emptyForm = { id: '', nama: '', jenis: 'Tenda', jumlah: 1, harga_satuan: 0, vendor: '' }
+const emptyForm = { id: '', nama: '', jenis: 'Tenda', jumlah: 1, harga_satuan: 0, harga_sewa: 0, vendor: '' }
 
 export default function PeralatanPage() {
   const confirm = useConfirm()
@@ -41,7 +41,7 @@ export default function PeralatanPage() {
 
   function bukaForm(item?: Peralatan) {
     setForm(item
-      ? { id: item.id, nama: item.nama, jenis: item.jenis, jumlah: item.jumlah, harga_satuan: item.harga_satuan, vendor: item.vendor }
+      ? { id: item.id, nama: item.nama, jenis: item.jenis, jumlah: item.jumlah, harga_satuan: item.harga_satuan, harga_sewa: item.harga_sewa ?? 0, vendor: item.vendor }
       : emptyForm)
     setShowForm(true)
   }
@@ -96,7 +96,7 @@ export default function PeralatanPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Sewa Vendor</h1>
-          <p className="text-sm text-slate-500">Barang yang disewa beserta jumlah dan harga sewanya.</p>
+          <p className="text-sm text-slate-500">Barang sewa vendor. Isi harga add-on tenant untuk barang yang bisa dipilih calon tenant.</p>
         </div>
         <button onClick={() => bukaForm()} className="bg-primary-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-primary-700">+ Tambah Barang</button>
       </div>
@@ -139,8 +139,12 @@ export default function PeralatanPage() {
               <input type="number" min={1} placeholder="cth: 5" className={input} value={form.jumlah || ''} onChange={e => setForm({ ...form, jumlah: Number(e.target.value) })} />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">Harga Sewa / Unit</label>
+              <label className="mb-1 block text-sm font-medium">Harga Sewa Vendor / Unit</label>
               <input type="number" min={0} placeholder="cth: 150000" className={input} value={form.harga_satuan || ''} onChange={e => setForm({ ...form, harga_satuan: Number(e.target.value) })} />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">Harga Add-on Tenant / Unit</label>
+              <input type="number" min={0} placeholder="0 = tidak dijual" className={input} value={form.harga_sewa || ''} onChange={e => setForm({ ...form, harga_sewa: Number(e.target.value) })} />
             </div>
           </div>
           <div className="mt-4 flex justify-end gap-2">
@@ -159,13 +163,14 @@ export default function PeralatanPage() {
               <th className="px-3 py-2">Barang</th>
               <th className="px-3 py-2">Jenis</th>
               <th className="px-3 py-2 text-right">Jumlah</th>
-              <th className="px-3 py-2 text-right">Harga / Unit</th>
-              <th className="px-3 py-2 text-right">Total</th>
+              <th className="px-3 py-2 text-right">Harga Vendor / Unit</th>
+              <th className="px-3 py-2 text-right">Add-on Tenant / Unit</th>
+              <th className="px-3 py-2 text-right">Total Modal</th>
               <th className="px-3 py-2"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100/80">
-            {items.length === 0 && <tr><td colSpan={6} className="px-3 py-6 text-center text-slate-400">Belum ada barang sewa.</td></tr>}
+            {items.length === 0 && <tr><td colSpan={7} className="px-3 py-6 text-center text-slate-400">Belum ada barang sewa.</td></tr>}
             {items.map((item) => (
               <tr key={item.id} className="hover:bg-slate-50">
                 <td className="px-3 py-2">
@@ -175,6 +180,7 @@ export default function PeralatanPage() {
                 <td className="px-3 py-2">{item.jenis}</td>
                 <td className="px-3 py-2 text-right">{item.jumlah}</td>
                 <td className="px-3 py-2 text-right">{formatRupiah(item.harga_satuan)}</td>
+                <td className="px-3 py-2 text-right">{item.harga_sewa ? formatRupiah(item.harga_sewa) : '-'}</td>
                 <td className="px-3 py-2 text-right font-medium">{formatRupiah(item.jumlah * item.harga_satuan)}</td>
                 <td className="px-3 py-2">
                   <div className="flex justify-end gap-2">
@@ -188,7 +194,7 @@ export default function PeralatanPage() {
           {items.length > 0 && (
             <tfoot className="bg-slate-50 font-semibold">
               <tr>
-                <td className="px-3 py-2" colSpan={4}>Total Modal Sewa</td>
+                <td className="px-3 py-2" colSpan={5}>Total Modal Sewa</td>
                 <td className="px-3 py-2 text-right">{formatRupiah(totalModal)}</td>
                 <td></td>
               </tr>

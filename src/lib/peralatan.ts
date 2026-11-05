@@ -1,7 +1,7 @@
 import { supabaseAdmin } from './supabase'
 import type { KomposisiPeralatan } from './types'
 
-export type PeralatanMeta = Record<string, { harga_satuan: number; vendor: string }>
+export type PeralatanMeta = Record<string, { harga_satuan: number; harga_sewa?: number; vendor: string }>
 
 const META_KEY = 'peralatan_meta'
 const KOMPOSISI_KEY = 'kategori_peralatan'

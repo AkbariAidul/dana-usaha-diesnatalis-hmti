@@ -48,6 +48,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           sudah_dibayar: 0,
           tgl_daftar: data.tgl_daftar,
           tgl_acara: data.tgl_acara,
+          addon: data.addon ?? [],
           status: 'daftar',
         }
         const { data: tenant, error: tenantError } = await supabaseAdmin
