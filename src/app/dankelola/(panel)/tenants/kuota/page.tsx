@@ -1,5 +1,7 @@
 ﻿'use client'
 
+import { DataError } from '@/components/data-error'
+
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
@@ -56,10 +58,7 @@ export default function KuotaPage() {
   if (error) return (
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Kuota & Denah</h1>
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
-        <p className="text-red-600">{error}</p>
-        <button onClick={() => window.location.reload()} className="mt-4 text-sm text-red-700 hover:underline">Coba Lagi</button>
-      </div>
+      <DataError title={error} />
     </div>
   )
 

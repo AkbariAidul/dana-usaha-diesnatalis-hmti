@@ -18,6 +18,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { PublicBreadcrumb, PublicNavbar } from '@/components/public-navbar'
+import { DataError } from '@/components/data-error'
 import { getJSON } from '@/app/dankelola/api'
 import {
   periodeDariTanggal,
@@ -152,15 +153,7 @@ export default function InfoTenantPage() {
       <div className="min-h-screen bg-[#f7f9fc]">
         <PublicNavbar title="Open Tenant" subtitle="In4Days XI · Dana Usaha HMTI" maxWidth="max-w-6xl" />
         <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
-            <p className="text-red-700">{error}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="mt-4 rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white"
-            >
-              Coba Lagi
-            </button>
-          </div>
+          <DataError title={error} />
         </main>
       </div>
     )
