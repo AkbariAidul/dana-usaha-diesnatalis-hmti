@@ -8,7 +8,7 @@ import { Check, ChevronDown, Clock, Shirt, Trash2, Plus, Minus } from 'lucide-re
 import { PublicNavbar } from '@/components/public-navbar'
 import { PoStepper } from '@/components/po-stepper'
 import { formatDate, formatRupiah } from '@/lib/utils'
-import { buatQrisDinamis, buatQrisTanpaNominal } from '@/lib/qris'
+import { buatQrisDinamis } from '@/lib/qris'
 import { hitungDiskon } from '@/lib/merch-diskon'
 import type { DiskonRule } from '@/lib/types'
 
@@ -128,18 +128,18 @@ export default function PoMerchandisePage() {
     )
   }, [pengurus, form.nama_pengurus])
 
+  const nominalQris = form.pembayaran_tipe === 'lunas' ? totalKeranjang : Number(nominalBayar)
+
   useEffect(() => {
-    if (!qris.qris_payload || !totalKeranjang) {
+    if (!qris.qris_payload || !totalKeranjang || !Number.isFinite(nominalQris) || nominalQris <= 0) {
       setQr('')
       return
     }
-    const payload = form.pembayaran_tipe === 'lunas'
-      ? buatQrisDinamis(qris.qris_payload, totalKeranjang)
-      : buatQrisTanpaNominal(qris.qris_payload)
+    const payload = buatQrisDinamis(qris.qris_payload, nominalQris)
     QRCode.toDataURL(payload, { width: 320, margin: 2, errorCorrectionLevel: 'H' })
       .then(setQr)
       .catch(() => setQr(''))
-  }, [qris, totalKeranjang, form.pembayaran_tipe])
+  }, [qris, totalKeranjang, nominalQris])
 
   useEffect(() => {
     if (!file) {
@@ -672,8 +672,8 @@ export default function PoMerchandisePage() {
                 </div>
                 {form.pembayaran_tipe === 'nyicil' ? (
                   <>
-                    <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-700">
-                      QRIS ini tidak mengunci nominal. Saat scan, masukkan nominal DP/cicilan yang ingin dibayar.
+                    <p className="rounded-xl bg-violet-50 p-3 text-sm text-violet-700">
+                      Isi nominal DP/cicilan. QRIS otomatis mengunci nominal tersebut saat discan.
                     </p>
                     <div className="text-left">
                       <label className="mb-1 block text-sm font-medium text-slate-700">Nominal yang dibayar</label>
@@ -686,6 +686,11 @@ export default function PoMerchandisePage() {
                         className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/10"
                       />
                     </div>
+                    <p className="text-sm text-slate-500">
+                      {nominalQris > 0
+                        ? `Nominal QRIS: ${formatRupiah(nominalQris)}`
+                        : 'Isi nominal dulu untuk menampilkan QRIS.'}
+                    </p>
                   </>
                 ) : (
                   <p className="text-sm text-slate-500">Nominal QRIS otomatis {formatRupiah(totalKeranjang)}.</p>
