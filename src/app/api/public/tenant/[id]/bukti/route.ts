@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { kirimNotifTenantMenungguVerifikasi } from '@/lib/notifikasi-tenant'
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -11,7 +12,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
     const { data: pendaftaran } = await supabaseAdmin
       .from('pendaftaran_tenant_pub')
-      .select('id,harga_akhir,dp_wajib,sudah_dibayar,pembayaran_tipe')
+      .select('id,kode_pendaftaran,nama_usaha,kontak,harga_akhir,dp_wajib,sudah_dibayar,pembayaran_tipe,nominal_bayar,jumlah_tenant,addon')
       .eq('id', id)
       .maybeSingle()
     if (!pendaftaran) {
@@ -40,6 +41,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       })
       .eq('id', id)
     if (error) throw error
+    try {
+      await kirimNotifTenantMenungguVerifikasi(request, {
+        ...pendaftaran,
+        pembayaran_tipe: tipe,
+        nominal_bayar: nominal,
+      })
+    } catch (notifError) {
+      console.error('Notifikasi tenant gagal:', notifError)
+    }
     return NextResponse.json({ success: true })
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })

@@ -1,6 +1,7 @@
 ﻿'use client'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { Upload } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { PublicBreadcrumb, PublicNavbar } from '@/components/public-navbar'
@@ -57,6 +58,7 @@ export default function DaftarTenantPublik() {
   const [nominalNyicil, setNominalNyicil] = useState('')
   const [pendaftaran, setPendaftaran] = useState<{ id: string; kode_pendaftaran: string; nama_usaha: string; kontak: string; harga_akhir: number; dp_wajib: number; addon?: TenantAddon[] | null; t?: string } | null>(null)
   const [file, setFile] = useState<File | null>(null)
+  const [preview, setPreview] = useState('')
   const [uploading, setUploading] = useState(false)
   const [qr, setQr] = useState('')
 
@@ -145,6 +147,7 @@ export default function DaftarTenantPublik() {
     : tipeBayar === 'lunas'
       ? totalTagihan
       : Math.max(minimalPertama, Math.min(totalTagihan, Number(nominalNyicil) || minimalPertama))
+  const nominalKurang = tipeBayar === 'nyicil' && nominalNyicil !== '' && Number(nominalNyicil) < minimalPertama
 
   useEffect(() => {
     if (!qris.qris_payload || nominalBayar <= 0) {
@@ -153,6 +156,24 @@ export default function DaftarTenantPublik() {
     }
     QRCode.toDataURL(buatQrisDinamis(qris.qris_payload, nominalBayar), { width: 320, margin: 2, errorCorrectionLevel: 'H' }).then(setQr).catch(() => {})
   }, [qris, nominalBayar])
+
+  useEffect(() => {
+    if (!pendaftaran || tipeBayar !== 'nyicil') return
+    setNominalNyicil((prev) => {
+      const min = Math.ceil(Number(pendaftaran.harga_akhir) / 2)
+      return !prev || Number(prev) < min ? String(min) : prev
+    })
+  }, [pendaftaran, tipeBayar])
+
+  useEffect(() => {
+    if (!file) {
+      setPreview('')
+      return
+    }
+    const url = URL.createObjectURL(file)
+    setPreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [file])
 
   function toggleAddon(id: string, checked: boolean) {
     setAddonQty((prev) => {
@@ -189,10 +210,28 @@ export default function DaftarTenantPublik() {
         pilihan: Object.entries(pilihanQty).map(([id, qty]) => ({ id, qty: Math.max(1, Number(qty) || 1) })),
         periode_daftar: periode,
       })
-      setPendaftaran(res as typeof pendaftaran)
+      const created = res as typeof pendaftaran
+      setPendaftaran(created)
+      setNominalNyicil(String(Math.ceil(Number(created?.harga_akhir ?? 0) / 2)))
       setStep(2)
       toast.success('Pendaftaran berhasil, pilih metode pembayaran')
     } catch (e: unknown) { toast.error((e as Error).message) }
+  }
+
+  function pilihBukti(next: File | null) {
+    if (!next) {
+      setFile(null)
+      return
+    }
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(next.type)) {
+      toast.error('Format bukti harus JPG, PNG, atau WebP')
+      return
+    }
+    if (next.size > 5 * 1024 * 1024) {
+      toast.error('Ukuran bukti maksimal 5MB')
+      return
+    }
+    setFile(next)
   }
 
   async function upload() {
@@ -202,7 +241,8 @@ export default function DaftarTenantPublik() {
       const fd = new FormData()
       fd.append('file', file)
       fd.append('folder', 'bukti-tenant')
-      const up = await fetch('/api/upload', { method: 'POST', body: fd }).then(r => r.json()) as { url: string }
+      const up = await fetch('/api/upload', { method: 'POST', body: fd }).then(r => r.json()) as { url: string; error?: string }
+      if (!up.url) throw new Error(up.error || 'Upload gagal')
       await sendJSON(`/api/public/tenant/${pendaftaran.id}/bukti`, 'POST', {
         bukti_url: up.url,
         pembayaran_tipe: tipeBayar,
@@ -429,7 +469,7 @@ export default function DaftarTenantPublik() {
                 </button>
               </div>
               {tipeBayar === 'nyicil' && (
-                <div className="text-left">
+                <div className="space-y-1 text-left">
                   <label className="mb-1 block text-xs font-medium text-slate-600">Nominal cicilan pertama (min. {formatRupiah(minimalPertama)})</label>
                   <input
                     type="number"
@@ -439,7 +479,11 @@ export default function DaftarTenantPublik() {
                     placeholder={String(minimalPertama)}
                     value={nominalNyicil}
                     onChange={(e) => setNominalNyicil(e.target.value)}
+                    onBlur={() => setNominalNyicil(String(Math.max(minimalPertama, Math.min(totalTagihan, Number(nominalNyicil) || minimalPertama))))}
                   />
+                  <p className={`text-xs ${nominalKurang ? 'text-red-600' : 'text-slate-500'}`}>
+                    Minimal 50% dari total tagihan ({formatRupiah(minimalPertama)}). Nominal boleh lebih besar, tetapi tidak bisa lebih rendah dari batas minimal.
+                  </p>
                 </div>
               )}
               <h2 className="text-lg font-semibold text-slate-900">Scan QRIS untuk Bayar</h2>
@@ -457,8 +501,25 @@ export default function DaftarTenantPublik() {
               </div>
               <p className="text-sm text-slate-500">{qris.qris_nama_merchant || 'Merchant Himpunan'}</p>
               <p className="text-xs text-slate-400">Nominal: {formatRupiah(nominalBayar)}. Transfer sesuai nominal lalu upload bukti di bawah ini.</p>
-              <input type="file" accept="image/*,application/pdf" onChange={e=>setFile(e.target.files?.[0]||null)} className="block w-full text-sm" />
-              <button onClick={upload} disabled={uploading || !file} className="w-full rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">{uploading ? 'Mengupload...' : 'Upload Bukti Bayar'}</button>
+              <div className="space-y-2 text-left">
+                <label className="block text-sm font-medium text-slate-700">Bukti Pembayaran</label>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(e) => pilihBukti(e.target.files?.[0] ?? null)}
+                  className="block w-full cursor-pointer rounded-xl border border-slate-200 bg-white text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-primary-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary-700 hover:file:bg-primary-100"
+                />
+                <p className="text-xs text-slate-500">JPG, PNG, atau WebP. Maksimal 5MB.</p>
+                {preview && (
+                  <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-1.5">
+                    <img src={preview} alt="Pratinjau bukti pembayaran" className="max-h-56 w-full rounded-lg object-contain" />
+                  </div>
+                )}
+              </div>
+              <button onClick={upload} disabled={uploading || !file || nominalKurang} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-medium text-white disabled:bg-slate-200 disabled:text-slate-400">
+                <Upload className="h-4 w-4" />
+                {uploading ? 'Mengupload...' : 'Upload Bukti Bayar'}
+              </button>
             </div>
           </div>
         )}

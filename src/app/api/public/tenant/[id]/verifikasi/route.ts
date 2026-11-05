@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { createPembayaran } from '@/lib/queries'
 import { todayISO } from '@/lib/utils'
+import { kirimNotifTenantDitolak, kirimNotifTenantTerverifikasi } from '@/lib/notifikasi-tenant'
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -95,6 +96,21 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           .update({ sudah_dibayar: nominalMasuk })
           .eq('id', id)
       }
+    }
+
+    try {
+      if (status === 'ditolak') {
+        await kirimNotifTenantDitolak(request, data)
+      } else if (status === 'dp_diterima') {
+        const nominalMasuk = Math.max(Number(data.dp_wajib), Number(data.nominal_bayar) || Number(data.dp_wajib))
+        await kirimNotifTenantTerverifikasi(request, {
+          ...data,
+          sudah_dibayar: nominalMasuk,
+          nominal_bayar: nominalMasuk,
+        })
+      }
+    } catch (notifError) {
+      console.error('Notifikasi tenant gagal:', notifError)
     }
 
     return NextResponse.json(data)

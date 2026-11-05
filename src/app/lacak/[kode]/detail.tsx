@@ -22,6 +22,14 @@ type Pembayaran = {
   created_at: string
 }
 
+type TenantItem = {
+  id: string
+  nama: string
+  qty: number
+  harga_satuan: number
+  subtotal: number
+}
+
 type DaftarTenant = {
   kode_pendaftaran: string
   nama_usaha: string
@@ -32,6 +40,8 @@ type DaftarTenant = {
   bukti_url: string | null
   catatan_admin: string | null
   created_at: string
+  jumlah_tenant: number | null
+  addon: TenantItem[] | null
 }
 
 type Tenant = {
@@ -44,6 +54,8 @@ type Tenant = {
   status: string
   tgl_acara: string | null
   venue_checked_in_at: string | null
+  jumlah_tenant: number
+  addon: TenantItem[] | null
 }
 
 type PesananTiket = {
@@ -114,7 +126,7 @@ type Cicilan = {
 }
 
 type StatusResponse =
-  | { tipe: 'tenant'; kode: string; daftar: DaftarTenant | null; tenant: Tenant | null; pembayaran: Pembayaran[]; totalValid: number; eligible: boolean; qr: string | null }
+  | { tipe: 'tenant'; kode: string; daftar: DaftarTenant | null; tenant: Tenant | null; kategori: string | null; pembayaran: Pembayaran[]; totalValid: number; eligible: boolean; qr: string | null }
   | { tipe: 'tiket'; kode: string; pesanan: PesananTiket; tiket: TiketIssued[] }
   | { tipe: 'po'; kode: string; po: MerchPo; items: MerchItem[]; cicilan: Cicilan[]; qr: string | null }
 
@@ -363,7 +375,7 @@ function BuktiUpload({
         type="file"
         accept={imageOnly ? 'image/jpeg,image/png,image/webp' : 'image/*,application/pdf'}
         onChange={(e) => pilihFile(e.target.files?.[0] ?? null)}
-        className="block w-full text-sm"
+        className="block w-full cursor-pointer rounded-xl border border-slate-200 bg-white text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-primary-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary-700 hover:file:bg-primary-100"
       />
       {imageOnly && <p className="text-xs text-slate-500">JPG, PNG, atau WebP. Maksimal 5MB.</p>}
       {preview && <img src={preview} alt="Pratinjau bukti pembayaran" className="max-h-56 w-full rounded-xl object-contain" />}
@@ -441,10 +453,14 @@ export function LacakDetail({ kode, token }: { kode: string; token: string }) {
 }
 
 function TenantView({ data, token, reload }: { data: Extract<StatusResponse, { tipe: 'tenant' }>; token: string; reload: () => void }) {
-  const { daftar, tenant, pembayaran, totalValid, qr } = data
+  const { daftar, tenant, kategori, pembayaran, totalValid, qr } = data
   const harga = Number(tenant?.harga_akhir ?? daftar?.harga_akhir ?? 0)
   const sisa = Math.max(0, harga - totalValid)
   const progress = harga > 0 ? Math.min(100, Math.round((totalValid / harga) * 100)) : 0
+  const addon = tenant?.addon ?? daftar?.addon ?? []
+  const jumlahTenant = Number(tenant?.jumlah_tenant ?? daftar?.jumlah_tenant ?? 1)
+  const addonTotal = addon.reduce((sum, item) => sum + Number(item.subtotal ?? 0), 0)
+  const paketSubtotal = Math.max(0, harga - addonTotal)
 
   if (!tenant) {
     return (
@@ -481,6 +497,32 @@ function TenantView({ data, token, reload }: { data: Extract<StatusResponse, { t
             <p className="text-sm text-slate-500">Tenant {tenant.kode_stand}</p>
           </div>
           <StatusBadge status={tenant.status} />
+        </div>
+
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs text-slate-500">
+              <tr>
+                <th className="py-2">Item</th>
+                <th className="py-2 text-center">Qty</th>
+                <th className="py-2 text-right">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              <tr>
+                <td className="py-2">{kategori ?? 'Paket tenant'} (Tempat)</td>
+                <td className="py-2 text-center">{jumlahTenant}</td>
+                <td className="py-2 text-right font-medium">{formatRupiah(paketSubtotal)}</td>
+              </tr>
+              {addon.map((item) => (
+                <tr key={item.id}>
+                  <td className="py-2">{item.nama}</td>
+                  <td className="py-2 text-center">{item.qty}</td>
+                  <td className="py-2 text-right font-medium">{formatRupiah(Number(item.subtotal))}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -566,7 +608,7 @@ function TenantView({ data, token, reload }: { data: Extract<StatusResponse, { t
       </div>
 
       {tenant.status !== 'lunas' && sisa > 0 && (
-        <BuktiUpload kode={data.kode} token={token} nominal={sisa} onDone={reload} />
+        <BuktiUpload kode={data.kode} token={token} nominal={sisa} imageOnly onDone={reload} />
       )}
     </div>
   )

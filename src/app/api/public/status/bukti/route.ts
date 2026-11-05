@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { tipeDariKode, verifyRef } from '@/lib/link-token'
 import { todayISO } from '@/lib/utils'
 import { kirimNotifPoMenungguVerifikasi } from '@/lib/notifikasi-po'
+import { kirimNotifTenantMenungguVerifikasi } from '@/lib/notifikasi-tenant'
 
 export async function POST(request: Request) {
   try {
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
     if (tipe === 'tenant') {
       const { data: tenant } = await supabaseAdmin
         .from('tenants')
-        .select('id,harga_akhir,dp_wajib,sudah_dibayar')
+        .select('id,kode_stand,nama_usaha,kontak,harga_akhir,dp_wajib,sudah_dibayar,jumlah_tenant,addon')
         .eq('kode_stand', kode)
         .maybeSingle()
       if (!tenant) {
@@ -68,6 +69,15 @@ export async function POST(request: Request) {
       })
       if (error) throw error
 
+      try {
+        await kirimNotifTenantMenungguVerifikasi(request, {
+          ...tenant,
+          sudah_dibayar: totalValid,
+          nominal_bayar: nominal,
+        })
+      } catch (notifError) {
+        console.error('Notifikasi tenant gagal:', notifError)
+      }
       return NextResponse.json({ success: true, message: 'Bukti terkirim, menunggu verifikasi admin' })
     }
 

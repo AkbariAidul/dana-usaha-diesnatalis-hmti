@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { parseQrPayload } from '@/lib/link-token'
 import { kirimNotifCheckin } from '@/lib/notifikasi-tiket'
 import { kirimNotifPoDiambil } from '@/lib/notifikasi-po'
+import { kirimNotifTenantCheckin } from '@/lib/notifikasi-tenant'
 import type { DashboardUser } from '@/lib/auth'
 
 async function getSessionUser(): Promise<DashboardUser | null> {
@@ -59,6 +60,12 @@ export async function POST(request: Request) {
             .update({ venue_checked_in_at: new Date().toISOString(), venue_checked_in_by: oleh })
             .eq('id', tenant.id)
           if (error) throw error
+          after(() =>
+            kirimNotifTenantCheckin(request, {
+              ...tenant,
+              sudah_dibayar: total,
+            }).catch((notifError) => console.error('Notifikasi tenant gagal:', notifError))
+          )
         }
 
         return NextResponse.json({

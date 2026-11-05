@@ -1,26 +1,17 @@
 ﻿'use client'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { toast } from 'sonner'
-import type { Tenant, KategoriSewa, HargaDasar, PeriodeHarga, Pembayaran } from '@/lib/types'
+import type { Tenant, KategoriSewa, Pembayaran } from '@/lib/types'
 import { formatRupiah, formatDate } from '@/lib/utils'
-import { STATUS_LABEL, STATUS_COLOR, periodeDariTanggal, periodeLabel } from '@/lib/types'
-import { kategoriTenant, lokasiUntukKategori } from '@/lib/tenant'
+import { STATUS_LABEL, STATUS_COLOR } from '@/lib/types'
+import { kategoriTenant } from '@/lib/tenant'
 import { getJSON, sendJSON } from '../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { TableSkeleton } from '../ui'
 import { useConfirm } from '@/components/confirm-dialog'
 import { Modal } from '@/components/modal'
-
-const today = new Date().toISOString().slice(0, 10)
-
-const emptyForm = {
-  nama_usaha: '', kontak: '', email: '',
-  kategori_sewa_id: '', jenis_usaha: 'F&B' as 'F&B' | 'Non-F&B',
-  tgl_daftar: today,
-  tgl_acara: '', keterangan: '',
-}
 
 type Pendaftaran = {
   id: string
@@ -58,12 +49,7 @@ export default function TenantsPage() {
   const [pendaftaran, setPendaftaran] = useState<Pendaftaran[]>([])
   const [pembayaran, setPembayaran] = useState<Pembayaran[]>([])
   const [kategori, setKategori] = useState<KategoriSewa[]>([])
-  const [hargaDasar, setHargaDasar] = useState<HargaDasar[]>([])
-  const [periods, setPeriods] = useState<PeriodeHarga[]>([])
   const [loading, setLoading] = useState(true)
-  const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState(emptyForm)
-  const [saving, setSaving] = useState(false)
   const [q, setQ] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [page, setPage] = useState(1)
@@ -73,11 +59,11 @@ export default function TenantsPage() {
   async function load() {
     const [t, m, d, p] = await Promise.all([
       getJSON<Tenant[]>('/api/tenants'),
-      getJSON<{ kategori: KategoriSewa[]; hargaDasar: HargaDasar[]; periode: PeriodeHarga[] }>('/api/master'),
+      getJSON<{ kategori: KategoriSewa[] }>('/api/master'),
       getJSON<Pendaftaran[]>('/api/public/tenant'),
       getJSON<Pembayaran[]>('/api/pembayaran'),
     ])
-    setTenants(t); setKategori(kategoriTenant(m.kategori || [], true)); setHargaDasar(m.hargaDasar); setPeriods(m.periode || [])
+    setTenants(t); setKategori(kategoriTenant(m.kategori || [], true))
     setPendaftaran(d); setPembayaran(p)
   }
 
@@ -86,45 +72,6 @@ export default function TenantsPage() {
   }, [])
   useEffect(() => { setPage(1) }, [q, filterStatus])
   useLiveRefresh(load)
-
-  const periode = periodeDariTanggal(form.tgl_daftar, periods)
-
-  const harga = useMemo(() => {
-    const hd = hargaDasar.find(
-      (h) => h.kategori_sewa_id === form.kategori_sewa_id && h.jenis_usaha === form.jenis_usaha && h.periode === periode
-    ) ?? hargaDasar.find((h) => h.kategori_sewa_id === form.kategori_sewa_id && h.periode === periode)
-    return Number(hd?.harga ?? 0)
-  }, [form.kategori_sewa_id, form.jenis_usaha, hargaDasar, periode])
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!periode) { toast.error('Tanggal daftar di luar periode open tenant'); return }
-    setSaving(true)
-    try {
-      const selectedKategori = kategori.find((k) => k.id === form.kategori_sewa_id)
-      await sendJSON('/api/tenants', 'POST', {
-        ...form,
-        email: form.email || null,
-        asal: 'Internal Kampus',
-        lokasi: lokasiUntukKategori(selectedKategori?.kode),
-        addon: [],
-        periode_daftar: periode,
-        tgl_dp: null,
-        tgl_acara: form.tgl_acara || null,
-        harga_akhir: harga,
-        dp_wajib: Math.ceil(harga / 2),
-        status: 'daftar',
-        sudah_dibayar: 0,
-      })
-      toast.success('Tenant ditambahkan')
-      setForm(emptyForm); setShowForm(false)
-      await load()
-    } catch (err) {
-      toast.error((err as Error).message)
-    } finally {
-      setSaving(false)
-    }
-  }
 
   async function hapus(id: string) {
     const ok = await confirm({
@@ -245,18 +192,31 @@ export default function TenantsPage() {
   const currentPage = Math.min(page, totalPages)
   const paginated = filtered.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE)
 
-  const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10 text-sm'
-  const label = 'block text-sm font-medium mb-1'
-
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Tenant</h1>
-        <div className="flex gap-2">
-          <input placeholder="Cari nama / kode" value={q} onChange={(e) => setQ(e.target.value)} className="rounded-xl border border-slate-200 px-3 py-2.5 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10 text-sm" />
-          <button onClick={() => setShowForm(!showForm)} className="bg-primary-600 text-white px-6 py-2.5.5 rounded-xl font-medium transition-all hover:bg-primary-700 hover:shadow-sm hover:shadow-primary-600/20 text-sm hover:bg-primary-700">
-            {showForm ? 'Tutup' : '+ Tambah'}
-          </button>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Data Tenant</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            aria-label="Filter status"
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-primary-400 focus:outline-none"
+          >
+            <option value="all">Semua ({rows.length})</option>
+            <option value="menunggu">Menunggu Verifikasi ({menunggu + pendingBayar.length})</option>
+            <option value="aktif">Tenant Aktif ({tenants.length})</option>
+            <option value="ditolak">Ditolak ({ditolak})</option>
+          </select>
+          <div className="relative w-full min-w-[12rem] sm:w-64">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Cari nama / kode / kontak..."
+              className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-700 focus:border-primary-400 focus:outline-none"
+            />
+          </div>
         </div>
       </div>
 
@@ -279,75 +239,7 @@ export default function TenantsPage() {
         </div>
       </div>
 
-      {showForm && (
-        <form onSubmit={submit} className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40 grid md:grid-cols-2 gap-3">
-          <div><label className={label}>Nama Usaha</label><input required className={input} placeholder="cth: Kopi Senja" value={form.nama_usaha} onChange={(e) => setForm({ ...form, nama_usaha: e.target.value })} /></div>
-          <div><label className={label}>Kontak (WA)</label><input required className={input} placeholder="08xxxxxxxxxx" value={form.kontak} onChange={(e) => setForm({ ...form, kontak: e.target.value })} /></div>
-          <div><label className={label}>Email (opsional)</label><input type="email" className={input} placeholder="nama@email.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
-          <div>
-            <label className={label}>Kategori Sewa</label>
-            <select required className={input} value={form.kategori_sewa_id} onChange={(e) => setForm({ ...form, kategori_sewa_id: e.target.value })}>
-              <option value="">Pilih kategori</option>
-              {kategori.map((k) => <option key={k.id} value={k.id}>{k.kode} - {k.nama}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className={label}>Jenis Usaha</label>
-            <select className={input} value={form.jenis_usaha} onChange={(e) => setForm({ ...form, jenis_usaha: e.target.value as 'F&B' | 'Non-F&B' })}>
-              <option value="F&B">F&B</option><option value="Non-F&B">Non-F&B</option>
-            </select>
-          </div>
-          <div><label className={label}>Tanggal Daftar</label><input type="date" required className={input} value={form.tgl_daftar} onChange={(e) => setForm({ ...form, tgl_daftar: e.target.value })} /></div>
-          <div>
-            <label className={label}>Periode (otomatis)</label>
-            <div className={`${input} bg-slate-50 ${periode ? 'text-slate-900' : 'text-red-600'}`}>
-              {periode ? periodeLabel(periode, periods) : 'Di luar periode open tenant'}
-            </div>
-            <p className="mt-1 text-xs text-slate-400">
-              {periods.map((p) => `${p.nama} ${formatDate(p.tanggal_mulai)}–${formatDate(p.tanggal_selesai)}`).join(' · ')}
-            </p>
-          </div>
-          <div><label className={label}>Tanggal Acara (opsional)</label><input type="date" className={input} value={form.tgl_acara} onChange={(e) => setForm({ ...form, tgl_acara: e.target.value })} /></div>
-          <div><label className={label}>Keterangan</label><input className={input} placeholder="Catatan (opsional)" value={form.keterangan} onChange={(e) => setForm({ ...form, keterangan: e.target.value })} /></div>
-          <div className="md:col-span-2 flex items-center justify-between border-t pt-3">
-            <div className="text-sm">
-              Harga: <span className="font-semibold text-primary-600">{formatRupiah(harga)}</span>
-              <span className="text-slate-500"> · DP 50%: {formatRupiah(Math.ceil(harga / 2))}</span>
-            </div>
-            <button disabled={saving} className="bg-primary-600 text-white px-6 py-2.5.5 rounded-xl font-medium transition-all hover:bg-primary-700 hover:shadow-sm hover:shadow-primary-600/20 text-sm disabled:opacity-50">
-              {saving ? 'Menyimpan...' : 'Simpan'}
-            </button>
-          </div>
-        </form>
-      )}
-
       <div className="overflow-x-auto rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-4">
-          <h2 className="font-semibold text-slate-900">Data Tenant</h2>
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              aria-label="Filter status"
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-primary-400 focus:outline-none"
-            >
-              <option value="all">Semua ({rows.length})</option>
-              <option value="menunggu">Menunggu Verifikasi ({menunggu + pendingBayar.length})</option>
-              <option value="aktif">Tenant Aktif ({tenants.length})</option>
-              <option value="ditolak">Ditolak ({ditolak})</option>
-            </select>
-            <div className="relative w-full min-w-[12rem] sm:w-64">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Cari nama / kode / kontak..."
-                className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-700 focus:border-primary-400 focus:outline-none"
-              />
-            </div>
-          </div>
-        </div>
-
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs text-slate-500">
             <tr>

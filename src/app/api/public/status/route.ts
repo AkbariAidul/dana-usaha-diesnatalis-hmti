@@ -28,6 +28,11 @@ export async function GET(request: Request) {
         pembayaran = data ?? []
       }
 
+      const kategoriId = tenant?.kategori_sewa_id ?? daftar?.kategori_sewa_id
+      const { data: kategori } = kategoriId
+        ? await supabaseAdmin.from('kategori_sewa').select('nama').eq('id', kategoriId).maybeSingle()
+        : { data: null }
+
       const totalValid = pembayaran
         .filter((p) => p.validated === true)
         .reduce((s, p) => s + Number(p.nominal ?? 0), 0)
@@ -39,6 +44,7 @@ export async function GET(request: Request) {
         kode,
         daftar,
         tenant,
+        kategori: kategori?.nama ?? null,
         pembayaran,
         totalValid,
         eligible,
