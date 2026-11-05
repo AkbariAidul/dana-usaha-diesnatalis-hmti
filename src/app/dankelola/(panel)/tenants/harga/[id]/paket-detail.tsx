@@ -483,7 +483,7 @@ export default function PaketDetail({
       <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm space-y-3">
         <div>
           <h2 className="font-semibold text-slate-900">Pilihan Paket</h2>
-          <p className="text-sm text-slate-500">Fasilitas tambahan per paket. Tampil sebagai checkbox di form pendaftaran tenant.</p>
+          <p className="text-sm text-slate-500">Fasilitas tambahan per paket. Tampil sebagai checkbox di form pendaftaran tenant. Harga Tempat sudah memakai harga periode, jadi tidak perlu ditambahkan di sini.</p>
         </div>
         {!paket ? (
           <p className="text-sm text-slate-400">Simpan informasi dasar terlebih dahulu untuk menambahkan pilihan paket.</p>

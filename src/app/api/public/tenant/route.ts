@@ -107,6 +107,7 @@ export async function POST(request: Request) {
         .map((req: { id: string; qty: number }) => {
           const item = byId.get(req.id)
           if (!item || item.kategori_sewa_id !== body.kategori_sewa_id) return null
+          if (/^tempat\b/i.test(item.nama.trim())) return null
           const hargaSatuan = Number(item.harga)
           const subtotal = hargaSatuan * req.qty * jumlahTenant
           pilihanPerTenant += hargaSatuan * req.qty

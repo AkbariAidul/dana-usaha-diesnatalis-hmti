@@ -220,12 +220,14 @@ export default function InfoTenantPage() {
             ) : (
               <div className="space-y-2.5">
                 {kategori.map((k) => {
-                  const pilihan = pilihanMap.get(k.id) ?? []
+                  const pilihan = (pilihanMap.get(k.id) ?? []).filter((p) => !/^tempat\b/i.test(p.nama.trim()))
                   const bundles = bundleMap.get(k.id) ?? []
                   const terpakai = Number(katalog.terpakai[k.id] ?? 0)
                   const sisa = Number(k.slot_tenant) > 0 ? Math.max(0, Number(k.slot_tenant) - terpakai) : null
                   const habis = sisa === 0
                   const bisaDaftar = !!activePeriod && hargaTersedia(k.id)
+                  const hargaFnb = activeKode ? hargaMap.get(`${k.id}|F&B|${activeKode}`) : undefined
+                  const hargaNonFnb = activeKode ? hargaMap.get(`${k.id}|Non-F&B|${activeKode}`) : undefined
                   return (
                     <article key={k.id} className={`overflow-hidden rounded-2xl border bg-white shadow-sm shadow-slate-200/40 ${habis ? 'border-slate-200 opacity-75' : 'border-slate-200/70'}`}>
                       <div className="grid gap-3 p-3.5 sm:grid-cols-[88px_minmax(0,1fr)_auto] sm:items-center">
@@ -261,6 +263,18 @@ export default function InfoTenantPage() {
                           <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-slate-500">
                             {k.keterangan || 'Stand sesuai kategori yang dipilih.'}
                           </p>
+
+                          {(hargaFnb !== undefined || hargaNonFnb !== undefined) && (
+                            <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-xs">
+                              {hargaFnb !== undefined && (
+                                <span className="text-slate-500">F&B <span className="font-semibold text-slate-900">{formatRupiah(hargaFnb)}</span></span>
+                              )}
+                              {hargaNonFnb !== undefined && (
+                                <span className="text-slate-500">Non-F&B <span className="font-semibold text-slate-900">{formatRupiah(hargaNonFnb)}</span></span>
+                              )}
+                              {activePeriod && <span className="text-[10px] text-slate-400">Harga dasar · {activePeriod.nama}</span>}
+                            </div>
+                          )}
 
                           {pilihan.length > 0 && (
                             <p className="mt-1 truncate text-[11px] text-slate-500">

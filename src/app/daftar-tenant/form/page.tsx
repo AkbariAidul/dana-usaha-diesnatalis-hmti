@@ -89,14 +89,18 @@ export default function DaftarTenantPublik() {
     () => pilihan.filter((p) => p.kategori_sewa_id === form.kategori_sewa_id),
     [pilihan, form.kategori_sewa_id],
   )
+  const pilihanTambahan = useMemo(
+    () => paketPilihan.filter((p) => !/^tempat\b/i.test(p.nama.trim())),
+    [paketPilihan],
+  )
   const paketBundles = useMemo(
     () => bundles.filter((b) => b.kategori_sewa_id === form.kategori_sewa_id),
     [bundles, form.kategori_sewa_id],
   )
 
   useEffect(() => {
-    setPilihanQty(Object.fromEntries(paketPilihan.map((p) => [p.id, 1])))
-  }, [paketPilihan])
+    setPilihanQty(Object.fromEntries(pilihanTambahan.map((p) => [p.id, 1])))
+  }, [pilihanTambahan])
 
   const baseHarga = useMemo(() => {
     if (!periode || !form.kategori_sewa_id) return 0
@@ -106,12 +110,13 @@ export default function DaftarTenantPublik() {
 
   const pilihanPerTenant = useMemo(() => {
     return Object.entries(pilihanQty).reduce((sum, [id, qty]) => {
-      const item = paketPilihan.find((p) => p.id === id)
+      const item = pilihanTambahan.find((p) => p.id === id)
       return sum + Number(item?.harga ?? 0) * qty
     }, 0)
-  }, [pilihanQty, paketPilihan])
+  }, [pilihanQty, pilihanTambahan])
 
   const jumlahTenant = Math.max(1, Number(form.jumlah_tenant) || 1)
+  const pilihanTerpilih = pilihanTambahan.filter((p) => pilihanQty[p.id] !== undefined)
   const addonTerpilih = addons
     .map((item) => {
       if (addonQty[item.id] === undefined) return { item, qty: 0 }
@@ -261,18 +266,18 @@ export default function DaftarTenantPublik() {
 
                 <div>
                   <p className="text-sm font-medium text-slate-900">Pilih paket & item yang mau disewa</p>
-                  <p className="text-xs text-slate-500">Semua pilihan paket tercentang otomatis. Hilangkan centang untuk item yang tidak diambil.</p>
+                  <p className="text-xs text-slate-500">Tempat wajib diambil sesuai jumlah tenant. Pilihan lain tercentang otomatis, hilangkan centang untuk item yang tidak diambil.</p>
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary-200 bg-primary-50/50 px-3 py-2">
                   <label className="flex min-w-0 flex-1 items-center gap-2 text-sm">
                     <input type="checkbox" checked disabled className="h-4 w-4 shrink-0 rounded border-slate-300 text-primary-600" />
-                    <span className="truncate font-medium text-slate-800">{selectedKategori?.nama ?? 'Tempat / Stand'}</span>
+                    <span className="truncate font-medium text-slate-800">Tempat · {selectedKategori?.nama ?? 'Stand'}</span>
                     <span className="shrink-0 text-xs text-slate-500">{formatRupiah(baseHarga)} / tenant</span>
                   </label>
                   <span className="text-xs font-medium text-slate-600">{jumlahTenant} tempat</span>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">
-                  {paketPilihan.map((item) => {
+                  {pilihanTambahan.map((item) => {
                     const checked = pilihanQty[item.id] !== undefined
                     return (
                       <div key={item.id} className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 ${checked ? 'border-primary-200 bg-primary-50/50' : 'border-slate-100'}`}>
@@ -349,11 +354,18 @@ export default function DaftarTenantPublik() {
                   {acara?.batas_pelunasan && <p>Batas pembayaran: {formatDate(acara.batas_pelunasan)}</p>}
                 </div>
                 <div className="text-right">
-                  <p className="text-sm text-slate-500">{selectedKategori?.nama ?? 'Tempat'} × {jumlahTenant} tenant</p>
-                  <p className="text-sm font-medium text-primary-600">{formatRupiah((baseHarga + pilihanPerTenant) * jumlahTenant)}</p>
-                  {addonTotal > 0 && <p className="text-xs text-slate-500">Item lain: {formatRupiah(addonTotal)}</p>}
-                  {diskonBundle > 0 && <p className="text-xs text-emerald-600">Diskon bundle: -{formatRupiah(diskonBundle)}</p>}
-                  <p className="text-sm font-semibold text-slate-900">Total: {formatRupiah(harga)}</p>
+                  <div className="space-y-0.5 text-xs text-slate-500">
+                    <p>Tempat × {jumlahTenant}: {formatRupiah(baseHarga * jumlahTenant)}</p>
+                    {pilihanTerpilih.map((item) => {
+                      const qty = pilihanQty[item.id] ?? 0
+                      return (
+                        <p key={item.id}>{item.nama} × {qty * jumlahTenant}: {formatRupiah(Number(item.harga) * qty * jumlahTenant)}</p>
+                      )
+                    })}
+                    {addonTotal > 0 && <p>Item tambahan: {formatRupiah(addonTotal)}</p>}
+                    {diskonBundle > 0 && <p className="text-emerald-600">Diskon bundle: -{formatRupiah(diskonBundle)}</p>}
+                  </div>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">Total: {formatRupiah(harga)}</p>
                   <p className="text-xs text-slate-500">Pembayaran pertama min. 50%: {formatRupiah(Math.ceil(harga / 2))}</p>
                 </div>
               </div>
