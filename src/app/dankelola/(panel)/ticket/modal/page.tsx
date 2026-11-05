@@ -84,8 +84,7 @@ export default function TicketModalPage() {
 
   if (loading) return <PageSkeleton />
   if (error) return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Kelola Modal</h1>
+    <div className="flex justify-center">
       <DataError title={error} />
     </div>
   )

@@ -26,19 +26,19 @@ export function DataError({ title = 'Gagal memuat data', onRetry }: Props) {
   }, [])
 
   return (
-    <div role="alert" className="flex flex-col items-center rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center shadow-sm">
-      <Lottie src={animationData} loop autoplay className="h-40 w-40" />
-      <h2 className="mt-2 text-base font-semibold text-slate-900">
+    <div role="alert" className="flex w-full max-w-sm flex-col items-center text-center">
+      <Lottie src={animationData} loop autoplay className="-mb-2 h-28 w-28" />
+      <h2 className="mt-1 text-base font-semibold text-slate-900">
         {online ? title : 'Tidak ada koneksi internet'}
       </h2>
-      <p className="mt-1 max-w-sm text-sm text-slate-500">
+      <p className="mt-1 text-sm leading-relaxed text-slate-500">
         {online
           ? 'Server belum bisa dihubungi. Periksa koneksi lalu coba lagi.'
           : 'Perangkatmu sedang offline. Sambungkan ke jaringan internet, lalu coba lagi.'}
       </p>
       <button
         onClick={onRetry ?? (() => window.location.reload())}
-        className="mt-5 rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white"
+        className="mt-4 rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white"
       >
         Coba Lagi
       </button>

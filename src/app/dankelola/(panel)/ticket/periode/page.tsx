@@ -60,8 +60,7 @@ export default function PeriodePage() {
   if (loading) return <PageSkeleton />
   if (error)
     return (
-      <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Periode Harga</h1>
+      <div className="flex justify-center">
         <DataError title={error} />
       </div>
     )
