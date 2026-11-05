@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     if (!body.kategori_sewa_id) throw new Error('Paket wajib dipilih')
-    if (!body.jumlah_min || Number(body.jumlah_min) < 2) throw new Error('Jumlah tenant minimal 2')
+    if (!body.jumlah_min || Number(body.jumlah_min) < 2) throw new Error('Jumlah tenant tidak valid')
     const persen = Number(body.diskon_persen ?? 0)
     const nominal = Number(body.diskon_nominal ?? 0)
     if (persen < 0 || persen > 100) throw new Error('Diskon persen harus 0-100')

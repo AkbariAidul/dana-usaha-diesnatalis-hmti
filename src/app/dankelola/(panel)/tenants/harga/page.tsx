@@ -4,10 +4,12 @@ import { DataError } from '@/components/data-error'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Pencil } from 'lucide-react'
-import { getJSON } from '../../../api'
+import { Eye, Pencil, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { getJSON, sendJSON } from '../../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
+import { useConfirm } from '@/components/confirm-dialog'
 import type { KategoriSewa, HargaDasar, PeriodeHarga } from '@/lib/types'
 import { periodeDariTanggal } from '@/lib/types'
 import { kategoriTenant } from '@/lib/tenant'
@@ -16,6 +18,7 @@ import { formatRupiah, todayISO } from '@/lib/utils'
 type Master = { kategori: KategoriSewa[]; hargaDasar: HargaDasar[]; periode: PeriodeHarga[] }
 
 export default function HargaPage() {
+  const confirm = useConfirm()
   const [kategori, setKategori] = useState<KategoriSewa[]>([])
   const [hargaDasar, setHargaDasar] = useState<HargaDasar[]>([])
   const [periods, setPeriods] = useState<PeriodeHarga[]>([])
@@ -41,6 +44,22 @@ export default function HargaPage() {
 
   const activeKode = periodeDariTanggal(todayISO(), periods)
   const activePeriod = periods.find((p) => p.kode === activeKode)
+
+  async function hapusPaket(k: KategoriSewa) {
+    const ok = await confirm({
+      title: 'Hapus paket tenant?',
+      description: `Paket "${k.nama}" beserta harga dan diskon bundle-nya akan dihapus permanen.`,
+      confirmText: 'Hapus',
+    })
+    if (!ok) return
+    try {
+      await sendJSON('/api/master/kategori', 'DELETE', { id: k.id })
+      toast.success('Paket tenant dihapus')
+      await load()
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
+  }
 
   const hargaPerKategori = useMemo(() => {
     const map = new Map<string, number | null>()
@@ -124,12 +143,29 @@ export default function HargaPage() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <Link
-                      href={`/dankelola/tenants/harga/${k.id}`}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-200"
-                    >
-                      <Pencil className="h-3.5 w-3.5" /> Kelola
-                    </Link>
+                    <div className="flex items-center gap-1">
+                      <Link
+                        href={`/dankelola/tenants/harga/${k.id}`}
+                        className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-primary-600"
+                        title="Detail"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                      </Link>
+                      <Link
+                        href={`/dankelola/tenants/harga/${k.id}/edit`}
+                        className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-primary-600"
+                        title="Edit"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Link>
+                      <button
+                        onClick={() => hapusPaket(k)}
+                        className="grid h-7 w-7 place-items-center rounded-lg text-red-500 transition-colors hover:bg-red-50 hover:text-red-600"
+                        title="Hapus"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )

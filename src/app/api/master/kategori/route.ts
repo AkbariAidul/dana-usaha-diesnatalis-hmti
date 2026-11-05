@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getKategoriSewa, upsertKategoriSewa, createAuditLog } from '@/lib/queries'
+import { getKategoriSewa, upsertKategoriSewa, deleteKategoriSewa, createAuditLog } from '@/lib/queries'
 
 function nextKode(list: { kode: string }[]) {
   const max = list.reduce((m, k) => {
@@ -35,5 +35,21 @@ export async function POST(request: Request) {
     return NextResponse.json(data, { status: 201 })
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { id } = await request.json()
+    if (!id) return NextResponse.json({ error: 'ID paket wajib diisi' }, { status: 400 })
+    await deleteKategoriSewa(id)
+    await createAuditLog({ aksi: 'DELETE_KATEGORI_SEWA', target_type: 'kategori_sewa', target_id: id })
+    return NextResponse.json({ success: true })
+  } catch (err: unknown) {
+    const message = String(err)
+    return NextResponse.json(
+      { error: message.includes('violates foreign key') ? 'Paket masih dipakai tenant, tidak bisa dihapus.' : message },
+      { status: 500 },
+    )
   }
 }
