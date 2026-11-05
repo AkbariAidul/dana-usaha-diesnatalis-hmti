@@ -77,7 +77,7 @@ export default function TenantsPage() {
       getJSON<Pendaftaran[]>('/api/public/tenant'),
       getJSON<Pembayaran[]>('/api/pembayaran'),
     ])
-    setTenants(t); setKategori(kategoriTenant(m.kategori || [])); setHargaDasar(m.hargaDasar); setPeriods(m.periode || [])
+    setTenants(t); setKategori(kategoriTenant(m.kategori || [], true)); setHargaDasar(m.hargaDasar); setPeriods(m.periode || [])
     setPendaftaran(d); setPembayaran(p)
   }
 

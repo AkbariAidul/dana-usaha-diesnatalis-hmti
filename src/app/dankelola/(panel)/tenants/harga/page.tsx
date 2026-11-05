@@ -4,13 +4,13 @@ import { DataError } from '@/components/data-error'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Eye, Pencil, Trash2 } from 'lucide-react'
+import { CalendarClock, Eye, Pencil, Trash2, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
 import { useConfirm } from '@/components/confirm-dialog'
-import type { KategoriSewa, HargaDasar, PeriodeHarga } from '@/lib/types'
+import type { KategoriSewa, KategoriBundleDiscount, HargaDasar, PeriodeHarga } from '@/lib/types'
 import { periodeDariTanggal } from '@/lib/types'
 import { kategoriTenant } from '@/lib/tenant'
 import { formatRupiah, todayISO } from '@/lib/utils'
@@ -21,15 +21,21 @@ export default function HargaPage() {
   const confirm = useConfirm()
   const [kategori, setKategori] = useState<KategoriSewa[]>([])
   const [hargaDasar, setHargaDasar] = useState<HargaDasar[]>([])
+  const [bundles, setBundles] = useState<KategoriBundleDiscount[]>([])
   const [periods, setPeriods] = useState<PeriodeHarga[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [togglingId, setTogglingId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
-    const m = await getJSON<Master>('/api/master')
-    setKategori(kategoriTenant(m.kategori || []))
+    const [m, b] = await Promise.all([
+      getJSON<Master>('/api/master'),
+      getJSON<KategoriBundleDiscount[]>('/api/tenant/bundle').catch(() => []),
+    ])
+    setKategori(kategoriTenant(m.kategori || [], true))
     setHargaDasar(m.hargaDasar || [])
     setPeriods(m.periode || [])
+    setBundles(b || [])
   }, [])
 
   useEffect(() => {
@@ -61,6 +67,20 @@ export default function HargaPage() {
     }
   }
 
+  async function toggleAktif(k: KategoriSewa) {
+    if (togglingId) return
+    setTogglingId(k.id)
+    try {
+      await sendJSON('/api/master/kategori', 'POST', { id: k.id, aktif: k.aktif === false })
+      toast.success(k.aktif === false ? 'Paket diaktifkan' : 'Paket dinonaktifkan')
+      await load()
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setTogglingId(null)
+    }
+  }
+
   const hargaPerKategori = useMemo(() => {
     const map = new Map<string, number | null>()
     for (const k of kategori) {
@@ -70,6 +90,14 @@ export default function HargaPage() {
     }
     return map
   }, [kategori, hargaDasar, activeKode])
+
+  const bundlePerKategori = useMemo(() => {
+    const map = new Map<string, KategoriBundleDiscount[]>()
+    for (const b of bundles) {
+      map.set(b.kategori_sewa_id, [...(map.get(b.kategori_sewa_id) ?? []), b])
+    }
+    return map
+  }, [bundles])
 
   if (loading) return <PageSkeleton />
   if (error) return (
@@ -85,33 +113,50 @@ export default function HargaPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Paket & Harga Tenant</h1>
           <p className="text-sm text-slate-500">Kelola paket tenant, periode harga, dan diskon bundle.</p>
         </div>
-        <Link
-          href="/dankelola/tenants/harga/new"
-          className="bg-primary-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-primary-700"
-        >
-          + Tambah Paket
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/dankelola/tenants/pembayaran"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-primary-200 hover:text-primary-600"
+          >
+            <CalendarClock className="h-4 w-4" /> Batas Pembayaran
+          </Link>
+          <Link
+            href="/dankelola/tenants/peralatan"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-primary-200 hover:text-primary-600"
+          >
+            <Wallet className="h-4 w-4" /> Kelola Modal
+          </Link>
+          <Link
+            href="/dankelola/tenants/harga/new"
+            className="bg-primary-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-primary-700"
+          >
+            + Tambah Paket
+          </Link>
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200/70 bg-white shadow-sm">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[1000px] text-sm">
           <thead className="bg-slate-50 text-left text-xs font-medium text-slate-600">
             <tr>
               <th className="px-4 py-3">Thumbnail</th>
               <th className="px-4 py-3">Paket</th>
-              <th className="px-4 py-3">Fasilitas</th>
-              <th className="px-4 py-3">Harga Aktif</th>
+              <th className="px-4 py-3">Diskon Bundle</th>
+              <th className="px-4 py-3">Periode Aktif</th>
+              <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {kategori.length === 0 && (
-              <tr><td colSpan={5} className="px-4 py-12 text-center text-slate-400">Belum ada paket tenant.</td></tr>
+              <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">Belum ada paket tenant.</td></tr>
             )}
             {kategori.map((k) => {
               const harga = hargaPerKategori.get(k.id)
+              const tBundles = bundlePerKategori.get(k.id) ?? []
+              const aktif = k.aktif !== false
               return (
-                <tr key={k.id} className="hover:bg-slate-50">
+                <tr key={k.id} className={`hover:bg-slate-50 ${aktif ? '' : 'opacity-60'}`}>
                   <td className="px-4 py-3">
                     <div className="h-14 w-14 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
                       {k.thumbnail_url ? (
@@ -126,21 +171,42 @@ export default function HargaPage() {
                     {k.keterangan && <p className="mt-0.5 max-w-md text-xs text-slate-500">{k.keterangan}</p>}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1">
-                      {k.include_listrik && <span className="rounded-md bg-green-50 px-1.5 py-0.5 text-xs font-medium text-green-700">Listrik</span>}
-                      {k.include_trashbag && <span className="rounded-md bg-blue-50 px-1.5 py-0.5 text-xs font-medium text-blue-700">Trashbag</span>}
-                      {!k.include_listrik && !k.include_trashbag && <span className="text-xs text-slate-400">—</span>}
-                    </div>
+                    {tBundles.length === 0 ? (
+                      <span className="text-xs text-slate-400">—</span>
+                    ) : (
+                      <div className="flex flex-wrap gap-1">
+                        {tBundles.map((b) => (
+                          <span key={b.id} className="inline-flex items-center rounded-md bg-primary-50 px-1.5 py-0.5 text-xs font-medium text-primary-700">
+                            {b.jumlah_min} tenant
+                            {Number(b.diskon_nominal) > 0 && ` · ${formatRupiah(Number(b.diskon_nominal))}`}
+                            {Number(b.diskon_persen) > 0 && ` · ${Number(b.diskon_persen)}%`}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     {harga != null ? (
                       <div>
+                        <p className="text-xs font-medium text-slate-700">{activePeriod?.nama ?? 'Periode berjalan'}</p>
                         <p className="font-bold text-primary-600">{formatRupiah(harga)}</p>
-                        <p className="text-xs text-slate-400">{activePeriod?.nama ?? 'Periode berjalan'}</p>
                       </div>
                     ) : (
                       <span className="text-xs text-slate-400">Belum diatur</span>
                     )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={aktif}
+                      disabled={togglingId === k.id}
+                      onClick={() => toggleAktif(k)}
+                      className={`inline-flex h-6 w-11 items-center rounded-full p-0.5 transition-colors disabled:opacity-50 ${aktif ? 'bg-primary-600' : 'bg-slate-300'}`}
+                      title={aktif ? 'Nonaktifkan paket' : 'Aktifkan paket'}
+                    >
+                      <span className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${aktif ? 'translate-x-5' : 'translate-x-0'}`} />
+                    </button>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">

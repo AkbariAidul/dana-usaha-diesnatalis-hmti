@@ -7,6 +7,8 @@ export interface KategoriSewa {
   include_listrik: boolean
   include_trashbag: boolean
   slot_tenant: number
+  aktif: boolean
+  selisih_nonfnb: number
 }
 
 export interface KategoriPilihan {

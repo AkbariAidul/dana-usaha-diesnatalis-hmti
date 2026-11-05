@@ -47,6 +47,9 @@ export async function POST(request: Request) {
     if (!kategoriItem) {
       return NextResponse.json({ error: 'Kategori tidak ditemukan' }, { status: 400 })
     }
+    if (kategoriItem.aktif === false) {
+      return NextResponse.json({ error: 'Paket tenant ini sedang tidak aktif' }, { status: 400 })
+    }
     const slot = Number(kategoriItem.slot_tenant) || 0
     if (slot > 0) {
       const { data: terpakai } = await supabaseAdmin

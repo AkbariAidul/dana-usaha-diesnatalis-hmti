@@ -8,7 +8,6 @@ import { PoStepper } from '@/components/po-stepper'
 import { getJSON, sendJSON } from '@/app/dankelola/api'
 import {
   periodeDariTanggal,
-  periodeLabel,
   type Acara,
   type HargaDasar,
   type KategoriBundleDiscount,
@@ -49,7 +48,7 @@ export default function DaftarTenantPublik() {
   const [step, setStep] = useState(1)
   const [form, setForm] = useState({
     nama_usaha: '', kontak: '', email: '', alamat: '', deskripsi_usaha: '',
-    kategori_sewa_id: '', jenis_usaha: 'F&B' as 'F&B' | 'Non-F&B', jumlah_tenant: 1,
+    kategori_sewa_id: '', jenis_usaha: 'F&B' as 'F&B' | 'Non-F&B', jumlah_tenant: '1',
   })
   const [addonQty, setAddonQty] = useState<Record<string, number>>({})
   const [pilihanQty, setPilihanQty] = useState<Record<string, number>>({})
@@ -164,10 +163,10 @@ export default function DaftarTenantPublik() {
     })
   }
 
-  function ubahJumlahTenant(value: number) {
-    const min = 1
+  function rapikanJumlahTenant() {
     const max = sisaSlot !== null ? Math.max(1, sisaSlot) : 99
-    setForm((prev) => ({ ...prev, jumlah_tenant: Math.max(min, Math.min(max, value || 1)) }))
+    const value = Math.max(1, Math.min(max, Number(form.jumlah_tenant) || 1))
+    setForm((prev) => ({ ...prev, jumlah_tenant: String(value) }))
   }
 
   async function daftar() {
@@ -206,7 +205,7 @@ export default function DaftarTenantPublik() {
     finally { setUploading(false) }
   }
 
-  const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
+  const input = 'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
   const wrapper = 'mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8'
 
   return (
@@ -225,18 +224,18 @@ export default function DaftarTenantPublik() {
 
         {step===1 && (
           <div className="rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
-            <div className="p-6 border-b border-slate-100">
+            <div className="border-b border-slate-100 p-4 sm:p-5">
               <h1 className="text-xl font-semibold text-slate-900">Form Pendaftaran Tenant</h1>
-              <p className="text-sm text-slate-500">Isi data usaha, jumlah tenant, dan pilih paket yang mau disewa.</p>
+              <p className="text-sm text-slate-500">Isi data usaha dan jumlah tenant. Paket terpilih: <span className="font-medium text-slate-700">{selectedKategori?.nama ?? '-'}</span></p>
             </div>
-            <div className="p-6 grid md:grid-cols-2 gap-4">
+            <div className="grid gap-3 p-4 sm:p-5 md:grid-cols-4">
               <div className="md:col-span-2"><label className="mb-1 block text-sm font-medium">Nama Usaha</label><input className={input} placeholder="cth: Kopi Senja" value={form.nama_usaha} onChange={e=>setForm({...form,nama_usaha:e.target.value})}/></div>
-              <div><label className="mb-1 block text-sm font-medium">Kontak WA</label><input className={input} placeholder="08xxxxxxxxxx" value={form.kontak} onChange={e=>setForm({...form,kontak:e.target.value})}/></div>
-              <div><label className="mb-1 block text-sm font-medium">Email (opsional)</label><input className={input} placeholder="nama@email.com" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></div>
+              <div><label className="mb-1 block text-sm font-medium">Kontak WA</label><input className={input} type="tel" inputMode="numeric" pattern="[0-9]*" placeholder="08xxxxxxxxxx" value={form.kontak} onChange={e=>setForm({...form,kontak:e.target.value.replace(/\D/g,'')})}/></div>
+              <div><label className="mb-1 block text-sm font-medium">Email (opsional)</label><input className={input} type="email" placeholder="nama@email.com" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></div>
               <div className="md:col-span-2"><label className="mb-1 block text-sm font-medium">Alamat</label><input className={input} placeholder="Alamat lengkap stand/usaha" value={form.alamat} onChange={e=>setForm({...form,alamat:e.target.value})}/></div>
-              <div className="md:col-span-2"><label className="mb-1 block text-sm font-medium">Deskripsi Usaha</label><textarea className={input} placeholder="Ceritakan singkat usaha kamu" value={form.deskripsi_usaha} onChange={e=>setForm({...form,deskripsi_usaha:e.target.value})}/></div>
+              <div className="md:col-span-2"><label className="mb-1 block text-sm font-medium">Deskripsi Usaha</label><textarea className={input} rows={2} placeholder="Ceritakan singkat usaha kamu" value={form.deskripsi_usaha} onChange={e=>setForm({...form,deskripsi_usaha:e.target.value})}/></div>
 
-              <div className="md:col-span-2 rounded-xl border border-slate-200 p-4 space-y-3">
+              <div className="space-y-3 rounded-xl border border-slate-200 p-3.5 md:col-span-4">
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div>
                     <label className="mb-1 block text-sm font-medium">Jenis Usaha</label>
@@ -247,74 +246,63 @@ export default function DaftarTenantPublik() {
                   </div>
                   <div>
                     <label className="mb-1 block text-sm font-medium">Jumlah Tenant</label>
-                    <input type="number" min={1} max={sisaSlot !== null ? Math.max(1, sisaSlot) : 99} className={input} value={form.jumlah_tenant} onChange={e=>ubahJumlahTenant(Number(e.target.value))} />
+                    <input type="number" inputMode="numeric" min={1} max={sisaSlot !== null ? Math.max(1, sisaSlot) : 99} className={input} value={form.jumlah_tenant} onChange={e=>setForm({...form, jumlah_tenant: e.target.value})} onBlur={rapikanJumlahTenant} />
                     {sisaSlot !== null && <p className="mt-1 text-xs text-slate-400">Sisa slot: {sisaSlot}</p>}
                   </div>
                   <div>
-                    <label className="mb-1 block text-sm font-medium">Kategori</label>
-                    <select className={input} value={form.kategori_sewa_id} onChange={e=>setForm({...form,kategori_sewa_id:e.target.value})}>
-                      {kategori.map((k) => <option key={k.id} value={k.id}>{k.nama}</option>)}
-                    </select>
+                    <label className="mb-1 block text-sm font-medium">Paket</label>
+                    <div className={`${input} flex items-center bg-slate-50 text-slate-700`}>{selectedKategori?.nama ?? '-'}</div>
                   </div>
                 </div>
 
-                <p className="text-sm font-medium text-slate-900">Pilih paket & item yang mau disewa</p>
-                <p className="text-xs text-slate-500">Semua pilihan paket tercentang otomatis. Hilangkan centang untuk item yang tidak diambil.</p>
-                <div className="mt-3 space-y-2">
-                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary-200 bg-primary-50/50 px-3 py-2">
-                    <label className="flex flex-1 items-center gap-2 text-sm">
-                      <input type="checkbox" checked disabled className="h-4 w-4 rounded border-slate-300 text-primary-600" />
-                      <span className="font-medium text-slate-800">{selectedKategori?.nama ?? 'Tempat / Stand'}</span>
-                      <span className="text-xs text-slate-500">{formatRupiah(baseHarga)} / tenant</span>
-                    </label>
-                    <span className="text-xs text-slate-400">Wajib</span>
-                  </div>
+                <div>
+                  <p className="text-sm font-medium text-slate-900">Pilih paket & item yang mau disewa</p>
+                  <p className="text-xs text-slate-500">Semua pilihan paket tercentang otomatis. Hilangkan centang untuk item yang tidak diambil.</p>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
                   {paketPilihan.map((item) => {
                     const checked = pilihanQty[item.id] !== undefined
                     return (
-                      <div key={item.id} className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2 ${checked ? 'border-primary-200 bg-primary-50/50' : 'border-slate-100'}`}>
-                        <label className="flex flex-1 cursor-pointer items-center gap-2 text-sm">
-                          <input type="checkbox" checked={checked} onChange={(e) => togglePilihan(item.id, e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" />
-                          <span className="font-medium text-slate-800">{item.nama}</span>
-                          <span className="text-xs text-slate-500">{Number(item.harga) > 0 ? formatRupiah(Number(item.harga)) : 'Gratis'}</span>
+                      <div key={item.id} className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 ${checked ? 'border-primary-200 bg-primary-50/50' : 'border-slate-100'}`}>
+                        <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-sm">
+                          <input type="checkbox" checked={checked} onChange={(e) => togglePilihan(item.id, e.target.checked)} className="h-4 w-4 shrink-0 rounded border-slate-300 text-primary-600 focus:ring-primary-500" />
+                          <span className="truncate font-medium text-slate-800">{item.nama}</span>
+                          <span className="shrink-0 text-xs text-slate-500">{Number(item.harga) > 0 ? formatRupiah(Number(item.harga)) : 'Gratis'}</span>
                         </label>
                         {checked && (
-                          <label className="flex items-center gap-2 text-xs text-slate-500">
-                            Jumlah
-                            <input
-                              type="number"
-                              min={1}
-                              max={99}
-                              className="w-16 rounded-lg border border-slate-200 px-2 py-1 text-center text-sm"
-                              value={pilihanQty[item.id]}
-                              onChange={(e) => setPilihanQty({ ...pilihanQty, [item.id]: Math.max(1, Math.min(99, Number(e.target.value) || 1)) })}
-                            />
-                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={99}
+                            className="w-14 rounded-lg border border-slate-200 px-2 py-1 text-center text-sm"
+                            value={pilihanQty[item.id]}
+                            onChange={(e) => setPilihanQty({ ...pilihanQty, [item.id]: Math.max(1, Math.min(99, Number(e.target.value) || 1)) })}
+                          />
                         )}
                       </div>
                     )
                   })}
+                  {addons.length > 0 && (
+                    <p className="text-xs font-medium text-slate-500 sm:col-span-2">Item tambahan (opsional)</p>
+                  )}
                   {addons.map((item) => {
                     const checked = addonQty[item.id] !== undefined
                     return (
-                      <div key={item.id} className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2 ${checked ? 'border-primary-200 bg-primary-50/50' : 'border-slate-100'}`}>
-                        <label className="flex flex-1 cursor-pointer items-center gap-2 text-sm">
-                          <input type="checkbox" checked={checked} onChange={(e) => toggleAddon(item.id, e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" />
-                          <span className="font-medium text-slate-800">{item.nama}</span>
-                          <span className="text-xs text-slate-500">{formatRupiah(Number(item.harga_sewa))}</span>
+                      <div key={item.id} className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 ${checked ? 'border-primary-200 bg-primary-50/50' : 'border-slate-100'}`}>
+                        <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-sm">
+                          <input type="checkbox" checked={checked} onChange={(e) => toggleAddon(item.id, e.target.checked)} className="h-4 w-4 shrink-0 rounded border-slate-300 text-primary-600 focus:ring-primary-500" />
+                          <span className="truncate font-medium text-slate-800">{item.nama}</span>
+                          <span className="shrink-0 text-xs text-slate-500">{formatRupiah(Number(item.harga_sewa))}</span>
                         </label>
                         {checked && (
-                          <label className="flex items-center gap-2 text-xs text-slate-500">
-                            Jumlah
-                            <input
-                              type="number"
-                              min={1}
-                              max={99}
-                              className="w-16 rounded-lg border border-slate-200 px-2 py-1 text-center text-sm"
-                              value={addonQty[item.id]}
-                              onChange={(e) => setAddonQty({ ...addonQty, [item.id]: Math.max(1, Math.min(99, Number(e.target.value) || 1)) })}
-                            />
-                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={99}
+                            className="w-14 rounded-lg border border-slate-200 px-2 py-1 text-center text-sm"
+                            value={addonQty[item.id]}
+                            onChange={(e) => setAddonQty({ ...addonQty, [item.id]: Math.max(1, Math.min(99, Number(e.target.value) || 1)) })}
+                          />
                         )}
                       </div>
                     )
@@ -322,12 +310,10 @@ export default function DaftarTenantPublik() {
                 </div>
               </div>
 
-              <div className="md:col-span-2 rounded-xl bg-slate-50 p-4 flex flex-wrap items-center justify-between gap-3">
-                <div className="text-sm">
-                  <p>Periode: <span className="font-medium">{periode ? periodeLabel(periode, periods) : 'Di luar periode'}</span></p>
-                  <p className="text-slate-500">{periods.map((p)=>`${p.nama} ${p.tanggal_mulai}–${p.tanggal_selesai}`).join(' • ')}</p>
-                  {acara?.tanggal_acara && <p className="text-slate-500">Tanggal Acara: {formatDate(acara.tanggal_acara)}</p>}
-                  {acara?.batas_pelunasan && <p className="text-slate-500">Batas pembayaran: {formatDate(acara.batas_pelunasan)}</p>}
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 p-3.5 md:col-span-4">
+                <div className="space-y-0.5 text-xs text-slate-500">
+                  {acara?.tanggal_acara && <p>Tanggal Acara: {formatDate(acara.tanggal_acara)}</p>}
+                  {acara?.batas_pelunasan && <p>Batas pembayaran: {formatDate(acara.batas_pelunasan)}</p>}
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-slate-500">{selectedKategori?.nama ?? 'Tempat'} × {jumlahTenant} tenant</p>
@@ -338,7 +324,7 @@ export default function DaftarTenantPublik() {
                   <p className="text-xs text-slate-500">Pembayaran pertama min. 50%: {formatRupiah(Math.ceil(harga / 2))}</p>
                 </div>
               </div>
-              <div className="md:col-span-2 flex justify-end">
+              <div className="flex justify-end md:col-span-4">
                 <button onClick={daftar} disabled={!periode || !form.nama_usaha || !form.kontak || !form.kategori_sewa_id || sisaSlot === 0} className="rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50">Lanjut ke Pembayaran</button>
               </div>
             </div>

@@ -25,6 +25,7 @@ export default function TahapPage() {
   const [bundles, setBundles] = useState<TicketBundleDiscount[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [togglingId, setTogglingId] = useState<string | null>(null)
   const today = todayISO()
 
   const load = useCallback(async () => {
@@ -62,6 +63,17 @@ export default function TahapPage() {
 
   const getActivePeriod = (t: TicketKatalogItem) =>
     periods.find((p) => p.tiket_tipe_id === t.id && today >= p.tanggal_mulai && today <= p.tanggal_selesai) ?? null
+
+  async function toggleAktif(t: TicketKatalogItem) {
+    if (togglingId) return
+    setTogglingId(t.id)
+    try {
+      await sendJSON('/api/ticket', 'POST', { id: t.id, aktif: !t.aktif })
+      await load()
+      toast.success(t.aktif ? 'Tiket dinonaktifkan' : 'Tiket diaktifkan')
+    } catch (e) { toast.error(String(e)) }
+    finally { setTogglingId(null) }
+  }
 
   if (loading) return <PageSkeleton />
   if (error) return (
@@ -147,14 +159,17 @@ export default function TahapPage() {
 
                   {/* Status */}
                   <td className="px-4 py-3">
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                      t.buka
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-500'
-                    }`}>
-                      <span className={`h-1.5 w-1.5 rounded-full ${t.buka ? 'bg-green-500' : 'bg-gray-400'}`} />
-                      {t.buka ? 'Aktif' : 'Nonaktif'}
-                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={t.aktif}
+                      disabled={togglingId === t.id}
+                      onClick={() => toggleAktif(t)}
+                      className={`inline-flex h-6 w-11 items-center rounded-full p-0.5 transition-colors disabled:opacity-50 ${t.aktif ? 'bg-primary-600' : 'bg-slate-300'}`}
+                      title={t.aktif ? 'Nonaktifkan tiket' : 'Aktifkan tiket'}
+                    >
+                      <span className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${t.aktif ? 'translate-x-5' : 'translate-x-0'}`} />
+                    </button>
                   </td>
 
                   {/* Periode */}

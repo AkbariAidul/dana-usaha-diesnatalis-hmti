@@ -1,8 +1,8 @@
 import type { KategoriSewa } from './types'
 
-export function kategoriTenant(list: KategoriSewa[]): KategoriSewa[] {
+export function kategoriTenant(list: KategoriSewa[], includeInactive = false): KategoriSewa[] {
   return list
-    .filter((k) => /^KT-\d+$/.test(k.kode) && k.kode !== 'KT-03')
+    .filter((k) => /^KT-\d+$/.test(k.kode) && k.kode !== 'KT-03' && (includeInactive || k.aktif !== false))
     .sort((a, b) => a.kode.localeCompare(b.kode))
 }
 

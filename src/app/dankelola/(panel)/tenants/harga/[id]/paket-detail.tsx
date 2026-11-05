@@ -17,7 +17,7 @@ type Master = { kategori: KategoriSewa[]; hargaDasar: HargaDasar[]; periode: Per
 const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10 disabled:bg-slate-50 disabled:text-slate-500'
 const label = 'mb-1 block text-xs font-medium text-slate-500'
 
-const emptyPeriode = { id: '', nama: '', tanggal_mulai: '', tanggal_selesai: '', harga_fnb: '', harga_nonfnb: '' }
+const emptyPeriode = { id: '', nama: '', tanggal_mulai: '', tanggal_selesai: '', harga_fnb: '' }
 const emptyPilihan = { id: '', nama: '', harga: '' }
 const emptyBundle = { id: '', jumlah_min: '', diskon_nominal: '', diskon_persen: '' }
 
@@ -40,7 +40,7 @@ export default function PaketDetail({
   const [periods, setPeriods] = useState<PeriodeHarga[]>([])
   const [pilihanList, setPilihanList] = useState<KategoriPilihan[]>([])
   const [bundles, setBundles] = useState<KategoriBundleDiscount[]>([])
-  const [form, setForm] = useState({ nama: '', keterangan: '', thumbnail_url: '', include_listrik: true, include_trashbag: true, slot_tenant: '' })
+  const [form, setForm] = useState({ nama: '', keterangan: '', thumbnail_url: '', include_listrik: true, include_trashbag: true, slot_tenant: '', selisih_nonfnb: '' })
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null)
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null)
   const [periodForm, setPeriodForm] = useState(emptyPeriode)
@@ -71,6 +71,7 @@ export default function PaketDetail({
         include_listrik: found.include_listrik,
         include_trashbag: found.include_trashbag,
         slot_tenant: String(found.slot_tenant ?? 0),
+        selisih_nonfnb: String(found.selisih_nonfnb ?? 0),
       })
       setHargaDasar(m.hargaDasar || [])
       setPeriods(m.periode || [])
@@ -121,6 +122,25 @@ export default function PaketDetail({
     setBundles(b)
   }
 
+  async function syncHargaNonFnb(kategoriId: string, selisih: number) {
+    const fnbRows = hargaDasar.filter((h) => h.kategori_sewa_id === kategoriId && h.jenis_usaha === 'F&B')
+    for (const fnb of fnbRows) {
+      const harga = Math.max(0, Number(fnb.harga) - selisih)
+      const existing = hargaDasar.find(
+        (h) => h.kategori_sewa_id === kategoriId && h.periode === fnb.periode && h.jenis_usaha === 'Non-F&B'
+      )
+      if (existing && Number(existing.harga) === harga) continue
+      await sendJSON('/api/master/harga', 'POST', {
+        id: existing?.id,
+        kategori_sewa_id: kategoriId,
+        jenis_usaha: 'Non-F&B',
+        periode: fnb.periode,
+        harga,
+      })
+    }
+    await reloadHarga()
+  }
+
   async function simpanInfo() {
     if (readOnly) return
     if (!form.nama.trim()) { toast.error('Nama paket wajib diisi'); return }
@@ -145,6 +165,7 @@ export default function PaketDetail({
         include_listrik: form.include_listrik,
         include_trashbag: form.include_trashbag,
         slot_tenant: Math.max(0, Number(form.slot_tenant) || 0),
+        selisih_nonfnb: Math.max(0, Number(form.selisih_nonfnb) || 0),
       }) as KategoriSewa
 
       setPaket(saved)
@@ -155,6 +176,7 @@ export default function PaketDetail({
         include_listrik: saved.include_listrik,
         include_trashbag: saved.include_trashbag,
         slot_tenant: String(saved.slot_tenant ?? 0),
+        selisih_nonfnb: String(saved.selisih_nonfnb ?? 0),
       })
       setThumbnailFile(null)
       if (!paket) {
@@ -162,6 +184,7 @@ export default function PaketDetail({
         toast.success('Paket dibuat. Tambahkan periode, pilihan, & diskon bundle di bawah.')
         return
       }
+      await syncHargaNonFnb(saved.id, Math.max(0, Number(saved.selisih_nonfnb) || 0))
       toast.success('Paket diperbarui')
     } catch (e) {
       toast.error((e as Error).message)
@@ -176,14 +199,12 @@ export default function PaketDetail({
 
   function editPeriode(p: PeriodeHarga) {
     const fnb = hargaByKey.get(`${p.kode}|F&B`)
-    const nonfnb = hargaByKey.get(`${p.kode}|Non-F&B`)
     setPeriodForm({
       id: p.id,
       nama: p.nama,
       tanggal_mulai: p.tanggal_mulai,
       tanggal_selesai: p.tanggal_selesai,
       harga_fnb: fnb ? String(fnb.harga) : '',
-      harga_nonfnb: nonfnb ? String(nonfnb.harga) : '',
     })
   }
 
@@ -193,9 +214,8 @@ export default function PaketDetail({
     if (!periodForm.tanggal_mulai || !periodForm.tanggal_selesai) { toast.error('Tanggal wajib diisi'); return }
     if (periodForm.tanggal_selesai < periodForm.tanggal_mulai) { toast.error('Tanggal selesai harus setelah mulai'); return }
     const hargaFnb = Number(periodForm.harga_fnb)
-    const hargaNonFnb = Number(periodForm.harga_nonfnb)
     if (!periodForm.harga_fnb.trim() || !Number.isFinite(hargaFnb) || hargaFnb < 0) { toast.error('Harga F&B wajib diisi'); return }
-    if (!periodForm.harga_nonfnb.trim() || !Number.isFinite(hargaNonFnb) || hargaNonFnb < 0) { toast.error('Harga Non-F&B wajib diisi'); return }
+    const hargaNonFnb = Math.max(0, hargaFnb - (Number(paket.selisih_nonfnb) || 0))
     setSavingPeriode(true)
     try {
       const saved = await sendJSON('/api/master/periode', 'POST', {
@@ -436,6 +456,11 @@ export default function PaketDetail({
             <label className={label}>Slot Tenant</label>
             <input disabled={readOnly} type="number" min={0} className={input} placeholder="0 = tanpa batas" value={form.slot_tenant} onChange={(e) => setForm({ ...form, slot_tenant: e.target.value })} />
           </div>
+          <div className="w-40">
+            <label className={label}>Selisih Non-F&B (Rp)</label>
+            <input disabled={readOnly} type="number" min={0} className={input} placeholder="cth: 50000 = 50 ribu" value={form.selisih_nonfnb} onChange={(e) => setForm({ ...form, selisih_nonfnb: e.target.value })} />
+            <p className="mt-1 text-[10px] text-slate-400">Harga Non-F&B = harga F&B − selisih.</p>
+          </div>
         </div>
         <div className="flex justify-end gap-2">
           {readOnly ? (
@@ -524,7 +549,7 @@ export default function PaketDetail({
       <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm space-y-3">
         <div>
           <h2 className="font-semibold text-slate-900">Periode Harga</h2>
-          <p className="text-sm text-slate-500">Harga per periode dibedakan untuk tenant F&B dan Non-F&B.</p>
+          <p className="text-sm text-slate-500">Harga F&B per periode. Non-F&B otomatis lebih murah sesuai selisih di atas.</p>
         </div>
         {!paket ? (
           <p className="text-sm text-slate-400">Simpan informasi dasar terlebih dahulu untuk menambahkan periode harga.</p>
@@ -581,12 +606,15 @@ export default function PaketDetail({
               </div>
             )}
             {!readOnly && (
-              <div className="grid gap-3 border-t border-slate-100 pt-3 md:grid-cols-6 md:items-end">
+              <div className="grid gap-3 border-t border-slate-100 pt-3 md:grid-cols-5 md:items-end">
                 <div><label className={label}>Nama</label><input className={input} value={periodForm.nama} onChange={(e) => setPeriodForm({ ...periodForm, nama: e.target.value })} placeholder="Early Bird" /></div>
                 <div><label className={label}>Mulai</label><input type="date" className={input} value={periodForm.tanggal_mulai} onChange={(e) => setPeriodForm({ ...periodForm, tanggal_mulai: e.target.value })} /></div>
                 <div><label className={label}>Selesai</label><input type="date" className={input} value={periodForm.tanggal_selesai} onChange={(e) => setPeriodForm({ ...periodForm, tanggal_selesai: e.target.value })} /></div>
-                <div><label className={label}>Harga F&B</label><input type="number" min={0} className={input} placeholder="cth: 500000" value={periodForm.harga_fnb} onChange={(e) => setPeriodForm({ ...periodForm, harga_fnb: e.target.value })} /></div>
-                <div><label className={label}>Harga Non-F&B</label><input type="number" min={0} className={input} placeholder="cth: 400000" value={periodForm.harga_nonfnb} onChange={(e) => setPeriodForm({ ...periodForm, harga_nonfnb: e.target.value })} /></div>
+                <div>
+                  <label className={label}>Harga F&B</label>
+                  <input type="number" min={0} className={input} placeholder="cth: 500000" value={periodForm.harga_fnb} onChange={(e) => setPeriodForm({ ...periodForm, harga_fnb: e.target.value })} />
+                  <p className="mt-1 text-[10px] text-slate-400">Non-F&B: {formatRupiah(Math.max(0, (Number(periodForm.harga_fnb) || 0) - (Number(paket?.selisih_nonfnb) || 0)))}</p>
+                </div>
                 <div className="flex gap-2">
                   <button onClick={simpanPeriode} disabled={savingPeriode} className="flex-1 rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
                     {savingPeriode ? 'Menyimpan...' : periodForm.id ? 'Simpan' : '+ Tambah Periode'}

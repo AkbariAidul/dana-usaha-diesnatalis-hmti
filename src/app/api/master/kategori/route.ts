@@ -12,17 +12,20 @@ function nextKode(list: { kode: string }[]) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const nama = String(body.nama ?? '').trim()
-    if (!nama) return NextResponse.json({ error: 'Nama paket wajib diisi' }, { status: 400 })
+    const payload: Record<string, unknown> = {}
 
-    const payload = {
-      nama,
-      keterangan: String(body.keterangan ?? '').trim(),
-      thumbnail_url: body.thumbnail_url ? String(body.thumbnail_url) : null,
-      include_listrik: Boolean(body.include_listrik),
-      include_trashbag: Boolean(body.include_trashbag),
-      slot_tenant: Math.max(0, Number(body.slot_tenant) || 0),
+    if (body.nama !== undefined || !body.id) {
+      const nama = String(body.nama ?? '').trim()
+      if (!nama) return NextResponse.json({ error: 'Nama paket wajib diisi' }, { status: 400 })
+      payload.nama = nama
     }
+    if (body.keterangan !== undefined) payload.keterangan = String(body.keterangan ?? '').trim()
+    if (body.thumbnail_url !== undefined) payload.thumbnail_url = body.thumbnail_url ? String(body.thumbnail_url) : null
+    if (body.include_listrik !== undefined) payload.include_listrik = Boolean(body.include_listrik)
+    if (body.include_trashbag !== undefined) payload.include_trashbag = Boolean(body.include_trashbag)
+    if (body.slot_tenant !== undefined) payload.slot_tenant = Math.max(0, Number(body.slot_tenant) || 0)
+    if (body.selisih_nonfnb !== undefined) payload.selisih_nonfnb = Math.max(0, Number(body.selisih_nonfnb) || 0)
+    if (body.aktif !== undefined) payload.aktif = Boolean(body.aktif)
 
     if (body.id) {
       const data = await upsertKategoriSewa({ id: body.id, ...payload })

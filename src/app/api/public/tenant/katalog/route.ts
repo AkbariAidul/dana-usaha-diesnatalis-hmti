@@ -29,7 +29,15 @@ export async function GET() {
       if (!row.kategori_sewa_id) continue
       terpakai[row.kategori_sewa_id] = (terpakai[row.kategori_sewa_id] ?? 0) + Number(row.jumlah_tenant ?? 1)
     }
-    return NextResponse.json({ kategori, hargaDasar, periode, pilihan, bundles, acara, terpakai })
+    return NextResponse.json({
+      kategori: kategori.filter((k) => k.aktif !== false),
+      hargaDasar,
+      periode,
+      pilihan,
+      bundles,
+      acara,
+      terpakai,
+    })
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })
   }

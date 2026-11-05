@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   ArrowRight,
-  CalendarDays,
   CheckCircle2,
   ClipboardList,
   CreditCard,
@@ -129,12 +128,9 @@ export default function InfoTenantPage() {
     return map
   }, [katalog.bundles])
 
-  function hargaKategori(kategoriId: string, jenis: 'F&B' | 'Non-F&B') {
-    if (!activeKode) return undefined
-    const base = hargaMap.get(`${kategoriId}|${jenis}|${activeKode}`)
-    if (base === undefined) return undefined
-    const pilihanTotal = (pilihanMap.get(kategoriId) ?? []).reduce((sum, p) => sum + Number(p.harga), 0)
-    return base + pilihanTotal
+  function hargaTersedia(kategoriId: string) {
+    if (!activeKode) return false
+    return hargaMap.has(`${kategoriId}|F&B|${activeKode}`) || hargaMap.has(`${kategoriId}|Non-F&B|${activeKode}`)
   }
 
   const wrapper = 'mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8'
@@ -172,7 +168,7 @@ export default function InfoTenantPage() {
         />
         <PoStepper steps={STEP} currentStep={1} />
 
-        <div className="grid items-start gap-8 lg:grid-cols-[380px_minmax(0,1fr)] xl:grid-cols-[420px_minmax(0,1fr)]">
+        <div className="grid items-start gap-8 lg:grid-cols-[340px_minmax(0,1fr)] xl:grid-cols-[380px_minmax(0,1fr)]">
           <section className="lg:sticky lg:top-24 lg:self-start">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-600">Alur pendaftaran</p>
             <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">Dari pilih paket sampai QR tenant aktif</h2>
@@ -207,13 +203,13 @@ export default function InfoTenantPage() {
           </section>
 
           <section id="kategori" className="scroll-mt-24">
-            <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-600">Kategori tenant</p>
                 <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">Pilih paket yang paling cocok</h2>
               </div>
               <p className="max-w-md text-sm text-slate-500">
-                Harga total sudah termasuk semua pilihan paket. Pilihan bisa disesuaikan di form pendaftaran.
+                Harga final tampil di form pendaftaran sesuai periode berjalan.
               </p>
             </div>
 
@@ -222,139 +218,84 @@ export default function InfoTenantPage() {
                 Data kategori tenant belum tersedia.
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-2.5">
                 {kategori.map((k) => {
                   const pilihan = pilihanMap.get(k.id) ?? []
                   const bundles = bundleMap.get(k.id) ?? []
-                  const hargaFnb = hargaKategori(k.id, 'F&B')
-                  const hargaNonFnb = hargaKategori(k.id, 'Non-F&B')
                   const terpakai = Number(katalog.terpakai[k.id] ?? 0)
                   const sisa = Number(k.slot_tenant) > 0 ? Math.max(0, Number(k.slot_tenant) - terpakai) : null
                   const habis = sisa === 0
-                  const periodePaket = katalog.periode.filter((p) =>
-                    hargaMap.has(`${k.id}|F&B|${p.kode}`) || hargaMap.has(`${k.id}|Non-F&B|${p.kode}`)
-                  )
+                  const bisaDaftar = !!activePeriod && hargaTersedia(k.id)
                   return (
                     <article key={k.id} className={`overflow-hidden rounded-2xl border bg-white shadow-sm shadow-slate-200/40 ${habis ? 'border-slate-200 opacity-75' : 'border-slate-200/70'}`}>
-                      <div className="grid gap-4 p-5 sm:grid-cols-[180px_minmax(0,1fr)] xl:grid-cols-[190px_minmax(0,1fr)_260px]">
-                        <div className="h-36 w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-50 sm:h-40">
+                      <div className="grid gap-3 p-3.5 sm:grid-cols-[88px_minmax(0,1fr)_auto] sm:items-center">
+                        <div className="h-24 w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-50 sm:h-[88px] sm:w-[88px]">
                           {k.thumbnail_url ? (
                             <img src={k.thumbnail_url} alt={k.nama} className="h-full w-full object-cover" />
                           ) : (
                             <div className="grid h-full w-full place-items-center text-slate-400">
-                              <Store className="h-8 w-8" />
+                              <Store className="h-6 w-6" />
                             </div>
                           )}
                         </div>
 
                         <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="text-lg font-semibold text-slate-900">{k.nama}</h3>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <h3 className="text-base font-semibold text-slate-900">{k.nama}</h3>
                             {sisa !== null && (
-                              <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${habis ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${habis ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
                                 {habis ? 'Slot habis' : `Sisa ${sisa} slot`}
                               </span>
                             )}
-                          </div>
-                          <p className="mt-1 text-sm leading-relaxed text-slate-600">
-                            {k.keterangan || 'Stand sesuai kategori yang dipilih.'}
-                          </p>
-
-                          <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
                             {k.include_listrik && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 font-medium text-amber-700">
-                                <Zap className="h-3 w-3" /> Listrik
+                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                                <Zap className="h-2.5 w-2.5" /> Listrik
                               </span>
                             )}
                             {k.include_trashbag && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700">
-                                <CheckCircle2 className="h-3 w-3" /> Trashbag
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                                <CheckCircle2 className="h-2.5 w-2.5" /> Trashbag
                               </span>
                             )}
                           </div>
+                          <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-slate-500">
+                            {k.keterangan || 'Stand sesuai kategori yang dipilih.'}
+                          </p>
 
                           {pilihan.length > 0 && (
-                            <p className="mt-2 text-xs text-slate-500">
+                            <p className="mt-1 truncate text-[11px] text-slate-500">
                               Pilihan: {pilihan.map((p) => p.nama).join(' · ')}
                             </p>
                           )}
 
-                          {periodePaket.length > 0 && (
-                            <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50/70 p-2.5">
-                              <div className="flex items-center gap-1.5">
-                                <CalendarDays className="h-3.5 w-3.5 text-slate-400" />
-                                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Periode harga</p>
-                              </div>
-                              <div className="mt-2 space-y-1">
-                                {periodePaket.map((p) => {
-                                  const aktif = p.kode === activeKode
-                                  const fnb = hargaMap.get(`${k.id}|F&B|${p.kode}`)
-                                  const nonfnb = hargaMap.get(`${k.id}|Non-F&B|${p.kode}`)
-                                  return (
-                                    <div key={p.id} className={`flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 rounded-lg px-2 py-1 text-xs ${aktif ? 'bg-white text-slate-900 shadow-sm ring-1 ring-primary-100' : 'text-slate-500'}`}>
-                                      <span className="inline-flex items-center gap-1.5 font-medium">
-                                        {p.nama || 'Periode'}
-                                        {aktif && <span className="rounded-full bg-primary-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-primary-700">Aktif</span>}
-                                      </span>
-                                      <span className="text-[11px] text-slate-400">{p.tanggal_mulai} – {p.tanggal_selesai}</span>
-                                      <span className={aktif ? 'font-semibold text-primary-700' : 'font-medium'}>
-                                        {fnb !== undefined && <>F&B {formatRupiah(fnb)}</>}
-                                        {fnb !== undefined && nonfnb !== undefined && ' · '}
-                                        {nonfnb !== undefined && <>Non-F&B {formatRupiah(nonfnb)}</>}
-                                      </span>
-                                    </div>
-                                  )
-                                })}
-                              </div>
-                            </div>
-                          )}
-
                           {bundles.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-1.5">
+                            <div className="mt-1.5 flex flex-wrap gap-1">
                               {bundles.map((b) => (
-                                <span key={b.id} className="inline-flex items-center gap-1 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
-                                  <Sparkles className="h-3 w-3" /> Sewa {b.jumlah_min}+ tenant
-                                  {Number(b.diskon_nominal) > 0 && ` hemat ${formatRupiah(Number(b.diskon_nominal))}`}
-                                  {Number(b.diskon_persen) > 0 && `${Number(b.diskon_nominal) > 0 ? ' + ' : ' hemat '}${Number(b.diskon_persen)}%`}
+                                <span key={b.id} className="inline-flex items-center gap-1 rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                                  <Sparkles className="h-2.5 w-2.5" /> {b.jumlah_min}+ tenant
+                                  {Number(b.diskon_nominal) > 0 && ` · ${formatRupiah(Number(b.diskon_nominal))}`}
+                                  {Number(b.diskon_persen) > 0 && ` · ${Number(b.diskon_persen)}%`}
                                 </span>
                               ))}
                             </div>
                           )}
                         </div>
 
-                        <div className="flex flex-col justify-between rounded-xl border border-slate-100 bg-slate-50/60 p-4 xl:border-0 xl:bg-transparent xl:p-0">
-                          <div>
-                            <p className="text-[11px] text-slate-500">
-                              {activePeriod ? `Total semua pilihan · ${activePeriod.nama}` : 'Total semua pilihan'}
-                            </p>
-                            {hargaFnb !== undefined && (
-                              <p className="mt-1 text-lg font-bold text-slate-900">F&B {formatRupiah(hargaFnb)}</p>
-                            )}
-                            {hargaNonFnb !== undefined && (
-                              <p className="text-sm font-semibold text-slate-700">Non-F&B {formatRupiah(hargaNonFnb)}</p>
-                            )}
-                            {hargaFnb === undefined && hargaNonFnb === undefined && (
-                              <p className="mt-1 text-sm text-slate-400">Harga belum diatur</p>
-                            )}
-                            {!activePeriod && (
-                              <p className="mt-1 text-xs text-amber-600">Harga tampil saat periode pendaftaran dibuka.</p>
-                            )}
-                          </div>
-
+                        <div className="sm:pl-2">
                           {habis ? (
-                            <span className="mt-4 inline-flex items-center justify-center rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-400">
+                            <span className="inline-flex w-full items-center justify-center rounded-xl bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-400 sm:w-auto">
                               Slot Habis
                             </span>
-                          ) : activePeriod && (hargaFnb !== undefined || hargaNonFnb !== undefined) ? (
+                          ) : bisaDaftar ? (
                             <Link
                               href={`/daftar-tenant/form?kategori=${k.id}`}
-                              className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-700"
+                              className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-primary-700 sm:w-auto"
                             >
-                              Pilih Kategori Ini
-                              <ArrowRight className="h-4 w-4" />
+                              Pilih
+                              <ArrowRight className="h-3.5 w-3.5" />
                             </Link>
                           ) : (
-                            <span className="mt-4 inline-flex cursor-not-allowed items-center justify-center rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-400">
+                            <span className="inline-flex w-full cursor-not-allowed items-center justify-center rounded-xl bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-400 sm:w-auto">
                               Belum Dibuka
                             </span>
                           )}
