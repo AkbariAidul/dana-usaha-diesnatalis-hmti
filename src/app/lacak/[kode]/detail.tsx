@@ -42,6 +42,7 @@ type DaftarTenant = {
   created_at: string
   jumlah_tenant: number | null
   addon: TenantItem[] | null
+  pembayaran_tipe?: string | null
 }
 
 type Tenant = {
@@ -470,7 +471,8 @@ function TenantView({ data, token, reload }: { data: Extract<StatusResponse, { t
   const paketSubtotal = Math.max(0, harga - addonTotal)
   const target80 = Math.ceil(harga * 0.8)
   const kekurangan80 = Math.max(0, target80 - totalValid)
-  const nominalAwal = Math.max(1, Math.ceil(sisa / 2))
+  const nominalAwal = Math.max(1, sisa)
+  const nyicil = daftar?.pembayaran_tipe === 'nyicil'
   const [qrisPayload, setQrisPayload] = useState('')
 
   useEffect(() => {
@@ -598,7 +600,12 @@ function TenantView({ data, token, reload }: { data: Extract<StatusResponse, { t
       )}
 
       <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm sm:p-6">
-        <h2 className="mb-3 font-semibold text-slate-900">Riwayat Pembayaran</h2>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold text-slate-900">{nyicil ? 'Riwayat Cicilan' : 'Riwayat Pembayaran'}</h2>
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+            {pembayaran.length} kali pembayaran
+          </span>
+        </div>
         {pembayaran.length === 0 && <p className="text-sm text-slate-400">Belum ada pembayaran.</p>}
         {pembayaran.length > 0 && (
           <div className="overflow-x-auto">

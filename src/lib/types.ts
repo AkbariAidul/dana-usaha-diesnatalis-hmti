@@ -96,6 +96,7 @@ export interface Tenant {
   kategori_sewa?: { kode: string; nama: string }
   venue_checked_in_at?: string | null
   venue_checked_in_by?: string | null
+  qr?: string | null
 }
 
 export interface Pembayaran {

@@ -1,11 +1,20 @@
 import { NextResponse } from 'next/server'
 import { getTenants, createTenant, createAuditLog, getPeriodeHarga } from '@/lib/queries'
 import { periodeDariTanggal } from '@/lib/types'
+import { buatQrPayload } from '@/lib/link-token'
 
 export async function GET() {
   try {
     const data = await getTenants()
-    return NextResponse.json(data)
+    return NextResponse.json(data.map((tenant) => {
+      const harga = Number(tenant.harga_akhir ?? 0)
+      const dibayar = Number(tenant.sudah_dibayar ?? 0)
+      const eligible = harga > 0 && dibayar >= harga * 0.8
+      return {
+        ...tenant,
+        qr: eligible ? buatQrPayload('tenant', tenant.kode_stand) : null,
+      }
+    }))
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })
   }

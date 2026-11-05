@@ -12,6 +12,7 @@ import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { TableSkeleton } from '../ui'
 import { useConfirm } from '@/components/confirm-dialog'
 import { Modal } from '@/components/modal'
+import { QrImage } from '@/components/qr-image'
 
 type Pendaftaran = {
   id: string
@@ -47,6 +48,8 @@ type Row = {
   detailId?: string
   pendaftaran?: Pendaftaran
   pendingBayar: Pembayaran[]
+  payments: Pembayaran[]
+  qr?: string | null
 }
 
 export default function TenantsPage() {
@@ -62,6 +65,8 @@ export default function TenantsPage() {
   const [rejectDaftar, setRejectDaftar] = useState<Pendaftaran | null>(null)
   const [rejectCatatan, setRejectCatatan] = useState('')
   const [strukTarget, setStrukTarget] = useState<Row | null>(null)
+  const [riwayatTerbuka, setRiwayatTerbuka] = useState<string | null>(null)
+  const [qrPreview, setQrPreview] = useState<string | null>(null)
 
   async function load() {
     const [t, m, d, p] = await Promise.all([
@@ -164,6 +169,8 @@ export default function TenantsPage() {
         addon: p.addon ?? null,
         pendaftaran: p,
         pendingBayar: [],
+        payments: [],
+        qr: null,
       })),
     ...tenants.map((t) => {
       const pending = pendingBayar.filter((p) => p.tenant_id === t.id)
@@ -186,6 +193,8 @@ export default function TenantsPage() {
         checkedInAt: t.venue_checked_in_at ?? null,
         detailId: t.id,
         pendingBayar: pending,
+        payments: pembayaran.filter((p) => p.tenant_id === t.id),
+        qr: t.qr ?? null,
       }
     }),
   ]
@@ -284,6 +293,16 @@ export default function TenantsPage() {
                 <td className="px-5 py-3 align-top">
                   <div className="font-mono text-xs">{r.kode}</div>
                   <div className="mt-1 text-xs text-slate-400">{formatDate(r.tanggal)}</div>
+                  {r.qr && (
+                    <button
+                      type="button"
+                      onClick={() => setQrPreview(r.qr ?? null)}
+                      className="mt-2 block rounded-md border border-slate-200 bg-white p-0.5 transition hover:ring-2 hover:ring-primary-200"
+                      title="Perbesar QR masuk venue"
+                    >
+                      <QrImage value={r.qr} size={64} />
+                    </button>
+                  )}
                 </td>
                 <td className="px-5 py-3 align-top">
                   {r.detailId ? (
@@ -321,24 +340,53 @@ export default function TenantsPage() {
                     {r.kind === 'pendaftaran' ? (
                       r.pendaftaran?.bukti_url ? (
                         <a href={r.pendaftaran.bukti_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline">Bukti DP</a>
-                      ) : <span className="text-xs text-slate-400">—</span>
-                    ) : r.pendingBayar.length === 0 ? (
-                      <span className="text-xs text-slate-400">—</span>
+                      ) : <span className="text-xs text-slate-400">-</span>
                     ) : (
-                      <div className="space-y-1.5">
-                        {r.pendingBayar.map((p) => (
-                          <div key={p.id} className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-xs font-medium text-slate-700">{p.jenis} · {formatRupiah(p.nominal)}</span>
-                              {p.bukti_url && <a href={p.bukti_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline">Bukti</a>}
-                            </div>
-                            <div className="mt-1 flex gap-1">
-                              <button onClick={() => verifikasiPembayaran(p, 'approve')} className="rounded bg-green-600 px-2 py-0.5 text-xs text-white">Setujui</button>
-                              <button onClick={() => verifikasiPembayaran(p, 'reject')} className="rounded bg-red-600 px-2 py-0.5 text-xs text-white">Tolak</button>
-                            </div>
+                      <>
+                        <button
+                          onClick={() => setRiwayatTerbuka(riwayatTerbuka === r.key ? null : r.key)}
+                          className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700 hover:bg-slate-200"
+                        >
+                          {r.payments.length} cicilan
+                        </button>
+                        {riwayatTerbuka === r.key && (
+                          <div className="mt-2 space-y-1.5">
+                            {r.payments.length === 0 && (
+                              <p className="text-xs text-slate-400">Belum ada pembayaran.</p>
+                            )}
+                            {r.payments.map((p) => (
+                              <div key={p.id} className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-xs font-medium text-slate-700">{p.jenis} � {formatRupiah(Number(p.nominal))}</span>
+                                  <span className={`rounded px-1.5 py-0.5 text-[10px] ${p.validated ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                    {p.validated ? 'Terverifikasi' : 'Pending'}
+                                  </span>
+                                </div>
+                                <div className="mt-0.5 flex items-center justify-between gap-2 text-[11px] text-slate-500">
+                                  <span>{formatDate(p.tanggal_bayar)}</span>
+                                  {p.bukti_url && <a href={p.bukti_url} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">Bukti</a>}
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
+                        )}
+                        {r.pendingBayar.length > 0 && (
+                          <div className="mt-2 space-y-1.5">
+                            {r.pendingBayar.map((p) => (
+                              <div key={p.id} className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-xs font-medium text-slate-700">{p.jenis} � {formatRupiah(p.nominal)}</span>
+                                  {p.bukti_url && <a href={p.bukti_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline">Bukti</a>}
+                                </div>
+                                <div className="mt-1 flex gap-1">
+                                  <button onClick={() => verifikasiPembayaran(p, 'approve')} className="rounded bg-green-600 px-2 py-0.5 text-xs text-white">Setujui</button>
+                                  <button onClick={() => verifikasiPembayaran(p, 'reject')} className="rounded bg-red-600 px-2 py-0.5 text-xs text-white">Tolak</button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </td>
@@ -388,6 +436,25 @@ export default function TenantsPage() {
           </div>
         </div>
       </div>
+
+      <Modal
+        open={!!qrPreview}
+        onClose={() => setQrPreview(null)}
+        panelClassName="w-full max-w-xs rounded-2xl bg-white p-5 text-center shadow-xl"
+      >
+        <p className="text-sm font-semibold text-slate-900">QR Masuk Venue</p>
+        <div className="mx-auto mt-3 w-fit rounded-xl border border-slate-200 p-3">
+          {qrPreview && <QrImage value={qrPreview} size={256} />}
+        </div>
+        <p className="mt-2 text-xs text-slate-500">Aktif karena pembayaran sudah minimal 80%.</p>
+        <button
+          type="button"
+          onClick={() => setQrPreview(null)}
+          className="mt-4 w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+        >
+          Tutup
+        </button>
+      </Modal>
 
       <Modal open={!!strukTarget} onClose={() => setStrukTarget(null)} panelClassName="max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
         {strukTarget && (

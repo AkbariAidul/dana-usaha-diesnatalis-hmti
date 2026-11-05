@@ -56,9 +56,9 @@ function detailTenant(tenant: TenantNotif, link: string) {
   return lines.join('\n')
 }
 
-export async function kirimNotifTenantMenungguVerifikasi(request: Request, tenant: TenantNotif) {
+export function pesanTenantMenungguVerifikasi(request: Request, tenant: TenantNotif) {
   const link = linkTenant(request, kodeTenant(tenant))
-  const message = [
+  return [
     `Halo ${tenant.nama_usaha}, bukti pembayaran tenant kamu sudah kami terima.`,
     '',
     detailTenant(tenant, link),
@@ -68,15 +68,14 @@ export async function kirimNotifTenantMenungguVerifikasi(request: Request, tenan
     '',
     PENUTUP,
   ].join('\n')
-  return kirimWhatsApp(tenant.kontak, message)
 }
 
-export async function kirimNotifTenantTerverifikasi(request: Request, tenant: TenantNotif) {
+export function pesanTenantTerverifikasi(request: Request, tenant: TenantNotif) {
   const link = linkTenant(request, kodeTenant(tenant))
   const total = Number(tenant.harga_akhir ?? 0)
   const sudah = Number(tenant.sudah_dibayar ?? 0)
   const lunas = sudah >= total && total > 0
-  const message = [
+  return [
     `Halo ${tenant.nama_usaha}, pembayaran tenant kamu sudah diverifikasi.`,
     '',
     detailTenant(tenant, link),
@@ -86,12 +85,11 @@ export async function kirimNotifTenantTerverifikasi(request: Request, tenant: Te
     '',
     PENUTUP,
   ].join('\n')
-  return kirimWhatsApp(tenant.kontak, message)
 }
 
-export async function kirimNotifTenantDitolak(request: Request, tenant: TenantNotif) {
+export function pesanTenantDitolak(request: Request, tenant: TenantNotif) {
   const link = linkTenant(request, kodeTenant(tenant))
-  const message = [
+  return [
     `Halo ${tenant.nama_usaha}, bukti pembayaran tenant kamu belum dapat diterima.`,
     '',
     detailTenant(tenant, link),
@@ -101,12 +99,11 @@ export async function kirimNotifTenantDitolak(request: Request, tenant: TenantNo
     '',
     PENUTUP,
   ].filter((v): v is string => v !== null).join('\n')
-  return kirimWhatsApp(tenant.kontak, message)
 }
 
-export async function kirimNotifTenantCheckin(request: Request, tenant: TenantNotif) {
+export function pesanTenantCheckin(request: Request, tenant: TenantNotif) {
   const link = linkTenant(request, kodeTenant(tenant))
-  const message = [
+  return [
     `Halo ${tenant.nama_usaha}, tenant kamu sudah tercatat masuk ke area venue.`,
     '',
     detailTenant(tenant, link),
@@ -116,5 +113,20 @@ export async function kirimNotifTenantCheckin(request: Request, tenant: TenantNo
     '',
     PENUTUP,
   ].join('\n')
-  return kirimWhatsApp(tenant.kontak, message)
+}
+
+export async function kirimNotifTenantMenungguVerifikasi(request: Request, tenant: TenantNotif) {
+  return kirimWhatsApp(tenant.kontak, pesanTenantMenungguVerifikasi(request, tenant))
+}
+
+export async function kirimNotifTenantTerverifikasi(request: Request, tenant: TenantNotif) {
+  return kirimWhatsApp(tenant.kontak, pesanTenantTerverifikasi(request, tenant))
+}
+
+export async function kirimNotifTenantDitolak(request: Request, tenant: TenantNotif) {
+  return kirimWhatsApp(tenant.kontak, pesanTenantDitolak(request, tenant))
+}
+
+export async function kirimNotifTenantCheckin(request: Request, tenant: TenantNotif) {
+  return kirimWhatsApp(tenant.kontak, pesanTenantCheckin(request, tenant))
 }
