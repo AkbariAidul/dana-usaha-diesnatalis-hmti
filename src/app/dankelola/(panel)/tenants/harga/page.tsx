@@ -2,21 +2,21 @@
 
 import { DataError } from '@/components/data-error'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { Pencil } from 'lucide-react'
 import { getJSON, sendJSON } from '../../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
-import type { KategoriSewa, HargaDasar, PeriodeHarga, Peralatan, KomposisiPeralatan } from '@/lib/types'
+import type { KategoriSewa, HargaDasar, PeriodeHarga } from '@/lib/types'
 import { periodeDariTanggal } from '@/lib/types'
 import { kategoriTenant } from '@/lib/tenant'
-import { formatRupiah, formatDate } from '@/lib/utils'
+import { formatRupiah, formatDate, todayISO } from '@/lib/utils'
 import { useConfirm } from '@/components/confirm-dialog'
 
 type Master = { kategori: KategoriSewa[]; hargaDasar: HargaDasar[]; periode: PeriodeHarga[] }
 
-const TIPE = ['F&B', 'Non-F&B'] as const
 const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
 const emptyPeriode = { id: '', nama: '', tanggal_mulai: '', tanggal_selesai: '' }
 
@@ -25,45 +25,17 @@ export default function HargaPage() {
   const [kategori, setKategori] = useState<KategoriSewa[]>([])
   const [hargaDasar, setHargaDasar] = useState<HargaDasar[]>([])
   const [periods, setPeriods] = useState<PeriodeHarga[]>([])
-  const [peralatan, setPeralatan] = useState<Peralatan[]>([])
-  const [komposisi, setKomposisi] = useState<KomposisiPeralatan>({})
-  const [komposisiEdits, setKomposisiEdits] = useState<Record<string, string>>({})
-  const [selectedId, setSelectedId] = useState('')
-  const [edits, setEdits] = useState<Record<string, string>>({})
   const [showPeriodForm, setShowPeriodForm] = useState(false)
   const [periodForm, setPeriodForm] = useState(emptyPeriode)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [savingKomposisi, setSavingKomposisi] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const dirty =
-    Object.keys(edits).length > 0 ||
-    Object.keys(komposisiEdits).length > 0 ||
-    showPeriodForm ||
-    saving ||
-    savingKomposisi
-  const dirtyRef = useRef(false)
-
-  useEffect(() => {
-    dirtyRef.current = dirty
-  }, [dirty])
-
-  const load = useCallback(async (force = false) => {
-    const [m, items, komp] = await Promise.all([
-      getJSON<Master>('/api/master'),
-      getJSON<Peralatan[]>('/api/peralatan'),
-      getJSON<KomposisiPeralatan>('/api/peralatan/komposisi'),
-    ])
-    if (!force && dirtyRef.current) return
-    const list = m.periode || []
+  const load = useCallback(async () => {
+    const m = await getJSON<Master>('/api/master')
     setKategori(kategoriTenant(m.kategori || []))
     setHargaDasar(m.hargaDasar || [])
-    setPeriods(list)
-    setPeralatan(items || [])
-    setKomposisi(komp || {})
-    setKomposisiEdits({})
-    setSelectedId((prev) => (prev && list.some((p) => p.id === prev) ? prev : list[0]?.id ?? ''))
+    setPeriods(m.periode || [])
   }, [])
 
   useEffect(() => {
@@ -74,61 +46,20 @@ export default function HargaPage() {
       })
       .finally(() => setLoading(false))
   }, [load])
-  useLiveRefresh(load, 5000, !dirty)
+  useLiveRefresh(load, 5000, !showPeriodForm && !saving)
 
-  useEffect(() => { setEdits({}) }, [selectedId, hargaDasar])
+  const activeKode = periodeDariTanggal(todayISO(), periods)
+  const activePeriod = periods.find((p) => p.kode === activeKode)
 
-  const selected = periods.find((p) => p.id === selectedId)
-  const today = new Date().toISOString().slice(0, 10)
-  const activeKode = periodeDariTanggal(today, periods)
-
-  const hargaByKey = useMemo(() => {
-    const map = new Map<string, HargaDasar>()
-    for (const h of hargaDasar) {
-      if (h.periode === selected?.kode) map.set(`${h.kategori_sewa_id}|${h.jenis_usaha}`, h)
+  const hargaPerKategori = useMemo(() => {
+    const map = new Map<string, number | null>()
+    for (const k of kategori) {
+      const h = hargaDasar.find((h) => h.kategori_sewa_id === k.id && h.periode === activeKode && h.jenis_usaha === 'F&B')
+        ?? hargaDasar.find((h) => h.kategori_sewa_id === k.id && h.periode === activeKode)
+      map.set(k.id, h ? Number(h.harga) : null)
     }
     return map
-  }, [hargaDasar, selected])
-
-  const modalByKategori = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const k of kategori) {
-      let total = 0
-      for (const item of peralatan) total += qtyKomposisi(k.id, item.id) * item.harga_satuan
-      map.set(k.id, total)
-    }
-    return map
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kategori, komposisi, komposisiEdits, peralatan])
-
-  function qtyKomposisi(kategoriId: string, peralatanId: string) {
-    const key = `${kategoriId}|${peralatanId}`
-    if (komposisiEdits[key] !== undefined) return Number(komposisiEdits[key]) || 0
-    return komposisi[kategoriId]?.[peralatanId] || 0
-  }
-
-  async function simpanKomposisi() {
-    const next: KomposisiPeralatan = {}
-    for (const k of kategori) {
-      const row: Record<string, number> = {}
-      for (const item of peralatan) {
-        const qty = qtyKomposisi(k.id, item.id)
-        if (qty > 0) row[item.id] = qty
-      }
-      if (Object.keys(row).length > 0) next[k.id] = row
-    }
-    setSavingKomposisi(true)
-    try {
-      const saved = await sendJSON('/api/peralatan/komposisi', 'POST', next) as KomposisiPeralatan
-      setKomposisi(saved)
-      setKomposisiEdits({})
-      toast.success('Komposisi modal paket disimpan')
-    } catch (e) {
-      toast.error((e as Error).message)
-    } finally {
-      setSavingKomposisi(false)
-    }
-  }
+  }, [kategori, hargaDasar, activeKode])
 
   async function simpanPeriode() {
     if (!periodForm.nama || !periodForm.tanggal_mulai || !periodForm.tanggal_selesai) {
@@ -137,17 +68,16 @@ export default function HargaPage() {
     }
     setSaving(true)
     try {
-      const saved = await sendJSON('/api/master/periode', 'POST', {
+      await sendJSON('/api/master/periode', 'POST', {
         id: periodForm.id || undefined,
         nama: periodForm.nama,
         tanggal_mulai: periodForm.tanggal_mulai,
         tanggal_selesai: periodForm.tanggal_selesai,
-      }) as PeriodeHarga
+      })
       toast.success(periodForm.id ? 'Periode diperbarui' : 'Periode ditambahkan')
       setShowPeriodForm(false)
       setPeriodForm(emptyPeriode)
-      await load(true)
-      setSelectedId(saved.id)
+      await load()
     } catch (e) {
       toast.error((e as Error).message)
     } finally {
@@ -165,42 +95,9 @@ export default function HargaPage() {
     try {
       await sendJSON('/api/master/periode', 'DELETE', { id: p.id })
       toast.success('Periode dihapus')
-      setSelectedId('')
-      await load(true)
+      await load()
     } catch (e) {
       toast.error((e as Error).message)
-    }
-  }
-
-  async function simpanHarga() {
-    if (!selected) return
-    const rows: Array<Partial<HargaDasar>> = []
-    for (const k of kategori) {
-      const value = Number(edits[k.id])
-      if (edits[k.id] === undefined || edits[k.id].trim() === '') continue
-      if (!Number.isFinite(value) || value < 0) {
-        toast.error('Harga tidak valid')
-        return
-      }
-      for (const jenis of TIPE) {
-        const existing = hargaByKey.get(`${k.id}|${jenis}`)
-        if (existing && Number(existing.harga) === value) continue
-        rows.push({ id: existing?.id, kategori_sewa_id: k.id, jenis_usaha: jenis, periode: selected.kode, harga: value })
-      }
-    }
-    if (rows.length === 0) {
-      toast.info('Tidak ada perubahan harga')
-      return
-    }
-    setSaving(true)
-    try {
-      await Promise.all(rows.map((r) => sendJSON('/api/master/harga', 'POST', r)))
-      toast.success('Harga disimpan')
-      await load(true)
-    } catch (e) {
-      toast.error((e as Error).message)
-    } finally {
-      setSaving(false)
     }
   }
 
@@ -212,9 +109,12 @@ export default function HargaPage() {
   )
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Paket & Harga</h1>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Paket & Harga Tenant</h1>
+          <p className="text-sm text-slate-500">Kelola paket tenant, harga per periode, dan modal sewa.</p>
+        </div>
         <button
           onClick={() => { setPeriodForm(emptyPeriode); setShowPeriodForm(true) }}
           className="bg-primary-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-primary-700"
@@ -223,10 +123,66 @@ export default function HargaPage() {
         </button>
       </div>
 
+      <div className="overflow-x-auto rounded-2xl border border-slate-200/70 bg-white shadow-sm">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50 text-left text-xs font-medium text-slate-600">
+            <tr>
+              <th className="px-4 py-3">Kode</th>
+              <th className="px-4 py-3">Paket</th>
+              <th className="px-4 py-3">Fasilitas</th>
+              <th className="px-4 py-3">Harga Aktif</th>
+              <th className="px-4 py-3">Aksi</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {kategori.length === 0 && (
+              <tr><td colSpan={5} className="px-4 py-12 text-center text-slate-400">Belum ada paket tenant.</td></tr>
+            )}
+            {kategori.map((k) => {
+              const harga = hargaPerKategori.get(k.id)
+              return (
+                <tr key={k.id} className="hover:bg-slate-50">
+                  <td className="px-4 py-3 font-mono text-xs">{k.kode}</td>
+                  <td className="px-4 py-3">
+                    <p className="font-semibold text-slate-900">{k.nama}</p>
+                    {k.keterangan && <p className="mt-0.5 max-w-md text-xs text-slate-500">{k.keterangan}</p>}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-1">
+                      {k.include_listrik && <span className="rounded-md bg-green-50 px-1.5 py-0.5 text-xs font-medium text-green-700">Listrik</span>}
+                      {k.include_trashbag && <span className="rounded-md bg-blue-50 px-1.5 py-0.5 text-xs font-medium text-blue-700">Trashbag</span>}
+                      {!k.include_listrik && !k.include_trashbag && <span className="text-xs text-slate-400">—</span>}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    {harga != null ? (
+                      <div>
+                        <p className="font-bold text-primary-600">{formatRupiah(harga)}</p>
+                        <p className="text-xs text-slate-400">{activePeriod?.nama ?? 'Periode berjalan'}</p>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-slate-400">Belum diatur</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <Link
+                      href={`/dankelola/tenants/harga/${k.id}`}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-200"
+                    >
+                      <Pencil className="h-3.5 w-3.5" /> Kelola
+                    </Link>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
       {showPeriodForm && (
-        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-          <h2 className="font-semibold mb-4">{periodForm.id ? 'Edit Periode' : 'Tambah Periode'}</h2>
-          <div className="grid md:grid-cols-3 gap-3">
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+          <h2 className="mb-4 font-semibold">{periodForm.id ? 'Edit Periode' : 'Tambah Periode'}</h2>
+          <div className="grid gap-3 md:grid-cols-3">
             <div>
               <label className="mb-1 block text-sm font-medium">Nama Periode</label>
               <input className={input} placeholder="Early Bird" value={periodForm.nama} onChange={(e) => setPeriodForm({ ...periodForm, nama: e.target.value })} />
@@ -241,24 +197,24 @@ export default function HargaPage() {
             </div>
           </div>
           <div className="mt-4 flex justify-end gap-2">
-            <button onClick={() => setShowPeriodForm(false)} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl">Batal</button>
-            <button disabled={saving} onClick={simpanPeriode} className="px-4 py-2 bg-primary-600 text-white text-sm rounded-xl disabled:opacity-50">
+            <button onClick={() => setShowPeriodForm(false)} className="rounded-xl px-4 py-2 text-sm text-slate-600 hover:bg-slate-100">Batal</button>
+            <button disabled={saving} onClick={simpanPeriode} className="rounded-xl bg-primary-600 px-4 py-2 text-sm text-white disabled:opacity-50">
               {saving ? 'Menyimpan...' : 'Simpan'}
             </button>
           </div>
         </div>
       )}
 
-      <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-        <h2 className="font-semibold mb-4">Periode Harga</h2>
+      <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+        <h2 className="mb-4 font-semibold">Periode Harga</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50">
+            <thead className="bg-slate-50 text-left text-xs text-slate-600">
               <tr>
-                <th className="px-3 py-2 text-left">Nama</th>
-                <th className="px-3 py-2 text-left">Mulai</th>
-                <th className="px-3 py-2 text-left">Selesai</th>
-                <th className="px-3 py-2 text-left">Status</th>
+                <th className="px-3 py-2">Nama</th>
+                <th className="px-3 py-2">Mulai</th>
+                <th className="px-3 py-2">Selesai</th>
+                <th className="px-3 py-2">Status</th>
                 <th className="px-3 py-2"></th>
               </tr>
             </thead>
@@ -270,7 +226,7 @@ export default function HargaPage() {
                   <td className="px-3 py-2">{formatDate(p.tanggal_mulai)}</td>
                   <td className="px-3 py-2">{formatDate(p.tanggal_selesai)}</td>
                   <td className="px-3 py-2">
-                    <span className={`px-2 py-0.5 rounded text-xs ${p.kode === activeKode ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'}`}>
+                    <span className={`rounded px-2 py-0.5 text-xs ${p.kode === activeKode ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'}`}>
                       {p.kode === activeKode ? 'Berjalan' : 'Tidak aktif'}
                     </span>
                   </td>
@@ -285,192 +241,6 @@ export default function HargaPage() {
                       <button onClick={() => hapusPeriode(p)} className="text-red-600 hover:underline">Hapus</button>
                     </div>
                   </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="font-semibold">Harga Sewa per Kategori</h2>
-            <p className="text-sm text-slate-500">
-              {selected ? `${selected.nama} · ${formatDate(selected.tanggal_mulai)} – ${formatDate(selected.tanggal_selesai)}` : 'Pilih periode terlebih dahulu'}
-            </p>
-            <p className="text-xs text-slate-400">Satu harga total per kategori. Harga ini dipakai untuk F&B dan Non-F&B.</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <select className={`${input} w-auto`} value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
-              {periods.map((p) => <option key={p.id} value={p.id}>{p.nama}</option>)}
-            </select>
-            <button disabled={!selected || saving} onClick={simpanHarga} className="bg-primary-600 text-white px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50">
-              Simpan Harga
-            </button>
-          </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="px-3 py-2 text-left">Kategori</th>
-                <th className="px-3 py-2 text-right">Total Harga Sewa</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100/80">
-              {kategori.map((k) => {
-                const existing = hargaByKey.get(`${k.id}|F&B`) ?? hargaByKey.get(`${k.id}|Non-F&B`)
-                return (
-                  <tr key={k.id}>
-                    <td className="px-3 py-2">
-                      <p className="font-medium">{k.nama}</p>
-                      <p className="font-mono text-xs text-slate-400">{k.kode}</p>
-                    </td>
-                    <td className="px-3 py-2">
-                      <input
-                        type="number"
-                        min={0}
-                        disabled={!selected}
-                        className={`${input} text-right disabled:bg-slate-50`}
-                        placeholder="Belum diatur"
-                        value={edits[k.id] ?? (existing ? String(existing.harga) : '')}
-                        onChange={(e) => setEdits({ ...edits, [k.id]: e.target.value })}
-                      />
-                      {existing && <p className="mt-1 text-right text-xs text-slate-400">{formatRupiah(existing.harga)}</p>}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-        <div className="mb-4">
-          <h2 className="font-semibold">Komposisi Modal Paket</h2>
-          <p className="text-sm text-slate-500">Isi jumlah barang yang dipakai tiap paket. Modal dihitung dari harga sewa vendor.</p>
-        </div>
-        {peralatan.length === 0 ? (
-          <p className="rounded-xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-            Belum ada barang sewa. Tambahkan dulu di <Link href="/dankelola/tenants/peralatan" className="text-primary-600 hover:underline">Sewa Vendor</Link>.
-          </p>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="px-3 py-2 text-left">Barang</th>
-                    <th className="px-3 py-2 text-right">Harga / Unit</th>
-                    {kategori.map((k) => <th key={k.id} className="px-3 py-2 text-center">{k.nama}</th>)}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100/80">
-                  {peralatan.map((item) => (
-                    <tr key={item.id}>
-                      <td className="px-3 py-2">
-                        <p className="font-medium">{item.nama}</p>
-                        <p className="text-xs text-slate-400">{item.jenis}{item.vendor ? ` · ${item.vendor}` : ''}</p>
-                      </td>
-                      <td className="px-3 py-2 text-right">{formatRupiah(item.harga_satuan)}</td>
-                      {kategori.map((k) => {
-                        const key = `${k.id}|${item.id}`
-                        return (
-                          <td key={k.id} className="px-3 py-2">
-                            <input
-                              type="number"
-                              min={0}
-                              className={`${input} w-20 text-center`}
-                              placeholder="0"
-                              value={komposisiEdits[key] ?? (komposisi[k.id]?.[item.id] ? String(komposisi[k.id][item.id]) : '')}
-                              onChange={(e) => setKomposisiEdits({ ...komposisiEdits, [key]: e.target.value })}
-                            />
-                          </td>
-                        )
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot className="bg-slate-50 font-semibold">
-                  <tr>
-                    <td className="px-3 py-2" colSpan={2}>Modal per Paket</td>
-                    {kategori.map((k) => <td key={k.id} className="px-3 py-2 text-center">{formatRupiah(modalByKategori.get(k.id) || 0)}</td>)}
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-            <div className="mt-4 flex justify-end">
-              <button disabled={savingKomposisi} onClick={simpanKomposisi} className="bg-primary-600 text-white px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50">
-                {savingKomposisi ? 'Menyimpan...' : 'Simpan Komposisi'}
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-
-      <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-        <div className="mb-4">
-          <h2 className="font-semibold">Keuntungan per Paket</h2>
-          <p className="text-sm text-slate-500">
-            {selected ? `${selected.nama} · harga jual dikurangi modal paket` : 'Pilih periode terlebih dahulu'}
-          </p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="px-3 py-2 text-left">Kategori</th>
-                <th className="px-3 py-2 text-right">Modal Paket</th>
-                <th className="px-3 py-2 text-right">Harga Sewa</th>
-                <th className="px-3 py-2 text-right">Untung</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100/80">
-              {kategori.map((k) => {
-                const modal = modalByKategori.get(k.id) || 0
-                const harga = hargaByKey.get(`${k.id}|F&B`) ?? hargaByKey.get(`${k.id}|Non-F&B`)
-                const laba = (harga?.harga ?? 0) - modal
-                return (
-                  <tr key={k.id}>
-                    <td className="px-3 py-2">
-                      <p className="font-medium">{k.nama}</p>
-                      <p className="font-mono text-xs text-slate-400">{k.kode}</p>
-                    </td>
-                    <td className="px-3 py-2 text-right">{formatRupiah(modal)}</td>
-                    <td className="px-3 py-2 text-right">{harga ? formatRupiah(harga.harga) : <span className="text-slate-400">-</span>}</td>
-                    <td className={`px-3 py-2 text-right font-semibold ${!harga ? 'text-slate-400' : laba >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {harga ? formatRupiah(laba) : '-'}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-        <h2 className="font-semibold mb-4">Kategori Sewa</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="px-3 py-2 text-left">Kode</th>
-                <th className="px-3 py-2 text-left">Nama</th>
-                <th className="px-3 py-2 text-left">Listrik</th>
-                <th className="px-3 py-2 text-left">Trashbag</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100/80">
-              {kategori.length === 0 && <tr><td colSpan={4} className="px-3 py-6 text-center text-slate-400">Belum ada kategori sewa.</td></tr>}
-              {kategori.map((k) => (
-                <tr key={k.id}>
-                  <td className="px-3 py-2 font-mono text-xs">{k.kode}</td>
-                  <td className="px-3 py-2">{k.nama}</td>
-                  <td className="px-3 py-2">{k.include_listrik ? '✓' : '-'}</td>
-                  <td className="px-3 py-2">{k.include_trashbag ? '✓' : '-'}</td>
                 </tr>
               ))}
             </tbody>

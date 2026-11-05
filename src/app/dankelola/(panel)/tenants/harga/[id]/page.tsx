@@ -1,0 +1,371 @@
+'use client'
+
+import { useEffect, useMemo, useState } from 'react'
+import { useParams } from 'next/navigation'
+import Link from 'next/link'
+import { toast } from 'sonner'
+import { ChevronLeft } from 'lucide-react'
+import { getJSON, sendJSON } from '../../../../api'
+import { PageSkeleton } from '../../../ui'
+import type { KategoriSewa, HargaDasar, PeriodeHarga, Peralatan, KomposisiPeralatan } from '@/lib/types'
+import { periodeDariTanggal } from '@/lib/types'
+import { formatRupiah, formatDate, todayISO } from '@/lib/utils'
+
+type Master = { kategori: KategoriSewa[]; hargaDasar: HargaDasar[]; periode: PeriodeHarga[] }
+
+const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10 disabled:bg-slate-50 disabled:text-slate-500'
+const label = 'mb-1 block text-xs font-medium text-slate-500'
+
+export default function PaketHargaDetailPage() {
+  const { id } = useParams<{ id: string }>()
+  const [paket, setPaket] = useState<KategoriSewa | null>(null)
+  const [hargaDasar, setHargaDasar] = useState<HargaDasar[]>([])
+  const [periods, setPeriods] = useState<PeriodeHarga[]>([])
+  const [peralatan, setPeralatan] = useState<Peralatan[]>([])
+  const [komposisi, setKomposisi] = useState<KomposisiPeralatan>({})
+  const [form, setForm] = useState({ nama: '', keterangan: '', include_listrik: true, include_trashbag: true })
+  const [priceEdits, setPriceEdits] = useState<Record<string, string>>({})
+  const [komposisiEdits, setKomposisiEdits] = useState<Record<string, string>>({})
+  const [loading, setLoading] = useState(true)
+  const [savingInfo, setSavingInfo] = useState(false)
+  const [savingHarga, setSavingHarga] = useState(false)
+  const [savingKomposisi, setSavingKomposisi] = useState(false)
+
+  useEffect(() => {
+    if (!id) return
+    ;(async () => {
+      const [m, items, komp] = await Promise.all([
+        getJSON<Master>('/api/master'),
+        getJSON<Peralatan[]>('/api/peralatan'),
+        getJSON<KomposisiPeralatan>('/api/peralatan/komposisi'),
+      ])
+      const found = (m.kategori || []).find((k) => k.id === id)
+      if (!found) { toast.error('Paket tidak ditemukan'); return }
+      setPaket(found)
+      setForm({
+        nama: found.nama,
+        keterangan: found.keterangan ?? '',
+        include_listrik: found.include_listrik,
+        include_trashbag: found.include_trashbag,
+      })
+      setHargaDasar(m.hargaDasar || [])
+      setPeriods(m.periode || [])
+      setPeralatan(items || [])
+      setKomposisi(komp || {})
+    })()
+      .catch((e) => toast.error((e as Error).message))
+      .finally(() => setLoading(false))
+  }, [id])
+
+  const activeKode = periodeDariTanggal(todayISO(), periods)
+
+  const hargaByKode = useMemo(() => {
+    const map = new Map<string, HargaDasar>()
+    for (const h of hargaDasar) {
+      if (h.kategori_sewa_id !== id) continue
+      if (!map.has(h.periode) || h.jenis_usaha === 'F&B') map.set(h.periode, h)
+    }
+    return map
+  }, [hargaDasar, id])
+
+  function qtyKomposisi(peralatanId: string) {
+    if (komposisiEdits[peralatanId] !== undefined) return Number(komposisiEdits[peralatanId]) || 0
+    return komposisi[id]?.[peralatanId] || 0
+  }
+
+  const modal = useMemo(() => {
+    return peralatan.reduce((sum, item) => sum + qtyKomposisi(item.id) * Number(item.harga_satuan), 0)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [peralatan, komposisi, komposisiEdits, id])
+
+  async function simpanInfo() {
+    if (!paket) return
+    if (!form.nama.trim()) { toast.error('Nama paket wajib diisi'); return }
+    setSavingInfo(true)
+    try {
+      const saved = await sendJSON('/api/master/kategori', 'POST', {
+        id: paket.id,
+        nama: form.nama.trim(),
+        keterangan: form.keterangan.trim(),
+        include_listrik: form.include_listrik,
+        include_trashbag: form.include_trashbag,
+      }) as KategoriSewa
+      setPaket(saved)
+      setForm({
+        nama: saved.nama,
+        keterangan: saved.keterangan ?? '',
+        include_listrik: saved.include_listrik,
+        include_trashbag: saved.include_trashbag,
+      })
+      toast.success('Paket diperbarui')
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setSavingInfo(false)
+    }
+  }
+
+  async function simpanHarga() {
+    const rows: Array<Partial<HargaDasar>> = []
+    for (const p of periods) {
+      const raw = priceEdits[p.kode]
+      if (raw === undefined || raw.trim() === '') continue
+      const value = Number(raw)
+      if (!Number.isFinite(value) || value < 0) { toast.error('Harga tidak valid'); return }
+      for (const jenis of ['F&B', 'Non-F&B'] as const) {
+        const existing = hargaDasar.find((h) => h.kategori_sewa_id === id && h.periode === p.kode && h.jenis_usaha === jenis)
+        if (existing && Number(existing.harga) === value) continue
+        rows.push({ id: existing?.id, kategori_sewa_id: id, jenis_usaha: jenis, periode: p.kode, harga: value })
+      }
+    }
+    if (rows.length === 0) { toast.info('Tidak ada perubahan harga'); return }
+    setSavingHarga(true)
+    try {
+      await Promise.all(rows.map((r) => sendJSON('/api/master/harga', 'POST', r)))
+      const m = await getJSON<Master>('/api/master')
+      setHargaDasar(m.hargaDasar || [])
+      setPriceEdits({})
+      toast.success('Harga paket disimpan')
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setSavingHarga(false)
+    }
+  }
+
+  async function simpanKomposisi() {
+    const row: Record<string, number> = {}
+    for (const item of peralatan) {
+      const qty = qtyKomposisi(item.id)
+      if (qty > 0) row[item.id] = qty
+    }
+    const next: KomposisiPeralatan = { ...komposisi }
+    if (Object.keys(row).length > 0) next[id] = row
+    else delete next[id]
+    setSavingKomposisi(true)
+    try {
+      const saved = await sendJSON('/api/peralatan/komposisi', 'POST', next) as KomposisiPeralatan
+      setKomposisi(saved)
+      setKomposisiEdits({})
+      toast.success('Komposisi modal disimpan')
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setSavingKomposisi(false)
+    }
+  }
+
+  if (loading) return <PageSkeleton />
+  if (!paket) {
+    return (
+      <div className="space-y-3">
+        <p className="text-red-600">Paket tidak ditemukan.</p>
+        <Link href="/dankelola/tenants/harga" className="text-sm text-primary-600 hover:underline">← Kembali</Link>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <Link href="/dankelola/tenants/harga" className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline">
+          <ChevronLeft className="h-4 w-4" /> Kembali
+        </Link>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{paket.nama}</h1>
+          <p className="text-sm text-slate-500">Atur informasi paket, harga per periode, dan modal sewa.</p>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm space-y-4">
+        <h2 className="font-semibold text-slate-900">Informasi Paket</h2>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div>
+            <label className={label}>Kode</label>
+            <input disabled className={input} value={paket.kode} />
+          </div>
+          <div>
+            <label className={label}>Nama Paket</label>
+            <input className={input} value={form.nama} onChange={(e) => setForm({ ...form, nama: e.target.value })} />
+          </div>
+        </div>
+        <div>
+          <label className={label}>Keterangan</label>
+          <textarea rows={2} className={input} value={form.keterangan} onChange={(e) => setForm({ ...form, keterangan: e.target.value })} />
+        </div>
+        <div className="flex flex-wrap items-center gap-4">
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={form.include_listrik} onChange={(e) => setForm({ ...form, include_listrik: e.target.checked })} />
+            <span>Termasuk listrik</span>
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={form.include_trashbag} onChange={(e) => setForm({ ...form, include_trashbag: e.target.checked })} />
+            <span>Termasuk trashbag</span>
+          </label>
+        </div>
+        <div className="flex justify-end">
+          <button disabled={savingInfo} onClick={simpanInfo} className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+            {savingInfo ? 'Menyimpan...' : 'Simpan Info'}
+          </button>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm space-y-3">
+        <div>
+          <h2 className="font-semibold text-slate-900">Harga per Periode</h2>
+          <p className="text-sm text-slate-500">Satu harga total per periode. Berlaku untuk F&B dan Non-F&B.</p>
+        </div>
+        {periods.length === 0 ? (
+          <p className="rounded-xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+            Belum ada periode. Tambahkan periode di <Link href="/dankelola/tenants/harga" className="text-primary-600 hover:underline">Paket &amp; Harga</Link>.
+          </p>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-left text-xs text-slate-600">
+                  <tr>
+                    <th className="px-3 py-2">Periode</th>
+                    <th className="px-3 py-2">Tanggal</th>
+                    <th className="px-3 py-2">Status</th>
+                    <th className="px-3 py-2 text-right">Harga (Rp)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100/80">
+                  {periods.map((p) => {
+                    const existing = hargaByKode.get(p.kode)
+                    return (
+                      <tr key={p.id} className="hover:bg-slate-50">
+                        <td className="px-3 py-2 font-medium">{p.nama}</td>
+                        <td className="px-3 py-2 text-slate-500">{formatDate(p.tanggal_mulai)} – {formatDate(p.tanggal_selesai)}</td>
+                        <td className="px-3 py-2">
+                          <span className={`rounded px-2 py-0.5 text-xs ${p.kode === activeKode ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'}`}>
+                            {p.kode === activeKode ? 'Berjalan' : 'Tidak aktif'}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="number"
+                            min={0}
+                            className={`${input} text-right`}
+                            placeholder="Belum diatur"
+                            value={priceEdits[p.kode] ?? (existing ? String(existing.harga) : '')}
+                            onChange={(e) => setPriceEdits({ ...priceEdits, [p.kode]: e.target.value })}
+                          />
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex justify-end">
+              <button disabled={savingHarga} onClick={simpanHarga} className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+                {savingHarga ? 'Menyimpan...' : 'Simpan Harga'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm space-y-3">
+        <div>
+          <h2 className="font-semibold text-slate-900">Komposisi Modal Paket</h2>
+          <p className="text-sm text-slate-500">Jumlah barang sewa yang dipakai paket ini. Modal dihitung dari harga sewa vendor.</p>
+        </div>
+        {peralatan.length === 0 ? (
+          <p className="rounded-xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+            Belum ada barang sewa. Tambahkan dulu di <Link href="/dankelola/tenants/peralatan" className="text-primary-600 hover:underline">Sewa Vendor</Link>.
+          </p>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-left text-xs text-slate-600">
+                  <tr>
+                    <th className="px-3 py-2">Barang</th>
+                    <th className="px-3 py-2 text-right">Harga / Unit</th>
+                    <th className="px-3 py-2 text-center">Qty</th>
+                    <th className="px-3 py-2 text-right">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100/80">
+                  {peralatan.map((item) => {
+                    const qty = qtyKomposisi(item.id)
+                    return (
+                      <tr key={item.id}>
+                        <td className="px-3 py-2">
+                          <p className="font-medium">{item.nama}</p>
+                          <p className="text-xs text-slate-400">{item.jenis}{item.vendor ? ` · ${item.vendor}` : ''}</p>
+                        </td>
+                        <td className="px-3 py-2 text-right">{formatRupiah(item.harga_satuan)}</td>
+                        <td className="px-3 py-2 text-center">
+                          <input
+                            type="number"
+                            min={0}
+                            className={`${input} mx-auto w-20 text-center`}
+                            placeholder="0"
+                            value={komposisiEdits[item.id] ?? (komposisi[id]?.[item.id] ? String(komposisi[id][item.id]) : '')}
+                            onChange={(e) => setKomposisiEdits({ ...komposisiEdits, [item.id]: e.target.value })}
+                          />
+                        </td>
+                        <td className="px-3 py-2 text-right">{formatRupiah(qty * Number(item.harga_satuan))}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+                <tfoot className="bg-slate-50 font-semibold">
+                  <tr>
+                    <td className="px-3 py-2" colSpan={3}>Modal Paket</td>
+                    <td className="px-3 py-2 text-right">{formatRupiah(modal)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            <div className="flex justify-end">
+              <button disabled={savingKomposisi} onClick={simpanKomposisi} className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+                {savingKomposisi ? 'Menyimpan...' : 'Simpan Komposisi'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm space-y-3">
+        <div>
+          <h2 className="font-semibold text-slate-900">Keuntungan per Periode</h2>
+          <p className="text-sm text-slate-500">Harga jual dikurangi modal paket.</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-left text-xs text-slate-600">
+              <tr>
+                <th className="px-3 py-2">Periode</th>
+                <th className="px-3 py-2 text-right">Modal Paket</th>
+                <th className="px-3 py-2 text-right">Harga Sewa</th>
+                <th className="px-3 py-2 text-right">Untung</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100/80">
+              {periods.map((p) => {
+                const harga = hargaByKode.get(p.kode)
+                const laba = (harga ? Number(harga.harga) : 0) - modal
+                return (
+                  <tr key={p.id}>
+                    <td className="px-3 py-2 font-medium">{p.nama}</td>
+                    <td className="px-3 py-2 text-right">{formatRupiah(modal)}</td>
+                    <td className="px-3 py-2 text-right">{harga ? formatRupiah(harga.harga) : <span className="text-slate-400">-</span>}</td>
+                    <td className={`px-3 py-2 text-right font-semibold ${!harga ? 'text-slate-400' : laba >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {harga ? formatRupiah(laba) : '-'}
+                    </td>
+                  </tr>
+                )
+              })}
+              {periods.length === 0 && <tr><td colSpan={4} className="px-3 py-6 text-center text-slate-400">Belum ada periode.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
