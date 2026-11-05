@@ -7,9 +7,37 @@ import { QrScanner } from '@/components/qr-scanner'
 import { beep } from '@/lib/beep'
 import { formatDateTime, formatRupiah } from '@/lib/utils'
 
+type TenantAddon = {
+  nama: string
+  qty: number
+  subtotal: number
+}
+
 type TenantResult = {
   tipe: 'tenant'
-  tenant: { kode_stand: string; nama_usaha: string; harga_akhir: number; status: string; venue_checked_in_at: string | null }
+  tenant: {
+    kode_stand: string
+    nama_usaha: string
+    kontak: string
+    email: string | null
+    jenis_usaha: string
+    asal: string
+    lokasi: string
+    periode_daftar: string
+    harga_akhir: number
+    dp_wajib: number
+    sudah_dibayar: number
+    jumlah_tenant: number
+    tgl_daftar: string
+    tgl_dp: string | null
+    tgl_acara: string | null
+    status: string
+    keterangan: string | null
+    addon: TenantAddon[] | null
+    venue_checked_in_at: string | null
+    venue_checked_in_by: string | null
+    kategori_sewa: { kode: string; nama: string } | null
+  }
   total: number
   eligible: boolean
   sudahMasuk: boolean
@@ -64,6 +92,26 @@ const PESANAN_STATUS: Record<string, string> = {
 
 function statusPesananLabel(status: string) {
   return PESANAN_STATUS[status] ?? status.replace(/_/g, ' ')
+}
+
+const TENANT_STATUS: Record<string, string> = {
+  daftar: 'Terdaftar',
+  dp: 'DP Diterima',
+  cicil: 'Dicicil',
+  lunas: 'Lunas',
+  menunggak: 'Menunggak',
+  batal: 'Batal',
+}
+
+function statusTenantLabel(status: string) {
+  return TENANT_STATUS[status] ?? status.replace(/_/g, ' ')
+}
+
+function statusTenantClass(status: string) {
+  if (status === 'lunas') return 'bg-green-100 text-green-800'
+  if (status === 'batal' || status === 'menunggak') return 'bg-red-100 text-red-800'
+  if (status === 'dp' || status === 'cicil') return 'bg-blue-100 text-blue-800'
+  return 'bg-amber-100 text-amber-800'
 }
 
 export default function ScanPage() {
@@ -161,18 +209,130 @@ export default function ScanPage() {
               </button>
             </div>
 
-            {result.tipe === 'tenant' && (
-              <div className="space-y-2">
-                <h3 className="text-lg font-semibold text-slate-900">{result.tenant.nama_usaha}</h3>
-                <p className="text-sm text-slate-500">{result.tenant.kode_stand}</p>
-                <p className="text-sm">Terverifikasi: <b>{formatRupiah(result.total)}</b> / {formatRupiah(Number(result.tenant.harga_akhir))}</p>
-                <p className="text-sm">Status: {result.tenant.status}</p>
-                {result.sudahMasuk && <p className="text-sm text-green-700">Sudah masuk venue.</p>}
-                <button onClick={() => void lookup(payload, 'confirm')} disabled={result.sudahMasuk} className="mt-2 rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-                  Tandai Masuk Venue
-                </button>
-              </div>
-            )}
+            {result.tipe === 'tenant' && (() => {
+              const t = result.tenant
+              const harga = Number(t.harga_akhir)
+              const terverifikasi = Number(result.total)
+              const sisa = Math.max(0, harga - terverifikasi)
+              const target80 = Math.ceil(harga * 0.8)
+              const kurang80 = Math.max(0, target80 - terverifikasi)
+              const persen = harga > 0 ? Math.min(100, Math.round((terverifikasi / harga) * 100)) : 0
+              const addon = t.addon ?? []
+              return (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-900">{t.nama_usaha}</h3>
+                      <p className="text-sm text-slate-500">{t.kode_stand}</p>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${statusTenantClass(t.status)}`}>
+                      {statusTenantLabel(t.status)}
+                    </span>
+                  </div>
+
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-xs [&_dd]:break-words sm:gap-y-3 sm:p-4 sm:text-sm">
+                    <div>
+                      <dt className="text-xs text-slate-500">Kontak</dt>
+                      <dd className="font-medium text-slate-900">{t.kontak || '-'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Email</dt>
+                      <dd className="text-slate-900">{t.email || '-'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Kategori</dt>
+                      <dd className="text-slate-900">{t.kategori_sewa?.nama || '-'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Jenis Usaha</dt>
+                      <dd className="text-slate-900">{t.jenis_usaha || '-'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Asal</dt>
+                      <dd className="text-slate-900">{t.asal || '-'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Lokasi</dt>
+                      <dd className="text-slate-900">{t.lokasi || '-'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Periode</dt>
+                      <dd className="text-slate-900">{t.periode_daftar?.replace(/_/g, ' ') || '-'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Jumlah Tenant</dt>
+                      <dd className="text-slate-900">{t.jumlah_tenant ?? 1} orang</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Tanggal Daftar</dt>
+                      <dd className="text-slate-900">{t.tgl_daftar ? formatDateTime(t.tgl_daftar) : '-'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Tanggal Acara</dt>
+                      <dd className="text-slate-900">{t.tgl_acara ? formatDateTime(t.tgl_acara) : '-'}</dd>
+                    </div>
+                    {t.keterangan && (
+                      <div className="col-span-2">
+                        <dt className="text-xs text-slate-500">Keterangan</dt>
+                        <dd className="text-slate-900">{t.keterangan}</dd>
+                      </div>
+                    )}
+                  </dl>
+
+                  <div className="rounded-xl border border-slate-200 p-3 sm:p-4">
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:text-sm">
+                      <div>
+                        <p className="text-xs text-slate-500">Total Tagihan</p>
+                        <p className="font-semibold text-slate-900">{formatRupiah(harga)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Terverifikasi</p>
+                        <p className="font-semibold text-green-700">{formatRupiah(terverifikasi)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Sisa</p>
+                        <p className="font-semibold text-orange-600">{formatRupiah(sisa)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Target QR (80%)</p>
+                        <p className="font-medium text-slate-900">{formatRupiah(target80)}</p>
+                      </div>
+                    </div>
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
+                      <div className="h-full rounded-full bg-green-500" style={{ width: `${persen}%` }} />
+                    </div>
+                    <p className="mt-2 text-xs text-slate-500">
+                      {persen}% terbayar · {result.eligible ? 'QR venue aktif' : `kurang ${formatRupiah(kurang80)} lagi`}
+                    </p>
+                  </div>
+
+                  {addon.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-slate-500">Item Tambahan</p>
+                      <ul className="mt-2 divide-y divide-slate-100 rounded-xl border border-slate-200 text-sm">
+                        {addon.map((item, index) => (
+                          <li key={`${item.nama}-${index}`} className="flex items-center justify-between gap-3 px-3 py-2">
+                            <span className="text-slate-900">{item.nama} x{item.qty}</span>
+                            <span className="shrink-0 font-medium tabular-nums text-slate-900">{formatRupiah(Number(item.subtotal))}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {result.sudahMasuk ? (
+                    <div className="rounded-xl bg-green-50 p-3 text-sm text-green-800">
+                      <p className="font-medium">Sudah masuk venue.</p>
+                      {t.venue_checked_in_at && <p className="mt-0.5 text-xs">{formatDateTime(t.venue_checked_in_at)}{t.venue_checked_in_by ? ` oleh ${t.venue_checked_in_by}` : ''}</p>}
+                    </div>
+                  ) : (
+                    <button onClick={() => void lookup(payload, 'confirm')} className="w-full rounded-xl bg-green-600 px-4 py-2.5 text-sm font-medium text-white sm:w-auto">
+                      Tandai Masuk Venue
+                    </button>
+                  )}
+                </div>
+              )
+            })()}
 
             {result.tipe === 'po' && (() => {
               const po = result.po
@@ -359,7 +519,7 @@ export default function ScanPage() {
               </div>
             )}
 
-            {sudah && <p className="mt-2 text-xs text-slate-500">Data ini sudah pernah dikonfirmasi.</p>}
+            {sudah && result.tipe !== 'tenant' && <p className="mt-2 text-xs text-slate-500">Data ini sudah pernah dikonfirmasi.</p>}
           </div>
         </div>
       )}

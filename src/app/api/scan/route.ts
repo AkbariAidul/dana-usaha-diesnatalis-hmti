@@ -37,7 +37,7 @@ export async function POST(request: Request) {
       if (parsed.tipe === 'tenant') {
         const { data: tenant } = await supabaseAdmin
           .from('tenants')
-          .select('*')
+          .select('*, kategori_sewa(kode, nama)')
           .eq('kode_stand', parsed.kode)
           .maybeSingle()
         if (!tenant) return NextResponse.json({ error: 'Tenant tidak ditemukan' }, { status: 404 })
