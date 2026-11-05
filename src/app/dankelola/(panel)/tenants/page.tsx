@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { toast } from 'sonner'
-import type { Tenant, KategoriSewa, Pembayaran } from '@/lib/types'
-import { formatRupiah, formatDate } from '@/lib/utils'
+import type { Tenant, KategoriSewa, Pembayaran, TenantAddon } from '@/lib/types'
+import { formatRupiah, formatDate, formatDateTime } from '@/lib/utils'
 import { STATUS_LABEL, STATUS_COLOR } from '@/lib/types'
 import { kategoriTenant } from '@/lib/tenant'
 import { getJSON, sendJSON } from '../../api'
@@ -25,6 +25,8 @@ type Pendaftaran = {
   status: string
   bukti_url: string | null
   created_at: string
+  jumlah_tenant?: number | null
+  addon?: TenantAddon[] | null
 }
 
 type Row = {
@@ -36,8 +38,12 @@ type Row = {
   kategori: string
   harga: number
   dibayar: number
+  sisa: number
   status: string
   tanggal: string
+  jumlahTenant: number
+  addon?: TenantAddon[] | null
+  checkedInAt?: string | null
   detailId?: string
   pendaftaran?: Pendaftaran
   pendingBayar: Pembayaran[]
@@ -55,6 +61,7 @@ export default function TenantsPage() {
   const [page, setPage] = useState(1)
   const [rejectDaftar, setRejectDaftar] = useState<Pendaftaran | null>(null)
   const [rejectCatatan, setRejectCatatan] = useState('')
+  const [strukTarget, setStrukTarget] = useState<Row | null>(null)
 
   async function load() {
     const [t, m, d, p] = await Promise.all([
@@ -150,13 +157,18 @@ export default function TenantsPage() {
         kategori: kategoriNama(p.kategori_sewa_id),
         harga: Number(p.harga_akhir),
         dibayar: 0,
+        sisa: Number(p.harga_akhir),
         status: p.status,
         tanggal: p.created_at,
+        jumlahTenant: Number(p.jumlah_tenant ?? 1),
+        addon: p.addon ?? null,
         pendaftaran: p,
         pendingBayar: [],
       })),
     ...tenants.map((t) => {
       const pending = pendingBayar.filter((p) => p.tenant_id === t.id)
+      const harga = Number(t.harga_akhir)
+      const dibayar = Number(t.sudah_dibayar)
       return {
         key: `tenant-${t.id}`,
         kind: 'tenant' as const,
@@ -164,10 +176,14 @@ export default function TenantsPage() {
         nama_usaha: t.nama_usaha,
         kontak: t.kontak,
         kategori: t.kategori_sewa?.nama ?? kategoriNama(t.kategori_sewa_id),
-        harga: Number(t.harga_akhir),
-        dibayar: Number(t.sudah_dibayar),
+        harga,
+        dibayar,
+        sisa: Math.max(0, harga - dibayar),
         status: t.status,
         tanggal: t.tgl_daftar,
+        jumlahTenant: Number(t.jumlah_tenant ?? 1),
+        addon: t.addon ?? null,
+        checkedInAt: t.venue_checked_in_at ?? null,
         detailId: t.id,
         pendingBayar: pending,
       }
@@ -191,6 +207,8 @@ export default function TenantsPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE))
   const currentPage = Math.min(page, totalPages)
   const paginated = filtered.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE)
+  const strukAddonTotal = (strukTarget?.addon ?? []).reduce((sum, item) => sum + Number(item.subtotal ?? 0), 0)
+  const strukPaketSubtotal = Math.max(0, Number(strukTarget?.harga ?? 0) - strukAddonTotal)
 
   return (
     <div className="space-y-4">
@@ -248,15 +266,16 @@ export default function TenantsPage() {
               <th className="px-5 py-3">Kategori</th>
               <th className="px-5 py-3 text-right">Total</th>
               <th className="px-5 py-3 text-right">Dibayar</th>
-              <th className="px-5 py-3">Status</th>
+              <th className="px-5 py-3 text-right">Sisa</th>
+              <th className="px-5 py-3">Check-in Venue</th>
               <th className="px-5 py-3">Pembayaran</th>
               <th className="px-5 py-3">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100/80">
-            {loading && <TableSkeleton rows={5} cols={8} />}
+            {loading && <TableSkeleton rows={5} cols={9} />}
             {!loading && filtered.length === 0 && (
-              <tr><td colSpan={8} className="px-5 py-6 text-center text-slate-400">
+              <tr><td colSpan={9} className="px-5 py-6 text-center text-slate-400">
                 {rows.length === 0 ? 'Belum ada tenant.' : 'Tidak ada tenant yang cocok.'}
               </td></tr>
             )}
@@ -276,7 +295,20 @@ export default function TenantsPage() {
                 </td>
                 <td className="px-5 py-3 align-top">{r.kategori}</td>
                 <td className="px-5 py-3 align-top text-right tabular-nums">{formatRupiah(r.harga)}</td>
-                <td className="px-5 py-3 align-top text-right tabular-nums">{formatRupiah(r.dibayar)}</td>
+                <td className="px-5 py-3 align-top text-right tabular-nums text-green-600">{formatRupiah(r.dibayar)}</td>
+                <td className="px-5 py-3 align-top text-right tabular-nums text-orange-600">{formatRupiah(r.sisa)}</td>
+                <td className="px-5 py-3 align-top">
+                  {r.kind === 'pendaftaran' ? (
+                    <span className="text-xs text-slate-400">—</span>
+                  ) : r.checkedInAt ? (
+                    <div>
+                      <span className="rounded bg-green-100 px-2 py-0.5 text-xs text-green-800">Sudah Check-in</span>
+                      <div className="mt-1 whitespace-nowrap text-xs text-slate-500">{formatDateTime(r.checkedInAt)}</div>
+                    </div>
+                  ) : (
+                    <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">Belum Check-in</span>
+                  )}
+                </td>
                 <td className="px-5 py-3 align-top">
                   {r.kind === 'pendaftaran' ? (
                     <span className={`inline-block rounded px-2 py-0.5 text-xs ${r.status === 'ditolak' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
@@ -285,30 +317,30 @@ export default function TenantsPage() {
                   ) : (
                     <span className={`inline-block rounded px-2 py-0.5 text-xs ${STATUS_COLOR[r.status]}`}>{STATUS_LABEL[r.status] ?? r.status}</span>
                   )}
-                </td>
-                <td className="px-5 py-3 align-top">
-                  {r.kind === 'pendaftaran' ? (
-                    r.pendaftaran?.bukti_url ? (
-                      <a href={r.pendaftaran.bukti_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline">Bukti DP</a>
-                    ) : <span className="text-xs text-slate-400">—</span>
-                  ) : r.pendingBayar.length === 0 ? (
-                    <span className="text-xs text-slate-400">—</span>
-                  ) : (
-                    <div className="space-y-1.5">
-                      {r.pendingBayar.map((p) => (
-                        <div key={p.id} className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-xs font-medium text-slate-700">{p.jenis} · {formatRupiah(p.nominal)}</span>
-                            {p.bukti_url && <a href={p.bukti_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline">Bukti</a>}
+                  <div className="mt-2">
+                    {r.kind === 'pendaftaran' ? (
+                      r.pendaftaran?.bukti_url ? (
+                        <a href={r.pendaftaran.bukti_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline">Bukti DP</a>
+                      ) : <span className="text-xs text-slate-400">—</span>
+                    ) : r.pendingBayar.length === 0 ? (
+                      <span className="text-xs text-slate-400">—</span>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {r.pendingBayar.map((p) => (
+                          <div key={p.id} className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-medium text-slate-700">{p.jenis} · {formatRupiah(p.nominal)}</span>
+                              {p.bukti_url && <a href={p.bukti_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline">Bukti</a>}
+                            </div>
+                            <div className="mt-1 flex gap-1">
+                              <button onClick={() => verifikasiPembayaran(p, 'approve')} className="rounded bg-green-600 px-2 py-0.5 text-xs text-white">Setujui</button>
+                              <button onClick={() => verifikasiPembayaran(p, 'reject')} className="rounded bg-red-600 px-2 py-0.5 text-xs text-white">Tolak</button>
+                            </div>
                           </div>
-                          <div className="mt-1 flex gap-1">
-                            <button onClick={() => verifikasiPembayaran(p, 'approve')} className="rounded bg-green-600 px-2 py-0.5 text-xs text-white">Setujui</button>
-                            <button onClick={() => verifikasiPembayaran(p, 'reject')} className="rounded bg-red-600 px-2 py-0.5 text-xs text-white">Tolak</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </td>
                 <td className="px-5 py-3 align-top">
                   {r.kind === 'pendaftaran' && r.pendaftaran ? (
@@ -318,6 +350,9 @@ export default function TenantsPage() {
                     </div>
                   ) : (
                     <div className="flex flex-wrap gap-1">
+                      {r.status === 'lunas' && (
+                        <button onClick={() => setStrukTarget(r)} className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700 hover:bg-slate-200">Struk</button>
+                      )}
                       <Link href={`/dankelola/tenants/${r.detailId}`} className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700 hover:bg-slate-200">Detail</Link>
                       <button onClick={() => hapus(r.detailId!)} className="rounded bg-red-50 px-2 py-1 text-xs text-red-600 hover:bg-red-100">Hapus</button>
                     </div>
@@ -353,6 +388,70 @@ export default function TenantsPage() {
           </div>
         </div>
       </div>
+
+      <Modal open={!!strukTarget} onClose={() => setStrukTarget(null)} panelClassName="max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
+        {strukTarget && (
+          <>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">Struk {strukTarget.kode}</h2>
+                <p className="text-sm text-slate-500">{strukTarget.nama_usaha} · {strukTarget.kategori}</p>
+              </div>
+              <span className="rounded bg-green-100 px-2 py-1 text-xs text-green-800">Lunas</span>
+            </div>
+
+            <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-left text-xs text-slate-500">
+                  <tr>
+                    <th className="px-3 py-2">Item</th>
+                    <th className="px-3 py-2 text-center">Qty</th>
+                    <th className="px-3 py-2 text-right">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  <tr>
+                    <td className="px-3 py-2">{strukTarget.kategori} (Tempat)</td>
+                    <td className="px-3 py-2 text-center">{strukTarget.jumlahTenant}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatRupiah(strukPaketSubtotal)}</td>
+                  </tr>
+                  {(strukTarget.addon ?? []).map((item) => (
+                    <tr key={item.id}>
+                      <td className="px-3 py-2">{item.nama}</td>
+                      <td className="px-3 py-2 text-center">{item.qty}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatRupiah(Number(item.subtotal))}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-3 grid gap-2 rounded-xl bg-slate-50 p-3 text-sm">
+              <div className="flex justify-between"><span className="text-slate-500">Total</span><span className="font-semibold">{formatRupiah(strukTarget.harga)}</span></div>
+              <div className="flex justify-between"><span className="text-slate-500">Sudah Dibayar</span><span className="font-medium text-green-700">{formatRupiah(strukTarget.dibayar)}</span></div>
+              <div className="flex justify-between"><span className="text-slate-500">Sisa</span><span className="font-medium text-orange-600">{formatRupiah(strukTarget.sisa)}</span></div>
+              <div className="flex justify-between"><span className="text-slate-500">Tanggal Daftar</span><span>{formatDate(strukTarget.tanggal)}</span></div>
+              <div className="flex justify-between"><span className="text-slate-500">Kontak</span><span>{strukTarget.kontak}</span></div>
+            </div>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setStrukTarget(null)}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+              >
+                Tutup
+              </button>
+              <a
+                href={`/api/tenants/${strukTarget.detailId}/struk`}
+                className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+              >
+                Download PDF
+              </a>
+            </div>
+          </>
+        )}
+      </Modal>
 
       <Modal open={!!rejectDaftar} onClose={() => setRejectDaftar(null)}>
         <h2 className="text-lg font-semibold text-slate-900">Tolak pendaftaran?</h2>

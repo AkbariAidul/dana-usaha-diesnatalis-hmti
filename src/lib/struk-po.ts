@@ -413,6 +413,78 @@ export async function buatStrukPoPdf(po: StrukPo, items: StrukItem[], qrUrl?: st
   })
 }
 
+type StrukTenant = {
+  kode_stand: string
+  nama_usaha: string
+  kontak: string
+  harga_akhir: number
+  sudah_dibayar: number | null
+  status: string
+  tgl_daftar: string
+  kategori: string
+  jumlah_tenant: number
+}
+
+const STATUS_TENANT: Record<string, string> = {
+  daftar: 'Terdaftar',
+  dp: 'DP Diterima',
+  dp_diterima: 'DP Diterima',
+  cicil: 'Dicicil',
+  lunas: 'LUNAS',
+  ditolak: 'Ditolak',
+  batal: 'Dibatalkan',
+  menunggak: 'Menunggak',
+}
+
+export async function buatStrukTenantPdf(
+  tenant: StrukTenant,
+  addon: Array<{ nama: string; qty: number; harga_satuan: number; subtotal: number }>,
+  qrUrl?: string
+): Promise<Buffer> {
+  const total = Number(tenant.harga_akhir)
+  const dibayar = Number(tenant.sudah_dibayar ?? 0)
+  const sisa = Math.max(0, total - dibayar)
+  const addonTotal = addon.reduce((sum, item) => sum + Number(item.subtotal), 0)
+  const paketSubtotal = Math.max(0, total - addonTotal)
+  const jumlahTenant = Math.max(1, Number(tenant.jumlah_tenant || 1))
+
+  return buatInvoicePdf({
+    jenis: 'INVOICE TENANT',
+    noInvoice: tenant.kode_stand,
+    detailHeader: 'Keterangan',
+    meta: [
+      ['Nama', tenant.nama_usaha, 'No. Invoice', tenant.kode_stand],
+      ['Kontak', tenant.kontak, 'Tanggal', waktu(tenant.tgl_daftar)],
+      ['Kategori', tenant.kategori, 'Status', STATUS_TENANT[tenant.status] ?? tenant.status.replace(/_/g, ' ')],
+      ['Jumlah Tenant', String(jumlahTenant), 'Sisa Tagihan', rupiah(sisa)],
+    ],
+    lines: [
+      {
+        nama: `${tenant.kategori} (Tempat)`,
+        detail: 'Paket tenant',
+        qty: jumlahTenant,
+        harga_satuan: Math.round(paketSubtotal / jumlahTenant),
+        subtotal: paketSubtotal,
+      },
+      ...addon.map((item) => ({
+        nama: item.nama,
+        detail: 'Add-on',
+        qty: Number(item.qty),
+        harga_satuan: Number(item.harga_satuan),
+        subtotal: Number(item.subtotal),
+      })),
+    ],
+    totals: [
+      { label: 'Subtotal', value: total },
+      { label: 'Total Tagihan', value: total, highlight: true, big: true },
+      { label: 'Sudah Dibayar', value: dibayar },
+      { label: 'Sisa Tagihan', value: sisa, highlight: true },
+    ],
+    note: 'Terima kasih telah mendaftar sebagai tenant Danus In4Days XI. Simpan invoice ini sebagai bukti pembayaran dan check-in venue.',
+    qrUrl,
+  })
+}
+
 type StrukTiket = {
   no_pesanan: string
   nama_pembeli: string

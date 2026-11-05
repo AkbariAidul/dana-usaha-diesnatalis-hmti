@@ -10,7 +10,7 @@ function secret() {
 
 export function tipeDariKode(kode: string): TipeLacak | null {
   const upper = kode.trim().toUpperCase()
-  if (upper.startsWith('TP-')) return 'tenant'
+  if (upper.startsWith('TP-') || upper.startsWith('KT-')) return 'tenant'
   if (upper.startsWith('TK-')) return 'tiket'
   if (upper.startsWith('PO-')) return 'po'
   return null

@@ -245,6 +245,7 @@ function BuktiUpload({
   metodePilihan = false,
   metodeAwal = 'QRIS',
   qrisPayload = '',
+  showQris = false,
   onDone,
 }: {
   kode: string
@@ -254,6 +255,7 @@ function BuktiUpload({
   metodePilihan?: boolean
   metodeAwal?: string
   qrisPayload?: string
+  showQris?: boolean
   onDone: () => void
 }) {
   const [file, setFile] = useState<File | null>(null)
@@ -261,11 +263,16 @@ function BuktiUpload({
   const [nilai, setNilai] = useState(nominal ? String(nominal) : '')
   const [metode, setMetode] = useState(metodeAwal === 'Cash' ? 'Cash' : 'QRIS')
   const [loading, setLoading] = useState(false)
-  const qrValue = metodePilihan && metode === 'QRIS' && qrisPayload
+  const tampilQris = Boolean(qrisPayload) && (showQris || (metodePilihan && metode === 'QRIS'))
+  const qrValue = tampilQris
     ? Number(nilai) > 0
       ? buatQrisDinamis(qrisPayload, Number(nilai))
       : buatQrisTanpaNominal(qrisPayload)
     : ''
+
+  useEffect(() => {
+    if (nominal !== undefined) setNilai(String(nominal))
+  }, [nominal])
 
   useEffect(() => {
     if (!imageOnly || !file) {
@@ -461,6 +468,17 @@ function TenantView({ data, token, reload }: { data: Extract<StatusResponse, { t
   const jumlahTenant = Number(tenant?.jumlah_tenant ?? daftar?.jumlah_tenant ?? 1)
   const addonTotal = addon.reduce((sum, item) => sum + Number(item.subtotal ?? 0), 0)
   const paketSubtotal = Math.max(0, harga - addonTotal)
+  const target80 = Math.ceil(harga * 0.8)
+  const kekurangan80 = Math.max(0, target80 - totalValid)
+  const nominalAwal = Math.max(1, Math.ceil(sisa / 2))
+  const [qrisPayload, setQrisPayload] = useState('')
+
+  useEffect(() => {
+    fetch('/api/pengaturan/qris')
+      .then((r) => r.json())
+      .then((d) => setQrisPayload(d.qris_payload ?? ''))
+      .catch(() => {})
+  }, [])
 
   if (!tenant) {
     return (
@@ -550,6 +568,15 @@ function TenantView({ data, token, reload }: { data: Extract<StatusResponse, { t
           </div>
           <p className="mt-1 text-xs text-slate-500">QR masuk venue aktif setelah pembayaran tervalidasi mencapai 80%.</p>
         </div>
+
+        {tenant.status === 'lunas' && (
+          <a
+            href={`/api/public/struk?kode=${encodeURIComponent(tenant.kode_stand)}&t=${encodeURIComponent(token)}`}
+            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700"
+          >
+            <Download className="h-4 w-4" /> Download Struk PDF
+          </a>
+        )}
       </div>
 
       {qr && (
@@ -608,7 +635,24 @@ function TenantView({ data, token, reload }: { data: Extract<StatusResponse, { t
       </div>
 
       {tenant.status !== 'lunas' && sisa > 0 && (
-        <BuktiUpload kode={data.kode} token={token} nominal={sisa} imageOnly onDone={reload} />
+        <>
+          <div className={`rounded-2xl border p-4 text-sm ${kekurangan80 > 0 ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-green-200 bg-green-50 text-green-800'}`}>
+            {kekurangan80 > 0 ? (
+              <>Agar QR masuk venue aktif, total pembayaran tervalidasi harus mencapai 80% yaitu <strong>{formatRupiah(target80)}</strong>. Kurang <strong>{formatRupiah(kekurangan80)}</strong> lagi.</>
+            ) : (
+              <>Pembayaran sudah mencapai target 80% ({formatRupiah(target80)}). QR masuk venue sudah aktif.</>
+            )}
+          </div>
+          <BuktiUpload
+            kode={data.kode}
+            token={token}
+            nominal={nominalAwal}
+            imageOnly
+            qrisPayload={qrisPayload}
+            showQris
+            onDone={reload}
+          />
+        </>
       )}
     </div>
   )
