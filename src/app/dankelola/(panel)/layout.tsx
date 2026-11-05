@@ -17,6 +17,7 @@ const MENU_HREFS = menuConfig.flatMap((group) =>
 const MENU_ALIASES: Record<string, string[]> = {
   '/dankelola/ticket/tahap': ['/dankelola/ticket/tipe', '/dankelola/ticket/periode', '/dankelola/ticket/modal'],
   '/dankelola/merchandise/produk': ['/dankelola/merchandise/modal'],
+  '/dankelola/tenants/harga': ['/dankelola/tenants/pembayaran'],
 }
 
 function matchesPath(pathname: string, href: string, prefix: string) {
@@ -103,13 +104,10 @@ function getBreadcrumbs(pathname: string) {
   }
 
   // Sub-pages that extend the active page
-  if (pathname === '/dankelola/tenants/peralatan' || pathname === '/dankelola/tenants/pembayaran') {
+  if (pathname === '/dankelola/tenants/pembayaran') {
     breadcrumbs.length = 1
     breadcrumbs.push({ label: 'Paket & Harga', href: '/dankelola/tenants/harga' })
-    breadcrumbs.push({
-      label: pathname === '/dankelola/tenants/peralatan' ? 'Kelola Modal' : 'Batas Pembayaran',
-      href: pathname,
-    })
+    breadcrumbs.push({ label: 'Batas Pembayaran', href: pathname })
   } else if (pathname.startsWith('/dankelola/ticket/tipe/')) {
     const action = pathname === '/dankelola/ticket/tipe/new' ? 'Tambah Tipe' : 'Edit Tipe'
     breadcrumbs.push({ label: action, href: pathname })

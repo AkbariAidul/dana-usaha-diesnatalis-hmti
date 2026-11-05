@@ -57,7 +57,7 @@ export default function BatasPembayaranPage() {
   const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5">
+    <div className="max-w-2xl space-y-5">
       <div>
         <h1 className="text-xl font-semibold text-slate-900">Batas Pembayaran</h1>
         <p className="text-sm text-slate-500">Atur tanggal acara dan batas akhir pelunasan tenant.</p>

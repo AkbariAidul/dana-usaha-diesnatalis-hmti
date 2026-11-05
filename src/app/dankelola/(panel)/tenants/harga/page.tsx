@@ -4,7 +4,7 @@ import { DataError } from '@/components/data-error'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { CalendarClock, Eye, Pencil, Trash2, Wallet } from 'lucide-react'
+import { CalendarClock, Eye, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
@@ -115,12 +115,6 @@ export default function HargaPage() {
             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-primary-200 hover:text-primary-600"
           >
             <CalendarClock className="h-4 w-4" /> Batas Pembayaran
-          </Link>
-          <Link
-            href="/dankelola/tenants/peralatan"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-primary-200 hover:text-primary-600"
-          >
-            <Wallet className="h-4 w-4" /> Kelola Modal
           </Link>
           <Link
             href="/dankelola/tenants/harga/new"
