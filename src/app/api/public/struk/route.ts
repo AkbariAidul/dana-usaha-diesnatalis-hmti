@@ -21,6 +21,9 @@ export async function GET(request: Request) {
     if (tipe === 'tiket') {
       const pesanan = await getStrukTiket(kode)
       if (!pesanan) return NextResponse.json({ error: 'Pesanan tidak ditemukan' }, { status: 404 })
+      if (pesanan.status !== 'lunas') {
+        return NextResponse.json({ error: 'Struk tersedia setelah pembayaran lunas' }, { status: 403 })
+      }
       const buffer = await buatStrukTiketPdf(pesanan, linkTiket(request, kode))
       return new NextResponse(new Uint8Array(buffer), {
         headers: {
@@ -32,6 +35,9 @@ export async function GET(request: Request) {
 
     const { data: po } = await supabaseAdmin.from('merch_po').select('*').eq('no_po', kode).maybeSingle()
     if (!po) return NextResponse.json({ error: 'PO tidak ditemukan' }, { status: 404 })
+    if (po.status !== 'lunas') {
+      return NextResponse.json({ error: 'Struk tersedia setelah pembayaran lunas' }, { status: 403 })
+    }
 
     const [{ data: items }, { data: varian }, { data: merchandise }] = await Promise.all([
       supabaseAdmin.from('merch_po_item').select('*').eq('po_id', po.id),
