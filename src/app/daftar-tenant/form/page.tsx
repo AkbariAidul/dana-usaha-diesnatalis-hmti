@@ -50,9 +50,9 @@ export default function DaftarTenantPublik() {
     nama_usaha: '', kontak: '', email: '', alamat: '', deskripsi_usaha: '',
     kategori_sewa_id: '', jenis_usaha: 'F&B' as 'F&B' | 'Non-F&B', jumlah_tenant: '1',
   })
-  const [addonQty, setAddonQty] = useState<Record<string, number>>({})
-  const [addonOwn, setAddonOwn] = useState<Record<string, number>>({})
-  const [pilihanQty, setPilihanQty] = useState<Record<string, number>>({})
+  const [addonQty, setAddonQty] = useState<Record<string, number | ''>>({})
+  const [addonOwn, setAddonOwn] = useState<Record<string, number | ''>>({})
+  const [pilihanQty, setPilihanQty] = useState<Record<string, number | ''>>({})
   const [tipeBayar, setTipeBayar] = useState<'lunas' | 'nyicil'>('nyicil')
   const [nominalNyicil, setNominalNyicil] = useState('')
   const [pendaftaran, setPendaftaran] = useState<{ id: string; kode_pendaftaran: string; nama_usaha: string; kontak: string; harga_akhir: number; dp_wajib: number; addon?: TenantAddon[] | null; t?: string } | null>(null)
@@ -111,7 +111,7 @@ export default function DaftarTenantPublik() {
   const pilihanPerTenant = useMemo(() => {
     return Object.entries(pilihanQty).reduce((sum, [id, qty]) => {
       const item = pilihanTambahan.find((p) => p.id === id)
-      return sum + Number(item?.harga ?? 0) * qty
+      return sum + Number(item?.harga ?? 0) * (Number(qty) || 1)
     }, 0)
   }, [pilihanQty, pilihanTambahan])
 
@@ -186,7 +186,7 @@ export default function DaftarTenantPublik() {
         ...form,
         jumlah_tenant: jumlahTenant,
         addon: addonTerpilih.map(({ item, qty }) => ({ id: item.id, qty })),
-        pilihan: Object.entries(pilihanQty).map(([id, qty]) => ({ id, qty })),
+        pilihan: Object.entries(pilihanQty).map(([id, qty]) => ({ id, qty: Math.max(1, Number(qty) || 1) })),
         periode_daftar: periode,
       })
       setPendaftaran(res as typeof pendaftaran)
@@ -293,7 +293,13 @@ export default function DaftarTenantPublik() {
                             max={99}
                             className="w-14 rounded-lg border border-slate-200 px-2 py-1 text-center text-sm"
                             value={pilihanQty[item.id]}
-                            onChange={(e) => setPilihanQty({ ...pilihanQty, [item.id]: Math.max(1, Math.min(99, Number(e.target.value) || 1)) })}
+                            onChange={(e) => {
+                              const value = e.target.value
+                              setPilihanQty({ ...pilihanQty, [item.id]: value === '' ? '' : Math.max(1, Math.min(99, Number(value) || 1)) })
+                            }}
+                            onBlur={() => {
+                              if (pilihanQty[item.id] === '') setPilihanQty({ ...pilihanQty, [item.id]: 1 })
+                            }}
                           />
                         )}
                       </div>
@@ -324,7 +330,10 @@ export default function DaftarTenantPublik() {
                                 max={jumlahTenant}
                                 className="w-12 rounded-lg border border-slate-200 px-2 py-1 text-center text-sm"
                                 value={addonOwn[item.id] ?? ''}
-                                onChange={(e) => setAddonOwn({ ...addonOwn, [item.id]: Math.max(0, Math.min(jumlahTenant, Number(e.target.value) || 0)) })}
+                                onChange={(e) => {
+                                  const value = e.target.value
+                                  setAddonOwn({ ...addonOwn, [item.id]: value === '' ? '' : Math.max(0, Math.min(jumlahTenant, Number(value) || 0)) })
+                                }}
                               />
                             </label>
                             <span className="font-medium text-slate-700">Sewa {qtyOtomatis} unit</span>
@@ -338,7 +347,13 @@ export default function DaftarTenantPublik() {
                               max={99}
                               className="w-14 rounded-lg border border-slate-200 px-2 py-1 text-center text-sm"
                               value={addonQty[item.id]}
-                              onChange={(e) => setAddonQty({ ...addonQty, [item.id]: Math.max(1, Math.min(99, Number(e.target.value) || 1)) })}
+                              onChange={(e) => {
+                                const value = e.target.value
+                                setAddonQty({ ...addonQty, [item.id]: value === '' ? '' : Math.max(1, Math.min(99, Number(value) || 1)) })
+                              }}
+                              onBlur={() => {
+                                if (addonQty[item.id] === '') setAddonQty({ ...addonQty, [item.id]: 1 })
+                              }}
                             />
                           </label>
                         ))}
@@ -357,7 +372,7 @@ export default function DaftarTenantPublik() {
                   <div className="space-y-0.5 text-xs text-slate-500">
                     <p>Tempat × {jumlahTenant}: {formatRupiah(baseHarga * jumlahTenant)}</p>
                     {pilihanTerpilih.map((item) => {
-                      const qty = pilihanQty[item.id] ?? 0
+                      const qty = Number(pilihanQty[item.id]) || 1
                       return (
                         <p key={item.id}>{item.nama} × {qty * jumlahTenant}: {formatRupiah(Number(item.harga) * qty * jumlahTenant)}</p>
                       )
