@@ -4,13 +4,10 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   ArrowRight,
-  CalendarDays,
   CheckCircle2,
   ClipboardList,
   CreditCard,
-  Package,
   QrCode,
-  ShieldCheck,
   Store,
   Upload,
   Zap,
@@ -22,18 +19,17 @@ import {
   periodeDariTanggal,
   type HargaDasar,
   type KategoriSewa,
+  type Peralatan,
   type PeriodeHarga,
 } from '@/lib/types'
 import { kategoriTenant } from '@/lib/tenant'
-import { formatDate, formatRupiah, todayISO } from '@/lib/utils'
+import { formatRupiah, todayISO } from '@/lib/utils'
 
 type Master = {
   kategori: KategoriSewa[]
   hargaDasar: HargaDasar[]
   periode: PeriodeHarga[]
 }
-
-type Acara = { nama?: string | null; tanggal_acara?: string | null } | null
 
 const ALUR = [
   {
@@ -69,22 +65,22 @@ export default function InfoTenantPage() {
     hargaDasar: [],
     periode: [],
   })
-  const [acara, setAcara] = useState<Acara>(null)
+  const [peralatan, setPeralatan] = useState<Peralatan[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all([
       getJSON<Master>('/api/master'),
-      getJSON<Acara>('/api/acara'),
+      getJSON<Peralatan[]>('/api/peralatan'),
     ])
-      .then(([m, a]) => {
+      .then(([m, p]) => {
         setMaster({
           kategori: m.kategori || [],
           hargaDasar: m.hargaDasar || [],
           periode: m.periode || [],
         })
-        setAcara(a)
+        setPeralatan(p || [])
       })
       .catch((e) => {
         console.error('Failed to load tenant info:', e)
@@ -105,9 +101,15 @@ export default function InfoTenantPage() {
     return map
   }, [master.hargaDasar])
 
+  const addonTotal = useMemo(
+    () => peralatan.reduce((sum, item) => sum + Math.max(0, Number(item.harga_sewa) || 0), 0),
+    [peralatan],
+  )
+
   function hargaKategori(kategoriId: string) {
     if (!activeKode) return undefined
-    return hargaMap.get(`${kategoriId}|F&B|${activeKode}`) ?? hargaMap.get(`${kategoriId}|Non-F&B|${activeKode}`)
+    const base = hargaMap.get(`${kategoriId}|F&B|${activeKode}`) ?? hargaMap.get(`${kategoriId}|Non-F&B|${activeKode}`)
+    return base === undefined ? undefined : base + addonTotal
   }
 
   if (loading) {
@@ -142,69 +144,6 @@ export default function InfoTenantPage() {
           className="mb-5"
         />
 
-        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary-700 via-primary-600 to-purple-800 px-6 py-8 text-white shadow-xl shadow-primary-900/20 sm:px-10 sm:py-12">
-          <div className="absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
-          <div className="absolute -bottom-24 -left-10 h-56 w-56 rounded-full bg-fuchsia-400/20 blur-3xl" />
-
-          <div className="relative max-w-3xl">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium backdrop-blur">
-              <span className={`h-2 w-2 rounded-full ${activePeriod ? 'bg-emerald-300' : 'bg-amber-300'}`} />
-              {activePeriod ? `Pendaftaran dibuka · ${activePeriod.nama}` : 'Pendaftaran belum dibuka'}
-            </span>
-
-            <h1 className="mt-5 text-3xl font-bold leading-tight tracking-tight sm:text-4xl lg:text-5xl">
-              Buka stan kamu di In4Days XI
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/80 sm:text-base">
-              Pilih kategori tenant, lihat total harga sewa langsung, lalu daftar dengan DP 50%.
-            </p>
-
-            {acara?.tanggal_acara && (
-              <p className="mt-5 inline-flex items-center gap-2 rounded-xl bg-black/15 px-3 py-2 text-sm text-white/90">
-                <CalendarDays className="h-4 w-4" />
-                {formatDate(acara.tanggal_acara)}
-              </p>
-            )}
-
-            <div className="mt-7 flex flex-wrap items-center gap-3">
-              {activePeriod ? (
-                <Link
-                  href="/daftar-tenant/form"
-                  className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-primary-700 shadow-lg shadow-black/10 transition hover:bg-primary-50"
-                >
-                  Daftar Tenant
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              ) : (
-                <span className="inline-flex cursor-not-allowed items-center gap-2 rounded-xl bg-white/25 px-5 py-3 text-sm font-semibold text-white/80">
-                  Pendaftaran Belum Dibuka
-                </span>
-              )}
-              <a
-                href="#kategori"
-                className="inline-flex items-center gap-2 rounded-xl border border-white/25 px-5 py-3 text-sm font-medium text-white transition hover:bg-white/10"
-              >
-                Lihat Kategori
-              </a>
-            </div>
-
-            <div className="mt-8 flex flex-wrap gap-x-8 gap-y-3 text-sm text-white/85">
-              <span className="inline-flex items-center gap-2">
-                <Package className="h-4 w-4" />
-                {kategori.length} kategori tenant
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <CalendarDays className="h-4 w-4" />
-                {master.periode.length} periode harga
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4" />
-                DP 50% saat daftar
-              </span>
-            </div>
-          </div>
-        </section>
-
         <section className="mt-8">
           <div className="mb-4">
             <h2 className="text-xl font-semibold tracking-tight text-slate-900">Alur Pendaftaran</h2>
@@ -233,7 +172,7 @@ export default function InfoTenantPage() {
           <div className="mb-4">
             <h2 className="text-xl font-semibold tracking-tight text-slate-900">Kategori Tenant</h2>
             <p className="mt-1 text-sm text-slate-500">
-              Harga sudah total per kategori. Add-on meja/kursi bisa dipilih saat mengisi form.
+              Harga di bawah adalah total jika semua item (tempat dan add-on) dipilih.
             </p>
           </div>
 
@@ -279,7 +218,7 @@ export default function InfoTenantPage() {
 
                     <div className="mt-auto border-t border-slate-100 pt-4">
                       <p className="text-xs text-slate-500">
-                        {activePeriod ? `Total harga sewa · ${activePeriod.nama}` : 'Total harga sewa'}
+                        {activePeriod ? `Total semua item · ${activePeriod.nama}` : 'Total semua item'}
                       </p>
                       <p className="mt-1 text-2xl font-bold text-slate-900">
                         {harga !== undefined ? formatRupiah(harga) : '-'}
@@ -306,28 +245,6 @@ export default function InfoTenantPage() {
                 )
               })}
             </div>
-          )}
-        </section>
-
-        <section className="mt-10 rounded-3xl bg-slate-900 px-6 py-8 text-center text-white shadow-xl shadow-slate-900/10 sm:px-10 sm:py-10">
-          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Siap buka stan?</h2>
-          <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-slate-300">
-            {activePeriod
-              ? `Pendaftaran periode ${activePeriod.nama} sedang dibuka. Kunci slot kamu sekarang sebelum kuota habis.`
-              : 'Pantau halaman ini untuk informasi periode pendaftaran berikutnya.'}
-          </p>
-          {activePeriod ? (
-            <Link
-              href="/daftar-tenant/form"
-              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-primary-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-primary-400"
-            >
-              Daftar Tenant
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          ) : (
-            <span className="mt-6 inline-flex cursor-not-allowed items-center gap-2 rounded-xl bg-white/10 px-6 py-3 text-sm font-semibold text-white/60">
-              Pendaftaran Belum Dibuka
-            </span>
           )}
         </section>
       </main>

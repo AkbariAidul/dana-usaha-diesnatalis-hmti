@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { CheckCircle2, Store, Zap } from 'lucide-react'
+
 import { PublicBreadcrumb, PublicNavbar } from '@/components/public-navbar'
 import { getJSON, sendJSON } from '@/app/dankelola/api'
 import { periodeDariTanggal, periodeLabel, KategoriSewa, HargaDasar, PeriodeHarga, Peralatan, TenantAddon } from '@/lib/types'
@@ -23,7 +23,7 @@ export default function DaftarTenantPublik() {
   const [step, setStep] = useState(1)
   const [form, setForm] = useState({
     nama_usaha: '', kontak: '', email: '', alamat: '', deskripsi_usaha: '',
-    kategori_sewa_id: '', jenis_usaha: 'F&B',
+    kategori_sewa_id: '',
   })
   const [addonQty, setAddonQty] = useState<Record<string, number>>({})
   const [pendaftaran, setPendaftaran] = useState<{ id: string; kode_pendaftaran: string; nama_usaha: string; kontak: string; harga_akhir: number; dp_wajib: number; addon?: TenantAddon[] | null; t?: string } | null>(null)
@@ -45,10 +45,11 @@ export default function DaftarTenantPublik() {
       setPeriods(m.periode || [])
       setQris(q)
       setAcara(a)
+      const semua = (p || []).filter((item) => Number(item.harga_sewa) > 0)
+      setAddonQty(Object.fromEntries(semua.map((item) => [item.id, 1])))
       const dipilih = new URLSearchParams(window.location.search).get('kategori')
-      if (dipilih && list.some((k) => k.id === dipilih)) {
-        setForm((prev) => ({ ...prev, kategori_sewa_id: dipilih }))
-      }
+      const kategoriId = dipilih && list.some((k) => k.id === dipilih) ? dipilih : list[0]?.id ?? ''
+      setForm((prev) => ({ ...prev, kategori_sewa_id: kategoriId }))
     })
   }, [])
 
@@ -58,10 +59,10 @@ export default function DaftarTenantPublik() {
 
   const baseHarga = useMemo(() => {
     if (!periode || !form.kategori_sewa_id) return 0
-    const hd = hargaDasar.find((h) => h.kategori_sewa_id === form.kategori_sewa_id && h.jenis_usaha === form.jenis_usaha && h.periode === periode)
+    const hd = hargaDasar.find((h) => h.kategori_sewa_id === form.kategori_sewa_id && h.jenis_usaha === 'F&B' && h.periode === periode)
       ?? hargaDasar.find((h) => h.kategori_sewa_id === form.kategori_sewa_id && h.periode === periode)
     return Number(hd?.harga ?? 0)
-  }, [form.kategori_sewa_id, form.jenis_usaha, hargaDasar, periode])
+  }, [form.kategori_sewa_id, hargaDasar, periode])
 
   const addonTotal = useMemo(() => {
     return Object.entries(addonQty).reduce((sum, [id, qty]) => {
@@ -141,7 +142,7 @@ export default function DaftarTenantPublik() {
           <div className="rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
             <div className="p-6 border-b border-slate-100">
               <h1 className="text-xl font-semibold text-slate-900">Form Pendaftaran Tenant</h1>
-              <p className="text-sm text-slate-500">Pilih kategori, isi data usaha, dan tambahkan add-on bila perlu.</p>
+              <p className="text-sm text-slate-500">Isi data usaha dan pilih item yang mau disewa.</p>
             </div>
             <div className="p-6 grid md:grid-cols-2 gap-4">
               <div className="md:col-span-2"><label className="mb-1 block text-sm font-medium">Nama Usaha</label><input className={input} placeholder="cth: Kopi Senja" value={form.nama_usaha} onChange={e=>setForm({...form,nama_usaha:e.target.value})}/></div>
@@ -150,87 +151,45 @@ export default function DaftarTenantPublik() {
               <div className="md:col-span-2"><label className="mb-1 block text-sm font-medium">Alamat</label><input className={input} placeholder="Alamat lengkap stand/usaha" value={form.alamat} onChange={e=>setForm({...form,alamat:e.target.value})}/></div>
               <div className="md:col-span-2"><label className="mb-1 block text-sm font-medium">Deskripsi Usaha</label><textarea className={input} placeholder="Ceritakan singkat usaha kamu" value={form.deskripsi_usaha} onChange={e=>setForm({...form,deskripsi_usaha:e.target.value})}/></div>
 
-              <div className="md:col-span-2">
-                <label className="mb-2 block text-sm font-medium">Kategori Sewa</label>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {kategori.map((k) => {
-                    const aktif = form.kategori_sewa_id === k.id
+              <div className="md:col-span-2 rounded-xl border border-slate-200 p-4">
+                <p className="text-sm font-medium text-slate-900">Pilih yang mau disewa</p>
+                <p className="text-xs text-slate-500">Semua item tercentang di awal. Hilangkan centang untuk item yang tidak diambil.</p>
+                <div className="mt-3 space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary-200 bg-primary-50/50 px-3 py-2">
+                    <label className="flex flex-1 items-center gap-2 text-sm">
+                      <input type="checkbox" checked disabled className="h-4 w-4 rounded border-slate-300 text-primary-600" />
+                      <span className="font-medium text-slate-800">{selectedKategori?.nama ?? 'Tempat / Stand'}</span>
+                      <span className="text-xs text-slate-500">{formatRupiah(baseHarga)}</span>
+                    </label>
+                    <span className="text-xs text-slate-400">Wajib</span>
+                  </div>
+                  {addons.map((item) => {
+                    const checked = addonQty[item.id] !== undefined
                     return (
-                      <label
-                        key={k.id}
-                        className={`cursor-pointer rounded-xl border p-4 transition ${
-                          aktif ? 'border-primary-500 bg-primary-50/60 ring-2 ring-primary-500/10' : 'border-slate-200 bg-white hover:border-slate-300'
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="kategori_sewa"
-                          className="sr-only"
-                          checked={aktif}
-                          onChange={() => setForm({ ...form, kategori_sewa_id: k.id })}
-                        />
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <p className="font-mono text-xs font-semibold text-primary-600">{k.kode}</p>
-                            <p className="mt-1 text-sm font-semibold text-slate-900">{k.nama}</p>
-                          </div>
-                          <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${aktif ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                            <Store className="h-4 w-4" />
-                          </span>
-                        </div>
-                        <p className="mt-2 text-xs leading-relaxed text-slate-500">{k.keterangan || 'Stand sesuai kategori.'}</p>
-                        <div className="mt-3 flex flex-wrap gap-1.5 text-[11px]">
-                          {k.include_listrik && <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 font-medium text-amber-700"><Zap className="h-3 w-3" /> Listrik</span>}
-                          {k.include_trashbag && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700"><CheckCircle2 className="h-3 w-3" /> Trashbag</span>}
-                        </div>
-                      </label>
+                      <div key={item.id} className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2 ${checked ? 'border-primary-200 bg-primary-50/50' : 'border-slate-100'}`}>
+                        <label className="flex flex-1 cursor-pointer items-center gap-2 text-sm">
+                          <input type="checkbox" checked={checked} onChange={(e) => toggleAddon(item.id, e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" />
+                          <span className="font-medium text-slate-800">{item.nama}</span>
+                          <span className="text-xs text-slate-500">{formatRupiah(Number(item.harga_sewa))}</span>
+                        </label>
+                        {checked && (
+                          <label className="flex items-center gap-2 text-xs text-slate-500">
+                            Jumlah
+                            <input
+                              type="number"
+                              min={1}
+                              max={99}
+                              className="w-16 rounded-lg border border-slate-200 px-2 py-1 text-center text-sm"
+                              value={addonQty[item.id]}
+                              onChange={(e) => setAddonQty({ ...addonQty, [item.id]: Math.max(1, Math.min(99, Number(e.target.value) || 1)) })}
+                            />
+                          </label>
+                        )}
+                      </div>
                     )
                   })}
                 </div>
-                {selectedKategori && (
-                  <p className="mt-2 text-xs text-slate-500">
-                    Kategori terpilih otomatis mencakup fasilitas di atas. Kamu tetap bisa menambah add-on di bawah.
-                  </p>
-                )}
               </div>
-
-              {addons.length > 0 && (
-                <div className="md:col-span-2 rounded-xl border border-slate-200 p-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">Add-on (opsional)</p>
-                      <p className="text-xs text-slate-500">Centang barang yang ingin disewa, lalu atur jumlahnya.</p>
-                    </div>
-                  </div>
-                  <div className="mt-3 space-y-2">
-                    {addons.map((item) => {
-                      const checked = addonQty[item.id] !== undefined
-                      return (
-                        <div key={item.id} className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2 ${checked ? 'border-primary-200 bg-primary-50/50' : 'border-slate-100'}`}>
-                          <label className="flex flex-1 cursor-pointer items-center gap-2 text-sm">
-                            <input type="checkbox" checked={checked} onChange={(e) => toggleAddon(item.id, e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" />
-                            <span className="font-medium text-slate-800">{item.nama}</span>
-                            <span className="text-xs text-slate-500">{formatRupiah(Number(item.harga_sewa))}</span>
-                          </label>
-                          {checked && (
-                            <label className="flex items-center gap-2 text-xs text-slate-500">
-                              Jumlah
-                              <input
-                                type="number"
-                                min={1}
-                                max={99}
-                                className="w-16 rounded-lg border border-slate-200 px-2 py-1 text-center text-sm"
-                                value={addonQty[item.id]}
-                                onChange={(e) => setAddonQty({ ...addonQty, [item.id]: Math.max(1, Math.min(99, Number(e.target.value) || 1)) })}
-                              />
-                            </label>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
 
               <div className="md:col-span-2 rounded-xl bg-slate-50 p-4 flex flex-wrap items-center justify-between gap-3">
                 <div className="text-sm">
@@ -239,9 +198,9 @@ export default function DaftarTenantPublik() {
                   {acara?.tanggal_acara && <p className="text-slate-500">Tanggal Acara: {formatDate(acara.tanggal_acara)}</p>}
                 </div>
                 <div className="text-right">
-                  <p className="text-sm text-slate-500">Harga Sewa</p>
+                  <p className="text-sm text-slate-500">Tempat</p>
                   <p className="text-lg font-semibold text-primary-600">{formatRupiah(baseHarga)}</p>
-                  {addonTotal > 0 && <p className="text-xs text-slate-500">Add-on: {formatRupiah(addonTotal)}</p>}
+                  {addonTotal > 0 && <p className="text-xs text-slate-500">Item lain: {formatRupiah(addonTotal)}</p>}
                   <p className="text-sm font-semibold text-slate-900">Total: {formatRupiah(harga)}</p>
                   <p className="text-xs text-slate-500">DP 50% {formatRupiah(dp)}</p>
                 </div>
