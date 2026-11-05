@@ -95,7 +95,7 @@ export default function RingkasanPage() {
             <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="font-semibold">Pembayaran Terakhir</h2>
-                <Link href="/dankelola/pembayaran" className="text-sm text-primary-600">Lihat semua</Link>
+                <Link href="/dankelola/tenants" className="text-sm text-primary-600">Lihat semua</Link>
               </div>
               <div className="divide-y divide-slate-100/80">
                 {pembayaran.slice(0, 5).map((p) => (

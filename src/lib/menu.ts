@@ -40,8 +40,6 @@ export const menuConfig: MenuGroup[] = [
     icon: Users,
     children: [
       { label: 'Data Tenant', href: '/dankelola/tenants' },
-      { label: 'Verifikasi Tenant', href: '/dankelola/tenants/verifikasi' },
-      { label: 'Pembayaran', href: '/dankelola/tenants/pembayaran' },
       { label: 'Paket & Harga', href: '/dankelola/tenants/harga' },
       { label: 'Sewa Vendor', href: '/dankelola/tenants/peralatan' },
       { label: 'Kuota & Denah', href: '/dankelola/tenants/kuota' },

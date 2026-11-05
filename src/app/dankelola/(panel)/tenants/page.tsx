@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import type { Tenant, KategoriSewa, HargaDasar, PeriodeHarga } from '@/lib/types'
+import type { Tenant, KategoriSewa, HargaDasar, PeriodeHarga, Pembayaran } from '@/lib/types'
 import { formatRupiah, formatDate } from '@/lib/utils'
 import { STATUS_LABEL, STATUS_COLOR, periodeDariTanggal, periodeLabel } from '@/lib/types'
 import { kategoriTenant, lokasiUntukKategori } from '@/lib/tenant'
@@ -10,8 +10,23 @@ import { getJSON, sendJSON } from '../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { TableSkeleton } from '../ui'
 import { useConfirm } from '@/components/confirm-dialog'
+import { Modal } from '@/components/modal'
 
 const today = new Date().toISOString().slice(0, 10)
+
+type Pendaftaran = {
+  id: string
+  kode_pendaftaran: string
+  nama_usaha: string
+  kontak: string
+  email: string | null
+  kategori_sewa_id: string
+  harga_akhir: number
+  dp_wajib: number
+  status: string
+  bukti_url: string | null
+  created_at: string
+}
 
 const emptyForm = {
   nama_usaha: '', kontak: '', email: '',
@@ -23,6 +38,8 @@ const emptyForm = {
 export default function TenantsPage() {
   const confirm = useConfirm()
   const [tenants, setTenants] = useState<Tenant[]>([])
+  const [pendaftaran, setPendaftaran] = useState<Pendaftaran[]>([])
+  const [pembayaran, setPembayaran] = useState<Pembayaran[]>([])
   const [kategori, setKategori] = useState<KategoriSewa[]>([])
   const [hargaDasar, setHargaDasar] = useState<HargaDasar[]>([])
   const [periods, setPeriods] = useState<PeriodeHarga[]>([])
@@ -31,13 +48,18 @@ export default function TenantsPage() {
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [q, setQ] = useState('')
+  const [rejectDaftar, setRejectDaftar] = useState<Pendaftaran | null>(null)
+  const [rejectCatatan, setRejectCatatan] = useState('')
 
   async function load() {
-    const [t, m] = await Promise.all([
+    const [t, m, d, p] = await Promise.all([
       getJSON<Tenant[]>('/api/tenants'),
       getJSON<{ kategori: KategoriSewa[]; hargaDasar: HargaDasar[]; periode: PeriodeHarga[] }>('/api/master'),
+      getJSON<Pendaftaran[]>('/api/public/tenant'),
+      getJSON<Pembayaran[]>('/api/pembayaran'),
     ])
     setTenants(t); setKategori(kategoriTenant(m.kategori || [])); setHargaDasar(m.hargaDasar); setPeriods(m.periode || [])
+    setPendaftaran(d); setPembayaran(p)
   }
 
   useEffect(() => {
@@ -100,6 +122,55 @@ export default function TenantsPage() {
     }
   }
 
+  async function verifikasiPendaftaran(item: Pendaftaran, status: 'dp_diterima' | 'ditolak', catatan: string | null) {
+    if (status === 'dp_diterima') {
+      const ok = await confirm({
+        title: 'Terima pendaftaran?',
+        description: `${item.nama_usaha} (${item.kode_pendaftaran}) akan dibuat menjadi tenant dan DP dicatat.`,
+        confirmText: 'Terima',
+        danger: false,
+      })
+      if (!ok) return
+    }
+    try {
+      await sendJSON(`/api/public/tenant/${item.id}/verifikasi`, 'POST', { status, catatan_admin: catatan })
+      toast.success(status === 'dp_diterima' ? 'Pendaftaran diterima' : 'Pendaftaran ditolak')
+      setRejectDaftar(null); setRejectCatatan('')
+      await load()
+    } catch (err) {
+      toast.error((err as Error).message)
+    }
+  }
+
+  async function tolakPendaftaran() {
+    if (!rejectDaftar) return
+    const catatan = rejectCatatan.trim()
+    if (!catatan) { toast.error('Alasan penolakan wajib diisi'); return }
+    await verifikasiPendaftaran(rejectDaftar, 'ditolak', catatan)
+  }
+
+  async function verifikasiPembayaran(item: Pembayaran, action: 'approve' | 'reject') {
+    const ok = await confirm({
+      title: action === 'approve' ? 'Setujui pembayaran?' : 'Tolak pembayaran?',
+      description: action === 'approve'
+        ? `Pembayaran ${formatRupiah(item.nominal)} akan diverifikasi.`
+        : `Pembayaran ${formatRupiah(item.nominal)} akan dihapus permanen.`,
+      confirmText: action === 'approve' ? 'Setujui' : 'Tolak',
+      danger: action === 'reject',
+    })
+    if (!ok) return
+    try {
+      await sendJSON(`/api/pembayaran/${item.id}`, 'PATCH', { action })
+      toast.success(action === 'approve' ? 'Pembayaran diverifikasi' : 'Pembayaran ditolak')
+      await load()
+    } catch (err) {
+      toast.error((err as Error).message)
+    }
+  }
+
+  const pendingDaftar = pendaftaran.filter((p) => p.status === 'menunggu_verifikasi')
+  const pendingBayar = pembayaran.filter((p) => !p.validated)
+
   const filtered = tenants.filter(
     (t) => !q || t.nama_usaha.toLowerCase().includes(q.toLowerCase()) || t.kode_stand.toLowerCase().includes(q.toLowerCase())
   )
@@ -112,7 +183,6 @@ export default function TenantsPage() {
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Tenant</h1>
         <div className="flex gap-2">
-          <Link href="/dankelola/tenants/verifikasi" className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">Verifikasi</Link>
           <input placeholder="Cari nama / kode" value={q} onChange={(e) => setQ(e.target.value)} className="rounded-xl border border-slate-200 px-3 py-2.5 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10 text-sm" />
           <button onClick={() => setShowForm(!showForm)} className="bg-primary-600 text-white px-6 py-2.5.5 rounded-xl font-medium transition-all hover:bg-primary-700 hover:shadow-sm hover:shadow-primary-600/20 text-sm hover:bg-primary-700">
             {showForm ? 'Tutup' : '+ Tambah'}
@@ -162,6 +232,86 @@ export default function TenantsPage() {
         </form>
       )}
 
+      {pendingDaftar.length > 0 && (
+        <div className="overflow-x-auto rounded-2xl border border-amber-200 bg-amber-50/40 shadow-sm">
+          <div className="flex items-center justify-between px-5 py-3">
+            <h2 className="font-semibold text-slate-900">Verifikasi Pendaftaran</h2>
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">{pendingDaftar.length} menunggu</span>
+          </div>
+          <table className="w-full text-sm">
+            <thead className="bg-amber-100/60 text-left text-xs text-slate-600">
+              <tr>
+                <th className="px-5 py-2">Kode</th><th className="px-5 py-2">Usaha</th><th className="px-5 py-2">Kategori</th>
+                <th className="px-5 py-2">Kontak</th><th className="px-5 py-2">Harga</th><th className="px-5 py-2">DP</th>
+                <th className="px-5 py-2">Bukti</th><th className="px-5 py-2">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-amber-100">
+              {pendingDaftar.map((p) => (
+                <tr key={p.id}>
+                  <td className="px-5 py-2 font-mono text-xs">{p.kode_pendaftaran}</td>
+                  <td className="px-5 py-2 font-medium">{p.nama_usaha}</td>
+                  <td className="px-5 py-2">{kategori.find((k) => k.id === p.kategori_sewa_id)?.nama ?? '-'}</td>
+                  <td className="px-5 py-2">{p.kontak}</td>
+                  <td className="px-5 py-2">{formatRupiah(Number(p.harga_akhir))}</td>
+                  <td className="px-5 py-2">{formatRupiah(Number(p.dp_wajib))}</td>
+                  <td className="px-5 py-2">
+                    {p.bukti_url ? <a href={p.bukti_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline">Lihat</a> : '-'}
+                  </td>
+                  <td className="px-5 py-2">
+                    <div className="flex gap-1">
+                      <button onClick={() => verifikasiPendaftaran(p, 'dp_diterima', null)} className="rounded bg-green-600 px-2 py-1 text-xs text-white">Terima</button>
+                      <button onClick={() => { setRejectCatatan(''); setRejectDaftar(p) }} className="rounded bg-red-600 px-2 py-1 text-xs text-white">Tolak</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {pendingBayar.length > 0 && (
+        <div className="overflow-x-auto rounded-2xl border border-blue-200 bg-blue-50/40 shadow-sm">
+          <div className="flex items-center justify-between px-5 py-3">
+            <h2 className="font-semibold text-slate-900">Verifikasi Pembayaran</h2>
+            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">{pendingBayar.length} menunggu</span>
+          </div>
+          <table className="w-full text-sm">
+            <thead className="bg-blue-100/60 text-left text-xs text-slate-600">
+              <tr>
+                <th className="px-5 py-2">Tanggal</th><th className="px-5 py-2">Tenant</th><th className="px-5 py-2">Jenis</th>
+                <th className="px-5 py-2">Nominal</th><th className="px-5 py-2">Metode</th><th className="px-5 py-2">Bukti</th><th className="px-5 py-2">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-blue-100">
+              {pendingBayar.map((p) => (
+                <tr key={p.id}>
+                  <td className="px-5 py-2 text-slate-500">{formatDate(p.tanggal_bayar)}</td>
+                  <td className="px-5 py-2">
+                    <Link href={`/dankelola/tenants/${p.tenant_id}`} className="text-primary-600 hover:underline">
+                      {p.tenants?.nama_usaha ?? tenants.find((t) => t.id === p.tenant_id)?.nama_usaha ?? '-'}
+                    </Link>
+                  </td>
+                  <td className="px-5 py-2">{p.jenis}</td>
+                  <td className="px-5 py-2 font-medium">{formatRupiah(p.nominal)}</td>
+                  <td className="px-5 py-2 text-slate-500">{p.metode || '-'}</td>
+                  <td className="px-5 py-2">
+                    {p.bukti_url ? <a href={p.bukti_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline">Lihat</a> : '-'}
+                  </td>
+                  <td className="px-5 py-2">
+                    <div className="flex gap-1">
+                      <button onClick={() => verifikasiPembayaran(p, 'approve')} className="rounded bg-green-600 px-2 py-1 text-xs text-white">Setujui</button>
+                      <button onClick={() => verifikasiPembayaran(p, 'reject')} className="rounded bg-red-600 px-2 py-1 text-xs text-white">Tolak</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       <div className="overflow-x-auto rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left">
@@ -191,6 +341,37 @@ export default function TenantsPage() {
           </tbody>
         </table>
       </div>
+
+      <Modal open={!!rejectDaftar} onClose={() => setRejectDaftar(null)}>
+        <h2 className="text-lg font-semibold text-slate-900">Tolak pendaftaran?</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Pendaftaran {rejectDaftar?.kode_pendaftaran} atas nama {rejectDaftar?.nama_usaha} akan ditolak.
+        </p>
+        <label className="mb-1 mt-4 block text-xs font-medium text-slate-500">Alasan penolakan</label>
+        <textarea
+          rows={3}
+          value={rejectCatatan}
+          onChange={(e) => setRejectCatatan(e.target.value)}
+          placeholder="Contoh: Bukti transfer tidak valid"
+          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
+        />
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setRejectDaftar(null)}
+            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+          >
+            Batal
+          </button>
+          <button
+            type="button"
+            onClick={() => void tolakPendaftaran()}
+            className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+          >
+            Tolak Pendaftaran
+          </button>
+        </div>
+      </Modal>
     </div>
   )
 }
