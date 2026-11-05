@@ -64,7 +64,7 @@ export default function HargaPage() {
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Paket & Harga Tenant</h1>
-          <p className="text-sm text-slate-500">Kelola paket tenant, harga per periode, dan modal sewa.</p>
+          <p className="text-sm text-slate-500">Kelola paket tenant, periode harga, dan diskon bundle.</p>
         </div>
         <Link
           href="/dankelola/tenants/harga/new"
@@ -78,7 +78,7 @@ export default function HargaPage() {
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs font-medium text-slate-600">
             <tr>
-              <th className="px-4 py-3">Kode</th>
+              <th className="px-4 py-3">Thumbnail</th>
               <th className="px-4 py-3">Paket</th>
               <th className="px-4 py-3">Fasilitas</th>
               <th className="px-4 py-3">Harga Aktif</th>
@@ -93,7 +93,15 @@ export default function HargaPage() {
               const harga = hargaPerKategori.get(k.id)
               return (
                 <tr key={k.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-mono text-xs">{k.kode}</td>
+                  <td className="px-4 py-3">
+                    <div className="h-14 w-14 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                      {k.thumbnail_url ? (
+                        <img src={k.thumbnail_url} alt={k.nama} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="grid h-full w-full place-items-center text-[10px] text-slate-400">4:5</div>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-4 py-3">
                     <p className="font-semibold text-slate-900">{k.nama}</p>
                     {k.keterangan && <p className="mt-0.5 max-w-md text-xs text-slate-500">{k.keterangan}</p>}

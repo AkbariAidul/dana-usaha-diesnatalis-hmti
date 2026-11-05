@@ -158,6 +158,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const [tiketTerjual, setTiketTerjual] = useState<number | null>(null)
   const [tipeCount, setTipeCount] = useState<number | null>(null)
   const [produkCount, setProdukCount] = useState<number | null>(null)
+  const [paketCount, setPaketCount] = useState<number | null>(null)
   const [pengurusCount, setPengurusCount] = useState<number | null>(null)
   const [preorderCount, setPreorderCount] = useState<number | null>(null)
   const [preorderLunasCount, setPreorderLunasCount] = useState<number | null>(null)
@@ -166,17 +167,19 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const breadcrumbs = getBreadcrumbs(pathname)
 
   const loadBadges = useCallback(async () => {
-    const [tipe, checkin, merchandise, pengurus, preorder, kasir] = await Promise.all([
+    const [tipe, checkin, merchandise, pengurus, preorder, kasir, master] = await Promise.all([
       getJSON<{ terjual: number | null }[]>('/api/ticket'),
       getJSON<{ status: string }[]>('/api/ticket/checkin'),
       getJSON<unknown[]>('/api/merchandise'),
       getJSON<unknown[]>('/api/pengurus'),
       getJSON<{ status: string }[]>('/api/merchandise/preorder'),
       getJSON<{ terjual: number; total: number }>('/api/merchandise/kasir?ringkasan=1'),
+      getJSON<{ kategori: { kode: string }[] }>('/api/master'),
     ])
     setTiketTerjual(tipe.reduce((sum, t) => sum + Number(t.terjual ?? 0), 0))
     setTipeCount(tipe.length)
     setProdukCount(merchandise.length)
+    setPaketCount((master.kategori ?? []).filter((k) => /^KT-\d+$/.test(k.kode) && k.kode !== 'KT-03').length)
     setPengurusCount(pengurus.length)
     setPreorderCount(preorder.length)
     setPreorderLunasCount(preorder.filter((po) => po.status === 'lunas').length)
@@ -317,6 +320,14 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                       }`}
                     >
                       <span>{child.label}</span>
+                      {child.href === '/dankelola/tenants/harga' && paketCount !== null && (
+                        <span
+                          title={`${paketCount} paket tenant`}
+                          className="ml-auto min-w-[1.5rem] shrink-0 rounded-full bg-white/20 px-2 py-0.5 text-center text-[10px] font-semibold tabular-nums text-white"
+                        >
+                          {paketCount}
+                        </span>
+                      )}
                       {child.href === '/dankelola/merchandise/produk' && produkCount !== null && (
                         <span className="ml-auto min-w-[1.5rem] shrink-0 rounded-full bg-white/20 px-2 py-0.5 text-center text-[10px] font-semibold tabular-nums text-white">
                           {produkCount}

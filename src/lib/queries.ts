@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto'
 import { supabase, supabaseAdmin } from './supabase'
 import { todayISO } from './utils'
-import type { Tenant, Pembayaran, KategoriSewa, HargaDasar, FaktorHarga, Acara, Merchandise, MerchModalItem, Ticket, TicketPeriode, TicketKatalogItem, TicketBundleDiscount, TicketModalItem, PesananTiket, PeriodeHarga } from './types'
+import type { Tenant, Pembayaran, KategoriSewa, KategoriBundleDiscount, HargaDasar, FaktorHarga, Acara, Merchandise, MerchModalItem, Ticket, TicketPeriode, TicketKatalogItem, TicketBundleDiscount, TicketModalItem, PesananTiket, PeriodeHarga } from './types'
 
 // ─── Acara ───────────────────────────────────────────────────────────────────
 
@@ -44,6 +44,34 @@ export async function upsertKategoriSewa(payload: Partial<KategoriSewa>) {
 
 export async function deleteKategoriSewa(id: string) {
   const { error } = await supabaseAdmin.from('kategori_sewa').delete().eq('id', id)
+  if (error) throw error
+}
+
+const KATEGORI_BUNDLE_FIELDS = ['kategori_sewa_id', 'jumlah_min', 'diskon_nominal', 'diskon_persen', 'urutan'] as const
+
+export async function getKategoriBundleDiscount(kategoriId?: string): Promise<KategoriBundleDiscount[]> {
+  let query = supabaseAdmin.from('kategori_bundle_discount').select('*').order('urutan').order('jumlah_min')
+  if (kategoriId) query = query.eq('kategori_sewa_id', kategoriId)
+  const { data, error } = await query
+  if (error) throw error
+  return (data ?? []) as KategoriBundleDiscount[]
+}
+
+export async function upsertKategoriBundleDiscount(payload: Partial<KategoriBundleDiscount>) {
+  const fields = pickFields(payload as Record<string, unknown>, KATEGORI_BUNDLE_FIELDS)
+  if (payload.id) {
+    const { data, error } = await supabaseAdmin
+      .from('kategori_bundle_discount').update(fields).eq('id', payload.id).select().single()
+    if (error) throw error
+    return data
+  }
+  const { data, error } = await supabaseAdmin.from('kategori_bundle_discount').insert(fields).select().single()
+  if (error) throw error
+  return data
+}
+
+export async function deleteKategoriBundleDiscount(id: string) {
+  const { error } = await supabaseAdmin.from('kategori_bundle_discount').delete().eq('id', id)
   if (error) throw error
 }
 

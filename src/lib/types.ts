@@ -3,8 +3,18 @@ export interface KategoriSewa {
   kode: string
   nama: string
   keterangan: string
+  thumbnail_url: string | null
   include_listrik: boolean
   include_trashbag: boolean
+}
+
+export interface KategoriBundleDiscount {
+  id: string
+  kategori_sewa_id: string
+  jumlah_min: number
+  diskon_nominal: number
+  diskon_persen: number
+  urutan: number
 }
 
 export interface HargaDasar {
