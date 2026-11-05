@@ -1,37 +1,44 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Pencil, Trash2 } from 'lucide-react'
 import { getJSON, sendJSON } from '../../../../api'
 import { PageSkeleton } from '../../../ui'
 import type { KategoriSewa, HargaDasar, PeriodeHarga, Peralatan, KomposisiPeralatan } from '@/lib/types'
 import { periodeDariTanggal } from '@/lib/types'
 import { formatRupiah, formatDate, todayISO } from '@/lib/utils'
+import { useConfirm } from '@/components/confirm-dialog'
 
 type Master = { kategori: KategoriSewa[]; hargaDasar: HargaDasar[]; periode: PeriodeHarga[] }
 
 const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10 disabled:bg-slate-50 disabled:text-slate-500'
 const label = 'mb-1 block text-xs font-medium text-slate-500'
 
+const emptyPeriode = { id: '', nama: '', tanggal_mulai: '', tanggal_selesai: '', harga: '' }
+
 export default function PaketHargaDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const router = useRouter()
+  const confirm = useConfirm()
+  const isNew = id === 'new'
   const [paket, setPaket] = useState<KategoriSewa | null>(null)
   const [hargaDasar, setHargaDasar] = useState<HargaDasar[]>([])
   const [periods, setPeriods] = useState<PeriodeHarga[]>([])
   const [peralatan, setPeralatan] = useState<Peralatan[]>([])
   const [komposisi, setKomposisi] = useState<KomposisiPeralatan>({})
   const [form, setForm] = useState({ nama: '', keterangan: '', include_listrik: true, include_trashbag: true })
-  const [priceEdits, setPriceEdits] = useState<Record<string, string>>({})
+  const [periodForm, setPeriodForm] = useState(emptyPeriode)
   const [komposisiEdits, setKomposisiEdits] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [savingInfo, setSavingInfo] = useState(false)
-  const [savingHarga, setSavingHarga] = useState(false)
+  const [savingPeriode, setSavingPeriode] = useState(false)
   const [savingKomposisi, setSavingKomposisi] = useState(false)
 
   useEffect(() => {
+    if (isNew) { setLoading(false); return }
     if (!id) return
     ;(async () => {
       const [m, items, komp] = await Promise.all([
@@ -55,7 +62,7 @@ export default function PaketHargaDetailPage() {
     })()
       .catch((e) => toast.error((e as Error).message))
       .finally(() => setLoading(false))
-  }, [id])
+  }, [id, isNew])
 
   const activeKode = periodeDariTanggal(todayISO(), periods)
 
@@ -79,17 +86,21 @@ export default function PaketHargaDetailPage() {
   }, [peralatan, komposisi, komposisiEdits, id])
 
   async function simpanInfo() {
-    if (!paket) return
     if (!form.nama.trim()) { toast.error('Nama paket wajib diisi'); return }
     setSavingInfo(true)
     try {
       const saved = await sendJSON('/api/master/kategori', 'POST', {
-        id: paket.id,
+        ...(paket ? { id: paket.id } : {}),
         nama: form.nama.trim(),
         keterangan: form.keterangan.trim(),
         include_listrik: form.include_listrik,
         include_trashbag: form.include_trashbag,
       }) as KategoriSewa
+      if (!paket) {
+        toast.success('Paket dibuat. Atur periode harga di bawah.')
+        router.push(`/dankelola/tenants/harga/${saved.id}`)
+        return
+      }
       setPaket(saved)
       setForm({
         nama: saved.nama,
@@ -105,31 +116,76 @@ export default function PaketHargaDetailPage() {
     }
   }
 
-  async function simpanHarga() {
-    const rows: Array<Partial<HargaDasar>> = []
-    for (const p of periods) {
-      const raw = priceEdits[p.kode]
-      if (raw === undefined || raw.trim() === '') continue
-      const value = Number(raw)
-      if (!Number.isFinite(value) || value < 0) { toast.error('Harga tidak valid'); return }
-      for (const jenis of ['F&B', 'Non-F&B'] as const) {
-        const existing = hargaDasar.find((h) => h.kategori_sewa_id === id && h.periode === p.kode && h.jenis_usaha === jenis)
-        if (existing && Number(existing.harga) === value) continue
-        rows.push({ id: existing?.id, kategori_sewa_id: id, jenis_usaha: jenis, periode: p.kode, harga: value })
-      }
-    }
-    if (rows.length === 0) { toast.info('Tidak ada perubahan harga'); return }
-    setSavingHarga(true)
+  async function reloadHarga() {
+    const m = await getJSON<Master>('/api/master')
+    setHargaDasar(m.hargaDasar || [])
+    setPeriods(m.periode || [])
+  }
+
+  function resetPeriodeForm() {
+    setPeriodForm(emptyPeriode)
+  }
+
+  function editPeriode(p: PeriodeHarga) {
+    const existing = hargaByKode.get(p.kode)
+    setPeriodForm({
+      id: p.id,
+      nama: p.nama,
+      tanggal_mulai: p.tanggal_mulai,
+      tanggal_selesai: p.tanggal_selesai,
+      harga: existing ? String(existing.harga) : '',
+    })
+  }
+
+  async function simpanPeriode() {
+    if (!periodForm.nama.trim()) { toast.error('Nama periode wajib diisi'); return }
+    if (!periodForm.tanggal_mulai || !periodForm.tanggal_selesai) { toast.error('Tanggal wajib diisi'); return }
+    if (periodForm.tanggal_selesai < periodForm.tanggal_mulai) { toast.error('Tanggal selesai harus setelah mulai'); return }
+    const harga = Number(periodForm.harga)
+    if (!periodForm.harga.trim() || !Number.isFinite(harga) || harga < 0) { toast.error('Harga wajib diisi'); return }
+    setSavingPeriode(true)
     try {
-      await Promise.all(rows.map((r) => sendJSON('/api/master/harga', 'POST', r)))
-      const m = await getJSON<Master>('/api/master')
-      setHargaDasar(m.hargaDasar || [])
-      setPriceEdits({})
-      toast.success('Harga paket disimpan')
+      const saved = await sendJSON('/api/master/periode', 'POST', {
+        ...(periodForm.id ? { id: periodForm.id } : {}),
+        nama: periodForm.nama.trim(),
+        tanggal_mulai: periodForm.tanggal_mulai,
+        tanggal_selesai: periodForm.tanggal_selesai,
+      }) as PeriodeHarga
+      for (const jenis of ['F&B', 'Non-F&B'] as const) {
+        const existing = hargaDasar.find((h) => h.kategori_sewa_id === id && h.periode === saved.kode && h.jenis_usaha === jenis)
+        if (existing && Number(existing.harga) === harga) continue
+        await sendJSON('/api/master/harga', 'POST', {
+          id: existing?.id,
+          kategori_sewa_id: id,
+          jenis_usaha: jenis,
+          periode: saved.kode,
+          harga,
+        })
+      }
+      await reloadHarga()
+      resetPeriodeForm()
+      toast.success(periodForm.id ? 'Periode diperbarui' : 'Periode harga ditambahkan')
     } catch (e) {
       toast.error((e as Error).message)
     } finally {
-      setSavingHarga(false)
+      setSavingPeriode(false)
+    }
+  }
+
+  async function hapusPeriode(p: PeriodeHarga) {
+    const ok = await confirm({
+      title: 'Hapus periode harga?',
+      description: `Periode ${p.nama} dan harga semua paket pada periode ini ikut terhapus.`,
+      confirmText: 'Hapus',
+    })
+    if (!ok) return
+    try {
+      await sendJSON('/api/master/periode', 'DELETE', { id: p.id })
+      if (periodForm.id === p.id) resetPeriodeForm()
+      await reloadHarga()
+      toast.success('Periode dihapus')
+    } catch (e) {
+      toast.error((e as Error).message)
     }
   }
 
@@ -156,7 +212,7 @@ export default function PaketHargaDetailPage() {
   }
 
   if (loading) return <PageSkeleton />
-  if (!paket) {
+  if (!paket && !isNew) {
     return (
       <div className="space-y-3">
         <p className="text-red-600">Paket tidak ditemukan.</p>
@@ -172,8 +228,10 @@ export default function PaketHargaDetailPage() {
           <ChevronLeft className="h-4 w-4" /> Kembali
         </Link>
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{paket.nama}</h1>
-          <p className="text-sm text-slate-500">Atur informasi paket, harga per periode, dan modal sewa.</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{paket ? paket.nama : 'Tambah Paket'}</h1>
+          <p className="text-sm text-slate-500">
+            {paket ? 'Atur informasi paket, periode harga, dan modal sewa.' : 'Buat paket tenant baru, lalu atur periode harganya.'}
+          </p>
         </div>
       </div>
 
@@ -182,7 +240,7 @@ export default function PaketHargaDetailPage() {
         <div className="grid gap-3 md:grid-cols-2">
           <div>
             <label className={label}>Kode</label>
-            <input disabled className={input} value={paket.kode} />
+            <input disabled className={input} value={paket?.kode ?? 'Otomatis'} />
           </div>
           <div>
             <label className={label}>Nama Paket</label>
@@ -205,30 +263,28 @@ export default function PaketHargaDetailPage() {
         </div>
         <div className="flex justify-end">
           <button disabled={savingInfo} onClick={simpanInfo} className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-            {savingInfo ? 'Menyimpan...' : 'Simpan Info'}
+            {savingInfo ? 'Menyimpan...' : paket ? 'Simpan Info' : 'Tambah Paket'}
           </button>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm space-y-3">
-        <div>
-          <h2 className="font-semibold text-slate-900">Harga per Periode</h2>
-          <p className="text-sm text-slate-500">Satu harga total per periode. Berlaku untuk F&B dan Non-F&B.</p>
-        </div>
-        {periods.length === 0 ? (
-          <p className="rounded-xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-            Belum ada periode. Tambahkan periode di <Link href="/dankelola/tenants/harga" className="text-primary-600 hover:underline">Paket &amp; Harga</Link>.
-          </p>
-        ) : (
-          <>
+      {paket && (
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm space-y-3">
+          <div>
+            <h2 className="font-semibold text-slate-900">Periode Harga</h2>
+            <p className="text-sm text-slate-500">Satu harga total per periode. Berlaku untuk F&B dan Non-F&B.</p>
+          </div>
+          {periods.length === 0 ? (
+            <p className="text-sm text-slate-400">Belum ada periode harga.</p>
+          ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 text-left text-xs text-slate-600">
                   <tr>
+                    <th className="px-3 py-2">Nama</th>
                     <th className="px-3 py-2">Periode</th>
-                    <th className="px-3 py-2">Tanggal</th>
-                    <th className="px-3 py-2">Status</th>
-                    <th className="px-3 py-2 text-right">Harga (Rp)</th>
+                    <th className="px-3 py-2">Harga</th>
+                    <th className="px-3 py-2">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100/80">
@@ -236,22 +292,23 @@ export default function PaketHargaDetailPage() {
                     const existing = hargaByKode.get(p.kode)
                     return (
                       <tr key={p.id} className="hover:bg-slate-50">
-                        <td className="px-3 py-2 font-medium">{p.nama}</td>
+                        <td className="px-3 py-2 font-medium">
+                          {p.nama || '-'}
+                          {p.kode === activeKode && <span className="ml-2 rounded bg-green-100 px-1.5 py-0.5 text-xs text-green-800">Berjalan</span>}
+                        </td>
                         <td className="px-3 py-2 text-slate-500">{formatDate(p.tanggal_mulai)} – {formatDate(p.tanggal_selesai)}</td>
-                        <td className="px-3 py-2">
-                          <span className={`rounded px-2 py-0.5 text-xs ${p.kode === activeKode ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'}`}>
-                            {p.kode === activeKode ? 'Berjalan' : 'Tidak aktif'}
-                          </span>
+                        <td className="px-3 py-2 font-semibold text-primary-600">
+                          {existing ? formatRupiah(existing.harga) : <span className="text-slate-400">Belum diatur</span>}
                         </td>
                         <td className="px-3 py-2">
-                          <input
-                            type="number"
-                            min={0}
-                            className={`${input} text-right`}
-                            placeholder="Belum diatur"
-                            value={priceEdits[p.kode] ?? (existing ? String(existing.harga) : '')}
-                            onChange={(e) => setPriceEdits({ ...priceEdits, [p.kode]: e.target.value })}
-                          />
+                          <div className="flex gap-1">
+                            <button onClick={() => editPeriode(p)} className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-primary-600" title="Edit">
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button onClick={() => hapusPeriode(p)} className="grid h-7 w-7 place-items-center rounded-lg text-red-500 transition-colors hover:bg-red-50 hover:text-red-600" title="Hapus">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     )
@@ -259,15 +316,24 @@ export default function PaketHargaDetailPage() {
                 </tbody>
               </table>
             </div>
-            <div className="flex justify-end">
-              <button disabled={savingHarga} onClick={simpanHarga} className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-                {savingHarga ? 'Menyimpan...' : 'Simpan Harga'}
+          )}
+          <div className="grid gap-3 border-t border-slate-100 pt-3 md:grid-cols-5 md:items-end">
+            <div><label className={label}>Nama</label><input className={input} value={periodForm.nama} onChange={(e) => setPeriodForm({ ...periodForm, nama: e.target.value })} placeholder="Early Bird" /></div>
+            <div><label className={label}>Mulai</label><input type="date" className={input} value={periodForm.tanggal_mulai} onChange={(e) => setPeriodForm({ ...periodForm, tanggal_mulai: e.target.value })} /></div>
+            <div><label className={label}>Selesai</label><input type="date" className={input} value={periodForm.tanggal_selesai} onChange={(e) => setPeriodForm({ ...periodForm, tanggal_selesai: e.target.value })} /></div>
+            <div><label className={label}>Harga (Rp)</label><input type="number" min={0} className={input} placeholder="cth: 500000" value={periodForm.harga} onChange={(e) => setPeriodForm({ ...periodForm, harga: e.target.value })} /></div>
+            <div className="flex gap-2">
+              <button onClick={simpanPeriode} disabled={savingPeriode} className="flex-1 rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+                {savingPeriode ? 'Menyimpan...' : periodForm.id ? 'Simpan' : '+ Tambah Periode'}
               </button>
+              {periodForm.id && <button onClick={resetPeriodeForm} className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600">Batal</button>}
             </div>
-          </>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
 
+      {paket && (
+      <>
       <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm space-y-3">
         <div>
           <h2 className="font-semibold text-slate-900">Komposisi Modal Paket</h2>
@@ -366,6 +432,8 @@ export default function PaketHargaDetailPage() {
           </table>
         </div>
       </div>
+      </>
+      )}
     </div>
   )
 }

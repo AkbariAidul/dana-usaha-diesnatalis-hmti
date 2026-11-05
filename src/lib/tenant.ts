@@ -1,10 +1,8 @@
 import type { KategoriSewa } from './types'
 
-const KODE_TENANT = ['KT-01', 'KT-02']
-
 export function kategoriTenant(list: KategoriSewa[]): KategoriSewa[] {
   return list
-    .filter((k) => KODE_TENANT.includes(k.kode))
+    .filter((k) => /^KT-\d+$/.test(k.kode) && k.kode !== 'KT-03')
     .sort((a, b) => a.kode.localeCompare(b.kode))
 }
 
