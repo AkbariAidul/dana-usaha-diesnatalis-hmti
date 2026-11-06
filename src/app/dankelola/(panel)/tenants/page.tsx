@@ -37,6 +37,7 @@ type Row = {
   nama_usaha: string
   kontak: string
   kategori: string
+  kategoriId: string
   harga: number
   dibayar: number
   sisa: number
@@ -45,11 +46,32 @@ type Row = {
   jumlahTenant: number
   addon?: TenantAddon[] | null
   checkedInAt?: string | null
+  checkedInBy?: string | null
   detailId?: string
   pendaftaran?: Pendaftaran
   pendingBayar: Pembayaran[]
   payments: Pembayaran[]
   qr?: string | null
+}
+
+type Proof = { url: string; label: string }
+
+function isImageUrl(url: string) {
+  return /\.(png|jpe?g|webp|gif)(\?|$)/i.test(url)
+}
+
+function ProofButton({ url, label, onPreview }: { url: string | null | undefined; label: string; onPreview: (proof: Proof) => void }) {
+  if (!url) return <span className="text-xs text-slate-400">-</span>
+  return (
+    <button
+      type="button"
+      onClick={() => onPreview({ url, label })}
+      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-0.5 text-[11px] text-primary-600 transition hover:ring-2 hover:ring-primary-200"
+      title="Lihat bukti pembayaran"
+    >
+      {isImageUrl(url) ? <img src={url} alt={`Bukti ${label}`} className="h-10 w-10 rounded-md object-cover" /> : <span className="px-1.5 py-1">Lihat</span>}
+    </button>
+  )
 }
 
 export default function TenantsPage() {
@@ -61,7 +83,9 @@ export default function TenantsPage() {
   const [loading, setLoading] = useState(true)
   const [q, setQ] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
+  const [filterKategori, setFilterKategori] = useState('all')
   const [page, setPage] = useState(1)
+  const [proofPreview, setProofPreview] = useState<Proof | null>(null)
   const [rejectDaftar, setRejectDaftar] = useState<Pendaftaran | null>(null)
   const [rejectCatatan, setRejectCatatan] = useState('')
   const [strukTarget, setStrukTarget] = useState<Row | null>(null)
@@ -82,7 +106,7 @@ export default function TenantsPage() {
   useEffect(() => {
     load().catch((e) => toast.error(e.message)).finally(() => setLoading(false))
   }, [])
-  useEffect(() => { setPage(1) }, [q, filterStatus])
+  useEffect(() => { setPage(1) }, [q, filterStatus, filterKategori])
   useLiveRefresh(load)
 
   async function hapus(id: string) {
@@ -160,6 +184,7 @@ export default function TenantsPage() {
         nama_usaha: p.nama_usaha,
         kontak: p.kontak,
         kategori: kategoriNama(p.kategori_sewa_id),
+        kategoriId: p.kategori_sewa_id,
         harga: Number(p.harga_akhir),
         dibayar: 0,
         sisa: Number(p.harga_akhir),
@@ -183,6 +208,7 @@ export default function TenantsPage() {
         nama_usaha: t.nama_usaha,
         kontak: t.kontak,
         kategori: t.kategori_sewa?.nama ?? kategoriNama(t.kategori_sewa_id),
+        kategoriId: t.kategori_sewa_id,
         harga,
         dibayar,
         sisa: Math.max(0, harga - dibayar),
@@ -191,6 +217,7 @@ export default function TenantsPage() {
         jumlahTenant: Number(t.jumlah_tenant ?? 1),
         addon: t.addon ?? null,
         checkedInAt: t.venue_checked_in_at ?? null,
+        checkedInBy: t.venue_checked_in_by ?? null,
         detailId: t.id,
         pendingBayar: pending,
         payments: pembayaran.filter((p) => p.tenant_id === t.id),
@@ -208,7 +235,9 @@ export default function TenantsPage() {
       if (!daftarMenunggu && r.pendingBayar.length === 0) return false
     }
     if (filterStatus === 'aktif' && r.kind !== 'tenant') return false
+    if (filterStatus === 'lunas' && !(r.kind === 'tenant' && r.status === 'lunas')) return false
     if (filterStatus === 'ditolak' && r.status !== 'ditolak') return false
+    if (filterKategori !== 'all' && r.kategoriId !== filterKategori) return false
     if (!keyword) return true
     return [r.kode, r.nama_usaha, r.kontak, r.kategori].some((v) => v.toLowerCase().includes(keyword))
   })
@@ -225,6 +254,17 @@ export default function TenantsPage() {
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Data Tenant</h1>
         <div className="flex flex-wrap items-center gap-2">
           <select
+            value={filterKategori}
+            onChange={(e) => setFilterKategori(e.target.value)}
+            aria-label="Filter kategori"
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-primary-400 focus:outline-none"
+          >
+            <option value="all">Semua kategori</option>
+            {kategori.map((k) => (
+              <option key={k.id} value={k.id}>{k.nama}</option>
+            ))}
+          </select>
+          <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
             aria-label="Filter status"
@@ -233,6 +273,7 @@ export default function TenantsPage() {
             <option value="all">Semua ({rows.length})</option>
             <option value="menunggu">Menunggu Verifikasi ({menunggu + pendingBayar.length})</option>
             <option value="aktif">Tenant Aktif ({tenants.length})</option>
+            <option value="lunas">Lunas</option>
             <option value="ditolak">Ditolak ({ditolak})</option>
           </select>
           <div className="relative w-full min-w-[12rem] sm:w-64">
@@ -323,6 +364,7 @@ export default function TenantsPage() {
                     <div>
                       <span className="rounded bg-green-100 px-2 py-0.5 text-xs text-green-800">Sudah Check-in</span>
                       <div className="mt-1 whitespace-nowrap text-xs text-slate-500">{formatDateTime(r.checkedInAt)}</div>
+                      {r.checkedInBy && <div className="mt-0.5 text-xs text-slate-500">Oleh {r.checkedInBy}</div>}
                     </div>
                   ) : (
                     <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">Belum Check-in</span>
@@ -338,9 +380,7 @@ export default function TenantsPage() {
                   )}
                   <div className="mt-2">
                     {r.kind === 'pendaftaran' ? (
-                      r.pendaftaran?.bukti_url ? (
-                        <a href={r.pendaftaran.bukti_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline">Bukti DP</a>
-                      ) : <span className="text-xs text-slate-400">-</span>
+                      <ProofButton url={r.pendaftaran?.bukti_url} label={`DP ${r.kode}`} onPreview={setProofPreview} />
                     ) : (
                       <>
                         <button
@@ -364,7 +404,7 @@ export default function TenantsPage() {
                                 </div>
                                 <div className="mt-0.5 flex items-center justify-between gap-2 text-[11px] text-slate-500">
                                   <span>{formatDate(p.tanggal_bayar)}</span>
-                                  {p.bukti_url && <a href={p.bukti_url} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">Bukti</a>}
+                                  <ProofButton url={p.bukti_url} label={`${p.jenis} ${r.kode}`} onPreview={setProofPreview} />
                                 </div>
                               </div>
                             ))}
@@ -376,7 +416,7 @@ export default function TenantsPage() {
                               <div key={p.id} className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5">
                                 <div className="flex items-center justify-between gap-2">
                                   <span className="text-xs font-medium text-slate-700">{p.jenis} � {formatRupiah(p.nominal)}</span>
-                                  {p.bukti_url && <a href={p.bukti_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline">Bukti</a>}
+                                  <ProofButton url={p.bukti_url} label={`${p.jenis} ${r.kode}`} onPreview={setProofPreview} />
                                 </div>
                                 <div className="mt-1 flex gap-1">
                                   <button onClick={() => verifikasiPembayaran(p, 'approve')} className="rounded bg-green-600 px-2 py-0.5 text-xs text-white">Setujui</button>
@@ -517,6 +557,29 @@ export default function TenantsPage() {
               </a>
             </div>
           </>
+        )}
+      </Modal>
+
+      <Modal
+        open={!!proofPreview}
+        onClose={() => setProofPreview(null)}
+        panelClassName="w-full max-w-2xl rounded-2xl bg-white p-5 shadow-xl"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-slate-900">Bukti Pembayaran</p>
+            <p className="text-xs text-slate-500">{proofPreview?.label}</p>
+          </div>
+          <button type="button" onClick={() => setProofPreview(null)} className="text-sm text-slate-500 hover:text-slate-800">Tutup</button>
+        </div>
+        {proofPreview && (
+          isImageUrl(proofPreview.url) ? (
+            <img src={proofPreview.url} alt={proofPreview.label} className="mx-auto mt-3 max-h-[70vh] w-auto rounded-xl border border-slate-200 object-contain" />
+          ) : (
+            <a href={proofPreview.url} target="_blank" rel="noopener noreferrer" className="mt-4 block rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-primary-600 hover:bg-slate-50">
+              Buka file bukti pembayaran
+            </a>
+          )
         )}
       </Modal>
 

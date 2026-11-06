@@ -2,9 +2,11 @@ import { supabaseAdmin } from './supabase'
 import type { KomposisiPeralatan } from './types'
 
 export type PeralatanMeta = Record<string, { harga_satuan: number; harga_sewa?: number; vendor: string }>
+export type PilihanModal = Record<string, number>
 
 const META_KEY = 'peralatan_meta'
 const KOMPOSISI_KEY = 'kategori_peralatan'
+const PILIHAN_MODAL_KEY = 'pilihan_modal'
 
 async function getSetting<T>(key: string, fallback: T): Promise<T> {
   const { data } = await supabaseAdmin.from('pengaturan_umum').select('value').eq('key', key).maybeSingle()
@@ -37,4 +39,12 @@ export function getKomposisiPeralatan() {
 
 export function saveKomposisiPeralatan(komposisi: KomposisiPeralatan) {
   return saveSetting(KOMPOSISI_KEY, komposisi)
+}
+
+export function getPilihanModal() {
+  return getSetting<PilihanModal>(PILIHAN_MODAL_KEY, {})
+}
+
+export function savePilihanModal(modal: PilihanModal) {
+  return saveSetting(PILIHAN_MODAL_KEY, modal)
 }

@@ -9,6 +9,7 @@ import { menuConfig } from '@/lib/menu'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { useConfirm } from '@/components/confirm-dialog'
 import type { DashboardRole, DashboardUser } from '@/lib/auth'
+import type { Tenant } from '@/lib/types'
 
 const MENU_HREFS = menuConfig.flatMap((group) =>
   group.children ? group.children.map((child) => child.href) : group.href ? [group.href] : []
@@ -164,6 +165,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const [currentUser, setCurrentUser] = useState<DashboardUser | null>(null)
   const [welcome, setWelcome] = useState<DashboardUser | null>(null)
   const [tiketTerjual, setTiketTerjual] = useState<number | null>(null)
+  const [tenantCount, setTenantCount] = useState<number | null>(null)
+  const [vendorItemCount, setVendorItemCount] = useState<number | null>(null)
   const [tipeCount, setTipeCount] = useState<number | null>(null)
   const [produkCount, setProdukCount] = useState<number | null>(null)
   const [paketCount, setPaketCount] = useState<number | null>(null)
@@ -175,7 +178,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const breadcrumbs = getBreadcrumbs(pathname)
 
   const loadBadges = useCallback(async () => {
-    const [tipe, checkin, merchandise, pengurus, preorder, kasir, master] = await Promise.all([
+    const [tipe, checkin, merchandise, pengurus, preorder, kasir, master, tenants] = await Promise.all([
       getJSON<{ terjual: number | null }[]>('/api/ticket'),
       getJSON<{ status: string }[]>('/api/ticket/checkin'),
       getJSON<unknown[]>('/api/merchandise'),
@@ -183,8 +186,12 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       getJSON<{ status: string }[]>('/api/merchandise/preorder'),
       getJSON<{ terjual: number; total: number }>('/api/merchandise/kasir?ringkasan=1'),
       getJSON<{ kategori: { kode: string }[] }>('/api/master'),
+      getJSON<Tenant[]>('/api/tenants'),
     ])
+    const tenantAktif = tenants.filter((t) => t.status !== 'batal')
     setTiketTerjual(tipe.reduce((sum, t) => sum + Number(t.terjual ?? 0), 0))
+    setTenantCount(tenantAktif.length)
+    setVendorItemCount(new Set(tenantAktif.flatMap((t) => (t.addon ?? []).map((a) => a.nama.trim().toLowerCase())).filter(Boolean)).size)
     setTipeCount(tipe.length)
     setProdukCount(merchandise.length)
     setPaketCount((master.kategori ?? []).filter((k) => /^KT-\d+$/.test(k.kode) && k.kode !== 'KT-03').length)
@@ -328,6 +335,22 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                       }`}
                     >
                       <span>{child.label}</span>
+                      {child.href === '/dankelola/tenants' && tenantCount !== null && (
+                        <span
+                          title={`${tenantCount} tenant aktif`}
+                          className="ml-auto min-w-[1.5rem] shrink-0 rounded-full bg-white/20 px-2 py-0.5 text-center text-[10px] font-semibold tabular-nums text-white"
+                        >
+                          {tenantCount}
+                        </span>
+                      )}
+                      {child.href === '/dankelola/tenants/peralatan' && vendorItemCount !== null && (
+                        <span
+                          title={`${vendorItemCount} jenis item perlu disewa`}
+                          className="ml-auto min-w-[1.5rem] shrink-0 rounded-full bg-white/20 px-2 py-0.5 text-center text-[10px] font-semibold tabular-nums text-white"
+                        >
+                          {vendorItemCount}
+                        </span>
+                      )}
                       {child.href === '/dankelola/tenants/harga' && paketCount !== null && (
                         <span
                           title={`${paketCount} paket tenant`}

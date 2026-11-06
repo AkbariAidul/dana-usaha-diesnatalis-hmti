@@ -1,83 +1,118 @@
 ﻿'use client'
 
-import { DataError } from '@/components/data-error'
-
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
+import { DataError } from '@/components/data-error'
 import { getJSON, sendJSON } from '../../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
-import type { Peralatan } from '@/lib/types'
+import type { KategoriPilihan, Tenant } from '@/lib/types'
 import { formatRupiah } from '@/lib/utils'
-import { useConfirm } from '@/components/confirm-dialog'
 
-const JENIS = ['Tenda', 'Meja', 'Kursi', 'Lilin', 'Generator', 'Sound', 'Lainnya']
-const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
-const emptyForm = { id: '', nama: '', jenis: 'Tenda', jumlah: 1, harga_satuan: 0, harga_sewa: 0, vendor: '' }
+type ModalMap = Record<string, number>
+
+type VendorItem = {
+  key: string
+  nama: string
+  qty: number
+  hargaSewa: number
+  modalUnit: number
+  totalModal: number
+  keuntungan: number
+  jumlahTenant: number
+}
+
+function kunci(nama: string) {
+  return nama.trim().toLowerCase().replace(/\s+/g, ' ')
+}
 
 export default function PeralatanPage() {
-  const confirm = useConfirm()
-  const [items, setItems] = useState<Peralatan[]>([])
+  const [tenants, setTenants] = useState<Tenant[]>([])
+  const [pilihan, setPilihan] = useState<KategoriPilihan[]>([])
+  const [modalMap, setModalMap] = useState<ModalMap>({})
+  const [draft, setDraft] = useState<Record<string, string>>({})
+  const [savingKey, setSavingKey] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showForm, setShowForm] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState(emptyForm)
 
-  async function load() {
-    setItems(await getJSON<Peralatan[]>('/api/peralatan'))
-  }
+  const load = useCallback(async () => {
+    const [t, p, m] = await Promise.all([
+      getJSON<Tenant[]>('/api/tenants'),
+      getJSON<KategoriPilihan[]>('/api/tenant/pilihan').catch(() => [] as KategoriPilihan[]),
+      getJSON<ModalMap>('/api/tenant/pilihan-modal').catch(() => ({} as ModalMap)),
+    ])
+    const aktif = (t || []).filter((tenant) => tenant.status !== 'batal')
+    setTenants(aktif)
+    setPilihan(p || [])
+    setModalMap(m || {})
+    setDraft((prev) => {
+      const next = { ...prev }
+      for (const tenant of aktif) {
+        for (const addon of tenant.addon ?? []) {
+          const key = kunci(addon.nama)
+          if (key && next[key] === undefined) next[key] = String(m?.[key] ?? 0)
+        }
+      }
+      return next
+    })
+  }, [])
 
   useEffect(() => {
     load()
       .catch((e) => {
-        console.error('Failed to load peralatan:', e)
-        setError('Gagal memuat data sewa vendor')
+        console.error('Failed to load sewa vendor:', e)
+        setError('Gagal memuat kebutuhan sewa vendor')
       })
       .finally(() => setLoading(false))
-  }, [])
+  }, [load])
   useLiveRefresh(load)
 
-  function bukaForm(item?: Peralatan) {
-    setForm(item
-      ? { id: item.id, nama: item.nama, jenis: item.jenis, jumlah: item.jumlah, harga_satuan: item.harga_satuan, harga_sewa: item.harga_sewa ?? 0, vendor: item.vendor }
-      : emptyForm)
-    setShowForm(true)
-  }
-
-  async function simpan() {
-    if (!form.nama || !form.jumlah || form.jumlah < 1) {
-      toast.error('Nama barang dan jumlah harus diisi')
-      return
+  const items = useMemo(() => {
+    const pilihanIds = new Set(pilihan.map((item) => item.id))
+    const map = new Map<string, VendorItem>()
+    for (const tenant of tenants) {
+      const jumlahTenant = Math.max(1, Number(tenant.jumlah_tenant ?? 1))
+      for (const addon of tenant.addon ?? []) {
+        const nama = String(addon.nama ?? '').trim()
+        const key = kunci(nama)
+        if (!key) continue
+        const perTenant = pilihanIds.has(addon.id)
+        const qty = Math.max(0, Number(addon.qty ?? 0)) * (perTenant ? jumlahTenant : 1)
+        const hargaSewa = Number(addon.subtotal ?? Number(addon.harga_satuan ?? 0) * Number(addon.qty ?? 0))
+        const modalUnit = Math.max(0, Number(draft[key] ?? modalMap[key] ?? 0) || 0)
+        const current = map.get(key) ?? {
+          key,
+          nama,
+          qty: 0,
+          hargaSewa: 0,
+          modalUnit,
+          totalModal: 0,
+          keuntungan: 0,
+          jumlahTenant: 0,
+        }
+        current.qty += qty
+        current.hargaSewa += hargaSewa
+        current.modalUnit = modalUnit
+        current.totalModal = current.modalUnit * current.qty
+        current.keuntungan = current.hargaSewa - current.totalModal
+        current.jumlahTenant += perTenant ? jumlahTenant : 1
+        map.set(key, current)
+      }
     }
-    setSaving(true)
+    return [...map.values()].sort((a, b) => a.nama.localeCompare(b.nama))
+  }, [tenants, pilihan, modalMap, draft])
+
+  async function simpanModal(item: VendorItem) {
+    const modal = Math.max(0, Number(draft[item.key] ?? 0) || 0)
+    setSavingKey(item.key)
     try {
-      await sendJSON('/api/peralatan', 'POST', form)
-      toast.success(form.id ? 'Barang diperbarui' : 'Barang ditambahkan')
-      setForm(emptyForm)
-      setShowForm(false)
-      await load()
+      const map = await sendJSON('/api/tenant/pilihan-modal', 'POST', { nama: item.nama, modal }) as ModalMap
+      setModalMap(map)
+      setDraft((prev) => ({ ...prev, [item.key]: String(modal) }))
     } catch (e) {
       toast.error((e as Error).message)
     } finally {
-      setSaving(false)
-    }
-  }
-
-  async function hapus(item: Peralatan) {
-    const ok = await confirm({
-      title: 'Hapus barang sewa?',
-      description: `${item.nama} akan dihapus dari daftar sewa vendor.`,
-      confirmText: 'Hapus',
-    })
-    if (!ok) return
-    try {
-      await sendJSON('/api/peralatan', 'DELETE', { id: item.id })
-      toast.success('Barang dihapus')
-      await load()
-    } catch (e) {
-      toast.error((e as Error).message)
+      setSavingKey(null)
     }
   }
 
@@ -88,22 +123,22 @@ export default function PeralatanPage() {
     </div>
   )
 
-  const totalUnit = items.reduce((sum, item) => sum + item.jumlah, 0)
-  const totalModal = items.reduce((sum, item) => sum + item.jumlah * item.harga_satuan, 0)
+  const totalUnit = items.reduce((sum, item) => sum + item.qty, 0)
+  const totalModal = items.reduce((sum, item) => sum + item.totalModal, 0)
+  const totalHargaSewa = items.reduce((sum, item) => sum + item.hargaSewa, 0)
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Sewa Vendor</h1>
-          <p className="text-sm text-slate-500">Barang sewa vendor. Isi harga add-on tenant untuk barang yang bisa dipilih calon tenant.</p>
-        </div>
-        <button onClick={() => bukaForm()} className="bg-primary-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-primary-700">+ Tambah Barang</button>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Sewa Vendor</h1>
+        <p className="text-sm text-slate-500">
+          Kebutuhan barang dari pilihan paket tenant. Isi modal sewa vendor per unit untuk melihat keuntungan.
+        </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-          <p className="text-sm text-slate-500">Jenis Barang</p>
+          <p className="text-sm text-slate-500">Jenis Item</p>
           <p className="text-3xl font-bold text-slate-900">{items.length}</p>
         </div>
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
@@ -111,82 +146,59 @@ export default function PeralatanPage() {
           <p className="text-3xl font-bold text-primary-600">{totalUnit}</p>
         </div>
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-          <p className="text-sm text-slate-500">Total Modal Sewa</p>
+          <p className="text-sm text-slate-500">Total Modal</p>
           <p className="text-3xl font-bold text-red-600">{formatRupiah(totalModal)}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
+          <p className="text-sm text-slate-500">Estimasi Keuntungan</p>
+          <p className="text-3xl font-bold text-emerald-600">{formatRupiah(totalHargaSewa - totalModal)}</p>
         </div>
       </div>
 
-      {showForm && (
-        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-          <h2 className="font-semibold mb-4">{form.id ? 'Edit Barang Sewa' : 'Tambah Barang Sewa'}</h2>
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-            <div>
-              <label className="mb-1 block text-sm font-medium">Nama Barang</label>
-              <input className={input} placeholder="Tenda 3x3" value={form.nama} onChange={e => setForm({ ...form, nama: e.target.value })} />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Vendor</label>
-              <input className={input} placeholder="Nama vendor" value={form.vendor} onChange={e => setForm({ ...form, vendor: e.target.value })} />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Jenis</label>
-              <select className={input} value={form.jenis} onChange={e => setForm({ ...form, jenis: e.target.value })}>
-                {JENIS.map(j => <option key={j}>{j}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Jumlah Sewa</label>
-              <input type="number" min={1} placeholder="cth: 5" className={input} value={form.jumlah || ''} onChange={e => setForm({ ...form, jumlah: Number(e.target.value) })} />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Harga Sewa Vendor / Unit</label>
-              <input type="number" min={0} placeholder="cth: 150000" className={input} value={form.harga_satuan || ''} onChange={e => setForm({ ...form, harga_satuan: Number(e.target.value) })} />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Harga Add-on Tenant / Unit</label>
-              <input type="number" min={0} placeholder="0 = tidak dijual" className={input} value={form.harga_sewa || ''} onChange={e => setForm({ ...form, harga_sewa: Number(e.target.value) })} />
-            </div>
-          </div>
-          <div className="mt-4 flex justify-end gap-2">
-            <button onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl">Batal</button>
-            <button disabled={saving} onClick={simpan} className="px-4 py-2 bg-primary-600 text-white text-sm rounded-xl disabled:opacity-50">
-              {saving ? 'Menyimpan...' : 'Simpan'}
-            </button>
-          </div>
-        </div>
-      )}
-
       <div className="overflow-x-auto rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left">
+        <table className="w-full min-w-[760px] text-sm">
+          <thead className="bg-slate-50 text-left text-xs text-slate-500">
             <tr>
-              <th className="px-3 py-2">Barang</th>
-              <th className="px-3 py-2">Jenis</th>
-              <th className="px-3 py-2 text-right">Jumlah</th>
-              <th className="px-3 py-2 text-right">Harga Vendor / Unit</th>
-              <th className="px-3 py-2 text-right">Add-on Tenant / Unit</th>
-              <th className="px-3 py-2 text-right">Total Modal</th>
-              <th className="px-3 py-2"></th>
+              <th className="px-5 py-3">Barang</th>
+              <th className="px-5 py-3 text-right">Jumlah</th>
+              <th className="px-5 py-3 text-right">Modal / Unit</th>
+              <th className="px-5 py-3 text-right">Total Modal</th>
+              <th className="px-5 py-3 text-right">Harga Sewa</th>
+              <th className="px-5 py-3 text-right">Keuntungan</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100/80">
-            {items.length === 0 && <tr><td colSpan={7} className="px-3 py-6 text-center text-slate-400">Belum ada barang sewa.</td></tr>}
-            {items.map((item) => (
-              <tr key={item.id} className="hover:bg-slate-50">
-                <td className="px-3 py-2">
-                  <p className="font-medium">{item.nama}</p>
-                  {item.vendor && <p className="text-xs text-slate-400">{item.vendor}</p>}
+            {items.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-5 py-10 text-center text-slate-400">
+                  Belum ada item dari pilihan paket tenant.
                 </td>
-                <td className="px-3 py-2">{item.jenis}</td>
-                <td className="px-3 py-2 text-right">{item.jumlah}</td>
-                <td className="px-3 py-2 text-right">{formatRupiah(item.harga_satuan)}</td>
-                <td className="px-3 py-2 text-right">{item.harga_sewa ? formatRupiah(item.harga_sewa) : '-'}</td>
-                <td className="px-3 py-2 text-right font-medium">{formatRupiah(item.jumlah * item.harga_satuan)}</td>
-                <td className="px-3 py-2">
-                  <div className="flex justify-end gap-2">
-                    <button onClick={() => bukaForm(item)} className="text-primary-600 hover:underline">Edit</button>
-                    <button onClick={() => hapus(item)} className="text-red-600 hover:underline">Hapus</button>
-                  </div>
+              </tr>
+            )}
+            {items.map((item) => (
+              <tr key={item.key} className="hover:bg-slate-50">
+                <td className="px-5 py-3">
+                  <p className="font-medium text-slate-900">{item.nama}</p>
+                  <p className="text-xs text-slate-400">{item.jumlahTenant} tenant memilih</p>
+                </td>
+                <td className="px-5 py-3 text-right tabular-nums">{item.qty}</td>
+                <td className="px-5 py-3 text-right">
+                  <input
+                    type="number"
+                    min={0}
+                    value={draft[item.key] ?? ''}
+                    onChange={(e) => setDraft((prev) => ({ ...prev, [item.key]: e.target.value }))}
+                    onBlur={() => void simpanModal(item)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                    disabled={savingKey === item.key}
+                    className="w-28 rounded-lg border border-slate-200 px-2 py-1 text-right text-sm tabular-nums focus:border-primary-400 focus:outline-none disabled:bg-slate-50"
+                    placeholder="0"
+                  />
+                </td>
+                <td className="px-5 py-3 text-right tabular-nums text-red-600">{formatRupiah(item.totalModal)}</td>
+                <td className="px-5 py-3 text-right tabular-nums font-medium text-slate-900">{formatRupiah(item.hargaSewa)}</td>
+                <td className={`px-5 py-3 text-right tabular-nums font-semibold ${item.keuntungan >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {formatRupiah(item.keuntungan)}
                 </td>
               </tr>
             ))}
@@ -194,17 +206,18 @@ export default function PeralatanPage() {
           {items.length > 0 && (
             <tfoot className="bg-slate-50 font-semibold">
               <tr>
-                <td className="px-3 py-2" colSpan={5}>Total Modal Sewa</td>
-                <td className="px-3 py-2 text-right">{formatRupiah(totalModal)}</td>
-                <td></td>
+                <td className="px-5 py-3" colSpan={3}>Total</td>
+                <td className="px-5 py-3 text-right tabular-nums text-red-600">{formatRupiah(totalModal)}</td>
+                <td className="px-5 py-3 text-right tabular-nums">{formatRupiah(totalHargaSewa)}</td>
+                <td className="px-5 py-3 text-right tabular-nums text-emerald-700">{formatRupiah(totalHargaSewa - totalModal)}</td>
               </tr>
             </tfoot>
           )}
         </table>
       </div>
 
-      <p className="text-sm text-slate-500">
-        Atur pemakaian barang per paket di <Link href="/dankelola/tenants/harga" className="text-primary-600 hover:underline">Paket &amp; Harga</Link> untuk melihat keuntungan.
+      <p className="text-xs text-slate-500">
+        Modal otomatis tersimpan saat kolom modal selesai diisi. Data item diambil dari pilihan paket pada pendaftaran tenant yang sudah diterima.
       </p>
     </div>
   )

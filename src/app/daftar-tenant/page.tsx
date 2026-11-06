@@ -272,7 +272,7 @@ export default function InfoTenantPage() {
                               {hargaNonFnb !== undefined && (
                                 <span className="text-slate-500">Non-F&B <span className="font-semibold text-slate-900">{formatRupiah(hargaNonFnb)}</span></span>
                               )}
-                              {activePeriod && <span className="text-[10px] text-slate-400">Harga dasar · {activePeriod.nama}</span>}
+                              {activePeriod && <span className="text-[10px] text-slate-400">Periode Harga: {activePeriod.nama}</span>}
                             </div>
                           )}
 
