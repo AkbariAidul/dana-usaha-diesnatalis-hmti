@@ -118,6 +118,12 @@ function getBreadcrumbs(pathname: string) {
   } else if (pathname.startsWith('/dankelola/tenants/harga/')) {
     const action = pathname.endsWith('/new') ? 'Tambah Paket' : pathname.endsWith('/edit') ? 'Edit Paket' : 'Detail Paket'
     breadcrumbs.push({ label: action, href: pathname })
+  } else if (
+    pathname.startsWith('/dankelola/tenants/') &&
+    !['/dankelola/tenants/harga', '/dankelola/tenants/pembayaran', '/dankelola/tenants/peralatan', '/dankelola/tenants/kuota']
+      .some((base) => pathname === base || pathname.startsWith(`${base}/`))
+  ) {
+    breadcrumbs.push({ label: 'Detail Tenant', href: pathname })
   } else if (pathname === '/dankelola/ticket/modal') {
     breadcrumbs.push({ label: 'Kelola Modal', href: pathname })
   } else if (pathname.startsWith('/dankelola/merchandise/pengurus/')) {

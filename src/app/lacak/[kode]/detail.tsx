@@ -55,6 +55,7 @@ type Tenant = {
   status: string
   tgl_acara: string | null
   venue_checked_in_at: string | null
+  venue_checked_in_by: string | null
   jumlah_tenant: number
   addon: TenantItem[] | null
 }
@@ -591,7 +592,7 @@ function TenantView({ data, token, reload }: { data: Extract<StatusResponse, { t
           </div>
           {tenant.venue_checked_in_at ? (
             <p className="mt-3 flex items-center justify-center gap-1 text-sm text-green-700">
-              <CheckCircle2 className="h-4 w-4" /> Sudah masuk venue pada {formatDate(tenant.venue_checked_in_at)}
+              <CheckCircle2 className="h-4 w-4" /> Sudah masuk venue pada {formatDateTime(tenant.venue_checked_in_at)}{tenant.venue_checked_in_by ? ` oleh ${tenant.venue_checked_in_by}` : ''}
             </p>
           ) : (
             <p className="mt-3 text-sm text-slate-500">Tunjukkan QR ini ke petugas saat masuk area venue.</p>

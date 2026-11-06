@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   ArrowRight,
+  CalendarDays,
   CheckCircle2,
   ClipboardList,
   CreditCard,
@@ -27,7 +28,7 @@ import {
   type PeriodeHarga,
 } from '@/lib/types'
 import { kategoriTenant } from '@/lib/tenant'
-import { formatRupiah, todayISO } from '@/lib/utils'
+import { formatDate, formatRupiah, todayISO } from '@/lib/utils'
 
 type Katalog = {
   kategori: KategoriSewa[]
@@ -209,7 +210,7 @@ export default function InfoTenantPage() {
                 <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">Pilih paket yang paling cocok</h2>
               </div>
               <p className="max-w-md text-sm text-slate-500">
-                Harga final tampil di form pendaftaran sesuai periode berjalan.
+                Harga bisa berubah sesuai periode. Semua periode tampil di tiap paket, periode aktif ditandai dan otomatis dipakai saat pendaftaran.
               </p>
             </div>
 
@@ -226,8 +227,6 @@ export default function InfoTenantPage() {
                   const sisa = Number(k.slot_tenant) > 0 ? Math.max(0, Number(k.slot_tenant) - terpakai) : null
                   const habis = sisa === 0
                   const bisaDaftar = !!activePeriod && hargaTersedia(k.id)
-                  const hargaFnb = activeKode ? hargaMap.get(`${k.id}|F&B|${activeKode}`) : undefined
-                  const hargaNonFnb = activeKode ? hargaMap.get(`${k.id}|Non-F&B|${activeKode}`) : undefined
                   return (
                     <article key={k.id} className={`overflow-hidden rounded-2xl border bg-white shadow-sm shadow-slate-200/40 ${habis ? 'border-slate-200 opacity-75' : 'border-slate-200/70'}`}>
                       <div className="grid gap-3 p-3.5 sm:grid-cols-[88px_minmax(0,1fr)_auto] sm:items-center">
@@ -264,15 +263,43 @@ export default function InfoTenantPage() {
                             {k.keterangan || 'Stand sesuai kategori yang dipilih.'}
                           </p>
 
-                          {(hargaFnb !== undefined || hargaNonFnb !== undefined) && (
-                            <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-xs">
-                              {hargaFnb !== undefined && (
-                                <span className="text-slate-500">F&B <span className="font-semibold text-slate-900">{formatRupiah(hargaFnb)}</span></span>
-                              )}
-                              {hargaNonFnb !== undefined && (
-                                <span className="text-slate-500">Non-F&B <span className="font-semibold text-slate-900">{formatRupiah(hargaNonFnb)}</span></span>
-                              )}
-                              {activePeriod && <span className="text-[10px] text-slate-400">Periode Harga: {activePeriod.nama}</span>}
+                          {katalog.periode.length > 0 && (
+                            <div className="mt-2 rounded-xl border border-slate-100 bg-slate-50/70 p-2">
+                              <div className="flex items-center gap-1.5">
+                                <CalendarDays className="h-3.5 w-3.5 text-slate-400" />
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Periode harga</p>
+                              </div>
+                              <div className="mt-1.5 space-y-1">
+                                {katalog.periode.map((p) => {
+                                  const fnb = hargaMap.get(`${k.id}|F&B|${p.kode}`)
+                                  const nonFnb = hargaMap.get(`${k.id}|Non-F&B|${p.kode}`)
+                                  const aktif = p.kode === activeKode
+                                  return (
+                                    <div
+                                      key={p.id}
+                                      className={`flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 rounded-lg px-2 py-1 text-xs ${aktif ? 'bg-white text-slate-900 shadow-sm ring-1 ring-primary-100' : 'text-slate-500'}`}
+                                    >
+                                      <span className="inline-flex items-center gap-1.5 font-medium">
+                                        {p.nama || p.kode.replace(/_/g, ' ')}
+                                        {aktif && (
+                                          <span className="rounded-full bg-primary-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-primary-700">
+                                            Aktif
+                                          </span>
+                                        )}
+                                      </span>
+                                      <span className="text-[11px] text-slate-400">
+                                        {formatDate(p.tanggal_mulai)} – {formatDate(p.tanggal_selesai)}
+                                      </span>
+                                      <span className={aktif ? 'font-semibold text-primary-700' : 'font-medium'}>
+                                        {fnb !== undefined ? `F&B ${formatRupiah(fnb)}` : ''}
+                                        {fnb !== undefined && nonFnb !== undefined ? ' · ' : ''}
+                                        {nonFnb !== undefined ? `Non-F&B ${formatRupiah(nonFnb)}` : ''}
+                                        {fnb === undefined && nonFnb === undefined ? 'Belum diatur' : ''}
+                                      </span>
+                                    </div>
+                                  )
+                                })}
+                              </div>
                             </div>
                           )}
 

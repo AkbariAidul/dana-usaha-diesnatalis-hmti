@@ -1,12 +1,10 @@
 ﻿'use client'
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import Link from 'next/link'
-import { ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
-import type { Tenant, PeriodeHarga } from '@/lib/types'
-import { formatRupiah, formatDate, formatDateTime, todayISO } from '@/lib/utils'
-import { STATUS_LABEL, STATUS_COLOR, periodeLabel, hitungHariTersisa, hitungMinimalCicilan, tambahHari } from '@/lib/types'
+import type { Acara, Tenant, PeriodeHarga } from '@/lib/types'
+import { formatRupiah, formatDate, formatDateTime } from '@/lib/utils'
+import { STATUS_LABEL, STATUS_COLOR, periodeLabel } from '@/lib/types'
 import { getJSON } from '../../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
@@ -15,15 +13,18 @@ export default function TenantDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [tenant, setTenant] = useState<Tenant | null>(null)
   const [periods, setPeriods] = useState<PeriodeHarga[]>([])
+  const [acara, setAcara] = useState<Acara | null>(null)
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
-    const [t, pr] = await Promise.all([
+    const [t, pr, ac] = await Promise.all([
       getJSON<Tenant>(`/api/tenants/${id}`),
       getJSON<PeriodeHarga[]>('/api/master/periode'),
+      getJSON<Acara | null>('/api/acara'),
     ])
     setTenant(t)
     setPeriods(pr)
+    setAcara(ac)
   }, [id])
 
   useEffect(() => {
@@ -38,10 +39,10 @@ export default function TenantDetailPage() {
   const persen = tenant.harga_akhir > 0
     ? Math.min(100, Math.round((tenant.sudah_dibayar / tenant.harga_akhir) * 100))
     : 0
-  const adaTanggal = Boolean(tenant.tgl_dp && tenant.tgl_acara)
-  const hariTersisa = adaTanggal ? hitungHariTersisa(tenant.tgl_acara!, tenant.tgl_dp!) : 0
-  const minimal = adaTanggal ? hitungMinimalCicilan(hariTersisa, sisa) : 0
-  const hariHSudahTiba = Boolean(tenant.tgl_acara && todayISO() >= tenant.tgl_acara)
+  const minimalAwal = Number(tenant.dp_wajib || Math.ceil(tenant.harga_akhir / 2))
+  const target80 = Math.ceil(tenant.harga_akhir * 0.8)
+  const kurangAwal = Math.max(0, minimalAwal - tenant.sudah_dibayar)
+  const kurang80 = Math.max(0, target80 - tenant.sudah_dibayar)
 
   const info: Array<[string, string]> = [
     ['Kode Tenant', tenant.kode_stand],
@@ -53,9 +54,10 @@ export default function TenantDetailPage() {
     ['Jumlah Tenant', String(tenant.jumlah_tenant ?? 1)],
     ['Periode', periodeLabel(tenant.periode_daftar, periods)],
     ['Harga Akhir', formatRupiah(tenant.harga_akhir)],
-    ['DP Wajib', formatRupiah(tenant.dp_wajib)],
+    ['Minimal Awal (50%)', formatRupiah(minimalAwal)],
     ['Sudah Dibayar', formatRupiah(tenant.sudah_dibayar)],
     ['Sisa Tagihan', formatRupiah(sisa)],
+    ['Batas Pembayaran', acara?.batas_pelunasan ? formatDate(acara.batas_pelunasan) : '-'],
     ['Tgl Daftar', formatDate(tenant.tgl_daftar)],
     ['Tgl DP', tenant.tgl_dp ? formatDate(tenant.tgl_dp) : '-'],
     ['Tgl Acara', tenant.tgl_acara ? formatDate(tenant.tgl_acara) : '-'],
@@ -69,14 +71,6 @@ export default function TenantDetailPage() {
 
   return (
     <div className="space-y-4">
-      <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 text-sm text-slate-500">
-        <Link href="/dankelola" className="hover:text-slate-800">Dashboard</Link>
-        <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-        <Link href="/dankelola/tenants" className="hover:text-slate-800">Data Tenant</Link>
-        <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-        <span className="font-medium text-slate-900">{tenant.nama_usaha}</span>
-      </nav>
-
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -117,7 +111,7 @@ export default function TenantDetailPage() {
         </div>
 
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-          <h2 className="font-semibold text-slate-900">Cicilan</h2>
+          <h2 className="font-semibold text-slate-900">Pembayaran</h2>
           <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-100">
             <div className="h-full rounded-full bg-primary-600 transition-all" style={{ width: `${persen}%` }} />
           </div>
@@ -125,30 +119,26 @@ export default function TenantDetailPage() {
             <div className="flex justify-between"><span className="text-slate-500">Terbayar</span><span className="font-semibold text-emerald-600">{persen}%</span></div>
             <div className="flex justify-between"><span className="text-slate-500">Sudah Dibayar</span><span className="font-medium">{formatRupiah(tenant.sudah_dibayar)}</span></div>
             <div className="flex justify-between"><span className="text-slate-500">Sisa</span><span className="font-semibold text-orange-600">{formatRupiah(sisa)}</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Hari Tersisa</span><span className="font-bold">{adaTanggal ? `${hariTersisa} hari` : '-'}</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Minimal/Hari</span><span className="font-bold text-primary-600">{adaTanggal ? formatRupiah(minimal) : '-'}</span></div>
-            {tenant.tgl_dp && (
-              <div className="flex justify-between"><span className="text-slate-500">Cicilan Mulai</span><span className="font-medium">{formatDate(tambahHari(tenant.tgl_dp, 1))}</span></div>
-            )}
+            <div className="flex justify-between"><span className="text-slate-500">Minimal Awal (50%)</span><span className="font-medium">{formatRupiah(minimalAwal)}</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">Target QR (80%)</span><span className="font-medium">{formatRupiah(target80)}</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">Batas Pembayaran</span><span className="font-medium">{acara?.batas_pelunasan ? formatDate(acara.batas_pelunasan) : '-'}</span></div>
           </div>
 
-          {sisa > 0 && !adaTanggal && (
-            <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-700">
-              Tanggal DP dan/atau tanggal acara belum diisi, jadi minimal cicilan harian belum bisa dihitung.
-            </p>
-          )}
-          {sisa > 0 && adaTanggal && hariHSudahTiba && (
-            <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-600">
-              Hari H sudah tiba, sisa tagihan {formatRupiah(sisa)} belum bisa dicicil harian.
-            </p>
-          )}
-          {sisa <= 0 && (
+          {sisa <= 0 ? (
             <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
               Pembayaran tenant sudah lunas.
             </p>
+          ) : (
+            <p className={`mt-3 rounded-xl px-3 py-2 text-xs leading-relaxed ${kurang80 > 0 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
+              {kurangAwal > 0
+                ? <>Pembayaran awal minimal 50%, kurang <strong>{formatRupiah(kurangAwal)}</strong> lagi.</>
+                : kurang80 > 0
+                  ? <>QR masuk venue aktif setelah pembayaran mencapai 80%, kurang <strong>{formatRupiah(kurang80)}</strong> lagi.</>
+                  : <>Pembayaran sudah mencapai 80%. QR masuk venue sudah aktif untuk persiapan tenant H-1.</>}
+            </p>
           )}
           <p className="mt-3 text-xs leading-relaxed text-slate-400">
-            Minimal cicilan = sisa tagihan ÷ hari tersisa (H+1 DP s/d Hari H, dibulatkan ke atas).
+            Pelunasan paling lambat pada batas pembayaran. QR venue dipakai saat persiapan tenant H-1.
           </p>
         </div>
       </div>
