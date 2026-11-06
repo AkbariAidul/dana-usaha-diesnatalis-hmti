@@ -1,5 +1,7 @@
 import { randomUUID } from 'crypto'
+import { cookies, headers } from 'next/headers'
 import { supabase, supabaseAdmin } from './supabase'
+import { requestIp, requestLocation } from './request-meta'
 import { todayISO } from './utils'
 import type { Tenant, Pembayaran, KategoriSewa, KategoriPilihan, KategoriBundleDiscount, HargaDasar, FaktorHarga, Acara, Merchandise, MerchModalItem, Ticket, TicketPeriode, TicketKatalogItem, TicketBundleDiscount, TicketModalItem, PesananTiket, PeriodeHarga } from './types'
 
@@ -649,12 +651,40 @@ export async function createAuditLog(payload: {
   target_id?: string
   data_lama?: object | null
   data_baru?: object | null
+  user_name?: string | null
 }) {
-  // Non-blocking
-  supabaseAdmin.from('audit_log').insert(payload).then()
+  try {
+    const [headerStore, cookieStore] = await Promise.all([headers(), cookies()])
+    let cookieUser: string | null = null
+    const rawUser = cookieStore.get('dashboard_user')?.value
+    if (rawUser) {
+      try {
+        cookieUser = JSON.parse(decodeURIComponent(rawUser))?.name ?? null
+      } catch {
+        cookieUser = null
+      }
+    }
+
+    const userAgent = headerStore.get('user-agent')
+    const { user_name: overrideName, ...basePayload } = payload
+    const fullPayload = {
+      ...basePayload,
+      user_name: overrideName ?? cookieUser,
+      location: requestLocation(headerStore),
+      ip_address: requestIp(headerStore),
+      user_agent: userAgent,
+    }
+
+    // ponytail: metadata columns need migration 030; fall back so old DBs keep logging.
+    supabaseAdmin.from('audit_log').insert(fullPayload).then(({ error }) => {
+      if (error) supabaseAdmin.from('audit_log').insert(basePayload).then()
+    })
+  } catch {
+    // Audit logging must never block the user action.
+  }
 }
 
-export async function getAuditLog(limit = 100) {
+export async function getAuditLog(limit = 1000) {
   const { data, error } = await supabase
     .from('audit_log').select('*').order('created_at', { ascending: false }).limit(limit)
   if (error) throw error

@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { hitungTerjual } from '@/lib/merch-po'
 import { signRef } from '@/lib/link-token'
 import { hitungDiskon } from '@/lib/merch-diskon'
+import { verifyTurnstile } from '@/lib/turnstile'
 
 type ItemBody = {
   merchandise_id: string
@@ -14,6 +15,9 @@ type Varian = { id: string; nama: string }
 export async function POST(request: Request) {
   try {
     const body = await request.json()
+    if (!(await verifyTurnstile(body.turnstile_token, request.headers))) {
+      return NextResponse.json({ error: 'Verifikasi keamanan gagal, coba lagi' }, { status: 400 })
+    }
     const tipe = body.tipe_pemesan === 'Pengurus Himpunan' ? 'Pengurus Himpunan' : 'Umum'
     const items: ItemBody[] = Array.isArray(body.items) ? body.items : []
     if (items.length === 0) {

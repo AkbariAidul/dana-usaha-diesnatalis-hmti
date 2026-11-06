@@ -5,6 +5,7 @@ import { periodeDariTanggal, type TenantAddon } from '@/lib/types'
 import { getPeralatanMeta } from '@/lib/peralatan'
 import { todayISO } from '@/lib/utils'
 import { signRef } from '@/lib/link-token'
+import { verifyTurnstile } from '@/lib/turnstile'
 
 export async function GET() {
   try {
@@ -22,7 +23,11 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
+    if (!(await verifyTurnstile(body.turnstile_token, request.headers))) {
+      return NextResponse.json({ error: 'Verifikasi keamanan gagal, coba lagi' }, { status: 400 })
+    }
     const { pilihan: pilihanBody, ...dataBody } = body
+    delete dataBody.turnstile_token
     const tglDaftar = todayISO()
     const [periods, hargaDasar, kategori, acara, bundles] = await Promise.all([
       getPeriodeHarga(),

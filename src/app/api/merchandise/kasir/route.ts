@@ -17,7 +17,9 @@ async function getSessionUser(): Promise<DashboardUser | null> {
 }
 
 export async function GET(request: Request) {
-  const ringkasan = new URL(request.url).searchParams.get('ringkasan') === '1'
+  const params = new URL(request.url).searchParams
+  const ringkasan = params.get('ringkasan') === '1'
+  const limit = Math.max(1, Math.min(1000, Number(params.get('limit')) || 50))
   try {
     if (ringkasan) {
       const [{ data: trx, error: trxError }, { data: produk, error: produkError }] = await Promise.all([
@@ -38,7 +40,7 @@ export async function GET(request: Request) {
       .from('kasir_transaksi')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(50)
+      .limit(limit)
     
     if (error) throw error
     

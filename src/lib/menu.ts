@@ -71,8 +71,8 @@ export const menuConfig: MenuGroup[] = [
     label: 'UMUM',
     icon: Briefcase,
     children: [
-      { label: 'Keuangan', href: '/dankelola/keuangan' },
       { label: 'Laporan', href: '/dankelola/laporan' },
+      { label: 'Monitoring', href: '/dankelola/monitoring' },
       { label: 'Pengaturan QRIS', href: '/dankelola/pengaturan/qris' },
       { label: 'Audit Log', href: '/dankelola/audit' },
     ],

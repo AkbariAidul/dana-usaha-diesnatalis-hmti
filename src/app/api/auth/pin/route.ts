@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { findUserByPIN } from '@/lib/auth'
+import { createAuditLog } from '@/lib/queries'
 
 export async function POST(request: Request) {
   const body = await request.json()
@@ -29,6 +30,12 @@ export async function POST(request: Request) {
     sameSite: 'strict',
     maxAge: 86400,
     path: '/',
+  })
+  await createAuditLog({
+    aksi: 'LOGIN',
+    target_type: 'auth',
+    data_baru: { role: user.role },
+    user_name: user.name,
   })
   return response
 }

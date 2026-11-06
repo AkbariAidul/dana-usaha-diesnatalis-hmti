@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 
 import { PublicBreadcrumb, PublicNavbar } from '@/components/public-navbar'
 import { PoStepper } from '@/components/po-stepper'
+import { Turnstile } from '@/components/turnstile'
 import { getJSON, sendJSON } from '@/app/dankelola/api'
 import {
   periodeDariTanggal,
@@ -61,6 +62,7 @@ export default function DaftarTenantPublik() {
   const [preview, setPreview] = useState('')
   const [uploading, setUploading] = useState(false)
   const [qr, setQr] = useState('')
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all([
@@ -209,6 +211,7 @@ export default function DaftarTenantPublik() {
         addon: addonTerpilih.map(({ item, qty }) => ({ id: item.id, qty })),
         pilihan: Object.entries(pilihanQty).map(([id, qty]) => ({ id, qty: Math.max(1, Number(qty) || 1) })),
         periode_daftar: periode,
+        turnstile_token: turnstileToken,
       })
       const created = res as typeof pendaftaran
       setPendaftaran(created)
@@ -424,7 +427,8 @@ export default function DaftarTenantPublik() {
                   <p className="text-xs text-slate-500">Pembayaran pertama min. 50%: {formatRupiah(Math.ceil(harga / 2))}</p>
                 </div>
               </div>
-              <div className="flex justify-end md:col-span-4">
+              <div className="flex flex-col items-end gap-3 md:col-span-4 sm:flex-row sm:justify-end">
+                <Turnstile onToken={setTurnstileToken} />
                 <button onClick={daftar} disabled={!periode || !form.nama_usaha || !form.kontak || !form.kategori_sewa_id || sisaSlot === 0} className="rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50">Lanjut ke Pembayaran</button>
               </div>
             </div>

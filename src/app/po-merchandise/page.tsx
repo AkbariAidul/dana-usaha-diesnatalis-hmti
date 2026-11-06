@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { Check, ChevronDown, Clock, Shirt, Trash2, Plus, Minus } from 'lucide-react'
 import { PublicNavbar } from '@/components/public-navbar'
 import { PoStepper } from '@/components/po-stepper'
+import { Turnstile } from '@/components/turnstile'
 import { formatDate, formatRupiah } from '@/lib/utils'
 import { buatQrisDinamis } from '@/lib/qris'
 import { hitungDiskon } from '@/lib/merch-diskon'
@@ -103,6 +104,7 @@ export default function PoMerchandisePage() {
   const [uploading, setUploading] = useState(false)
   const [nominalBayar, setNominalBayar] = useState('')
   const [pengurusOpen, setPengurusOpen] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all([
@@ -222,6 +224,7 @@ export default function PoMerchandisePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
+          turnstile_token: turnstileToken,
           items: keranjang.map((item) => ({
             merchandise_id: item.produk.id,
             varian_id: item.varian?.id ?? null,
@@ -626,7 +629,8 @@ export default function PoMerchandisePage() {
                 </div>
               </div>
 
-              <div className="mt-4 flex justify-end">
+              <div className="mt-4 flex flex-col items-end gap-3 sm:flex-row sm:justify-end">
+                <Turnstile onToken={setTurnstileToken} />
                 <button onClick={pesan} className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-medium text-white">
                   Buat Pesanan
                 </button>

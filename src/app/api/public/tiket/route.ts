@@ -2,10 +2,14 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getTicketKatalog } from '@/lib/queries'
 import { signRef } from '@/lib/link-token'
+import { verifyTurnstile } from '@/lib/turnstile'
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
+    if (!(await verifyTurnstile(body.turnstile_token, request.headers))) {
+      return NextResponse.json({ error: 'Verifikasi keamanan gagal, coba lagi' }, { status: 400 })
+    }
     if (!body.nama_pembeli || !body.kontak) throw new Error('Nama dan kontak wajib diisi')
 
     const tipe = (await getTicketKatalog()).find((t) => t.id === body.tiket_tipe_id)

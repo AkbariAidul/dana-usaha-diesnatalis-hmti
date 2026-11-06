@@ -533,7 +533,11 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               pathname.startsWith('/dankelola/ticket/penjualan') ||
               pathname.startsWith('/dankelola/ticket/checkin') ||
               pathname.startsWith('/dankelola/merchandise') ||
-              pathname.startsWith('/dankelola/tenants')
+              pathname.startsWith('/dankelola/tenants') ||
+              pathname.startsWith('/dankelola/laporan') ||
+              pathname.startsWith('/dankelola/monitoring') ||
+              pathname.startsWith('/dankelola/audit') ||
+              pathname.startsWith('/dankelola/pengaturan/qris')
                 ? 'w-full'
                 : 'mx-auto max-w-6xl'
             }`}

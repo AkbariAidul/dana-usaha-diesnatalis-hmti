@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import { PublicBreadcrumb, PublicNavbar } from '@/components/public-navbar'
 import { PoStepper } from '@/components/po-stepper'
+import { Turnstile } from '@/components/turnstile'
 import { getJSON, sendJSON } from '@/app/dankelola/api'
 import { buatQrisDinamis } from '@/lib/qris'
 import { formatRupiah } from '@/lib/utils'
@@ -99,6 +100,7 @@ export default function BeliTiketPublik() {
   const [preview, setPreview] = useState('')
   const [uploading, setUploading] = useState(false)
   const [qr, setQr] = useState('')
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
   const [step, setStep] = useState(1)
   const nominalBayar = Number(pesanan?.total || 0)
 
@@ -177,6 +179,7 @@ export default function BeliTiketPublik() {
       const res = await sendJSON('/api/public/tiket', 'POST', {
         ...form,
         jumlah: Math.max(1, Number(form.jumlah) || 1),
+        turnstile_token: turnstileToken,
       })
       setPesanan(
         res as {
@@ -569,6 +572,7 @@ export default function BeliTiketPublik() {
                           </div>
                         </dl>
 
+                        <Turnstile onToken={setTurnstileToken} />
                         <button
                           type="button"
                           onClick={beli}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import { Toaster } from "sonner";
 import { ConfirmProvider } from "@/components/confirm-dialog";
+import { PublicVisitorTracker } from "@/components/public-visitor";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="font-sans antialiased">
         <ConfirmProvider>
+          <PublicVisitorTracker />
           {children}
           <Toaster
             position="top-right"
