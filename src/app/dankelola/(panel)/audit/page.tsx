@@ -1,6 +1,7 @@
 'use client'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
+import { RotateCcw, Search } from 'lucide-react'
 import { getJSON } from '../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { parseUserAgent } from '@/lib/request-meta'
@@ -96,38 +97,57 @@ export default function AuditPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Audit Log</h1>
           <p className="mt-1 text-sm text-slate-500">Semua aktivitas pengguna dashboard beserta lokasi, perangkat, dan IP.</p>
         </div>
+        <span className="w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+          {filtered.length} dari {data.length} aktivitas
+        </span>
+      </div>
 
-        <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-          <input
-            className={`${control} min-w-52`}
-            placeholder="Cari aksi, user, IP..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <select className={control} value={userFilter} onChange={(e) => setUserFilter(e.target.value)}>
+      <div className="grid gap-2 rounded-2xl border border-slate-200/70 bg-white p-3 shadow-sm shadow-slate-200/40 sm:grid-cols-2 xl:grid-cols-7">
+        <label className="flex flex-col gap-1 sm:col-span-2">
+          <span className="text-[11px] font-medium text-slate-500">Cari</span>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              className={`${control} w-full pl-9`}
+              placeholder="Cari aksi, user, IP..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-[11px] font-medium text-slate-500">Pengguna</span>
+          <select className={`${control} w-full`} value={userFilter} onChange={(e) => setUserFilter(e.target.value)}>
             <option value="">Semua pengguna</option>
             {users.map((user) => <option key={user} value={user}>{user}</option>)}
           </select>
-          <select className={control} value={actionFilter} onChange={(e) => setActionFilter(e.target.value)}>
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-[11px] font-medium text-slate-500">Aksi</span>
+          <select className={`${control} w-full`} value={actionFilter} onChange={(e) => setActionFilter(e.target.value)}>
             <option value="">Semua aksi</option>
             {actions.map((action) => <option key={action} value={action}>{action}</option>)}
           </select>
-          <input type="date" className={control} value={from} onChange={(e) => setFrom(e.target.value)} title="Dari tanggal" />
-          <input type="date" className={control} value={to} onChange={(e) => setTo(e.target.value)} title="Sampai tanggal" />
-          <button onClick={resetFilter} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50">
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-[11px] font-medium text-slate-500">Dari tanggal</span>
+          <input type="date" className={`${control} w-full`} value={from} onChange={(e) => setFrom(e.target.value)} />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-[11px] font-medium text-slate-500">Sampai tanggal</span>
+          <input type="date" className={`${control} w-full`} value={to} onChange={(e) => setTo(e.target.value)} />
+        </label>
+        <div className="flex items-end">
+          <button onClick={resetFilter} className="flex h-[38px] w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50">
+            <RotateCcw className="h-4 w-4" />
             Reset
           </button>
         </div>
-      </div>
-
-      <div className="flex items-center justify-between text-xs text-slate-500">
-        <span>{filtered.length} aktivitas ditampilkan</span>
-        <span>Total tersimpan di halaman ini: {data.length}</span>
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">

@@ -16,5 +16,6 @@ export async function POST() {
   await createAuditLog({ aksi: 'LOGOUT', target_type: 'auth', user_name: userName })
   cookieStore.delete('dashboard_session')
   cookieStore.delete('dashboard_user')
+  cookieStore.delete('dashboard_role')
   return NextResponse.json({ success: true })
 }

@@ -83,7 +83,7 @@ export default function RingkasanPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Ringkasan</h1>
-        <p className="text-sm text-slate-500">Rekap Dana Usaha Open Tenant</p>
+        <p className="text-sm text-slate-500">Pantau performa tenant, merchandise, dan ticket Dana Usaha.</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-primary-100 bg-primary-50 px-6 py-3 text-sm">

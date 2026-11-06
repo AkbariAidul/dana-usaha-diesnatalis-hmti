@@ -3,7 +3,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
-import { ChevronRight, Globe, LogOut, Menu, PartyPopper, X } from 'lucide-react'
+import { ChevronRight, Eye, Globe, LogOut, Menu, PartyPopper, X } from 'lucide-react'
 import { getJSON, prefetch } from '../api'
 import { menuConfig } from '@/lib/menu'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
@@ -145,6 +145,7 @@ const ROLE_LABEL: Record<DashboardRole, string> = {
   tenant: 'tenant',
   merchandise: 'merchandise',
   ticket: 'tiket',
+  viewer: 'lihat saja',
 }
 
 const WELCOME_COPY: Record<DashboardRole, (name: string) => { title: string; body: string }> = {
@@ -159,6 +160,10 @@ const WELCOME_COPY: Record<DashboardRole, (name: string) => { title: string; bod
   ticket: (name) => ({
     title: `Halo, ${name}!`,
     body: 'Tiket-tiketnya udah nungguin. Yuk kelola dengan baik biar makin aman.',
+  }),
+  viewer: (name) => ({
+    title: `Halo, ${name}!`,
+    body: 'Kamu masuk dalam mode lihat saja. Semua data bisa dipantau tanpa bisa diubah.',
   }),
 }
 
@@ -256,7 +261,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     const done = await confirm({
       title: 'Cek dulu, ya!',
       description: currentUser
-        ? `${currentUser.name} udah selesai kelola ${ROLE_LABEL[currentUser.role]} hari ini?`
+        ? currentUser.role === 'viewer'
+          ? `${currentUser.name} udah selesai lihat-lihat hari ini?`
+          : `${currentUser.name} udah selesai kelola ${ROLE_LABEL[currentUser.role]} hari ini?`
         : 'Udah selesai kerja hari ini?',
       confirmText: 'Udah, cabut!',
       cancelText: 'Belum nih',
@@ -463,7 +470,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               <div className="text-right leading-tight">
                 <p className="text-sm font-medium text-slate-900">{currentUser.name}</p>
                 <p className="text-[11px] text-slate-500">
-                  Kelola <span className="capitalize">{ROLE_LABEL[currentUser.role]}</span>
+                  {currentUser.role === 'viewer' ? 'Mode lihat saja' : <>Kelola <span className="capitalize">{ROLE_LABEL[currentUser.role]}</span></>}
                 </p>
               </div>
               <span className="grid h-9 w-9 place-items-center rounded-full bg-primary-600 text-sm font-semibold text-white">
@@ -523,9 +530,16 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         </aside>
 
         <main className="flex-1 overflow-y-auto">
+          {currentUser?.role === 'viewer' && (
+            <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800 md:px-8">
+              <Eye className="h-4 w-4 shrink-0" />
+              Mode lihat saja: kamu bisa melihat seluruh data, tetapi tidak bisa menambah, mengubah, atau menghapus.
+            </div>
+          )}
           <div
             key={pathname}
             className={`px-4 py-6 md:px-8 md:py-8 animate-fade-in ${
+              pathname === '/dankelola' ||
               pathname.startsWith('/dankelola/ticket/tipe') ||
               pathname.startsWith('/dankelola/ticket/periode') ||
               pathname.startsWith('/dankelola/ticket/tahap') ||

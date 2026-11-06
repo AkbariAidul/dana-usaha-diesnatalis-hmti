@@ -31,6 +31,13 @@ export async function POST(request: Request) {
     maxAge: 86400,
     path: '/',
   })
+  response.cookies.set('dashboard_role', user.role, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 86400,
+    path: '/',
+  })
   await createAuditLog({
     aksi: 'LOGIN',
     target_type: 'auth',

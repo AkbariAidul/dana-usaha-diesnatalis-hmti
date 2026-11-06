@@ -33,6 +33,9 @@ type Monitoring = {
   storage: {
     total: number
     files: number
+    limit: number
+    remaining: number
+    percent: number
     buckets: Array<{ name: string; size: number; files: number; error?: string }>
     error?: string
   }
@@ -68,6 +71,48 @@ function formatBytes(bytes: number) {
 
 function shortDate(value: string) {
   return new Date(`${value}T00:00:00`).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
+}
+
+function StorageRing({ percent, used, limit, remaining }: { percent: number; used: number; limit: number; remaining: number }) {
+  const safePercent = Math.min(100, Math.max(0, percent))
+  const radius = 54
+  const circumference = 2 * Math.PI * radius
+
+  return (
+    <div className="flex flex-col items-center gap-4 sm:flex-row">
+      <div className="relative h-36 w-36 shrink-0">
+        <svg viewBox="0 0 140 140" className="h-full w-full -rotate-90" role="img" aria-label={`Storage terpakai ${safePercent.toFixed(1)}%`}>
+          <circle cx="70" cy="70" r={radius} fill="none" stroke="#e2e8f0" strokeWidth="12" />
+          <circle
+            cx="70"
+            cy="70"
+            r={radius}
+            fill="none"
+            stroke={safePercent >= 85 ? '#f97316' : '#7c3aed'}
+            strokeWidth="12"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={circumference * (1 - safePercent / 100)}
+            className="transition-[stroke-dashoffset] duration-700"
+          />
+        </svg>
+        <div className="absolute inset-0 grid place-content-center text-center">
+          <p className="text-2xl font-bold tracking-tight text-slate-900">{safePercent.toFixed(1)}%</p>
+          <p className="text-[11px] text-slate-500">terpakai</p>
+        </div>
+      </div>
+      <div className="min-w-0 space-y-2 text-sm">
+        <div>
+          <p className="text-xs text-slate-500">Storage terpakai</p>
+          <p className="font-semibold text-slate-900">{formatBytes(used)} <span className="font-normal text-slate-400">dari {formatBytes(limit)}</span></p>
+        </div>
+        <div>
+          <p className="text-xs text-slate-500">Sisa storage</p>
+          <p className="font-semibold text-emerald-600">{formatBytes(remaining)}</p>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function Card({ icon: Icon, label, value, note, color = 'text-primary-600' }: {
@@ -162,8 +207,8 @@ export default function MonitoringPage() {
             <HardDrive className="h-4 w-4 text-primary-600" />
             <h2 className="font-semibold text-slate-900">Storage Supabase</h2>
           </div>
-          <p className="text-2xl font-bold tracking-tight text-slate-900">{formatBytes(storage.total)}</p>
-          <p className="text-xs text-slate-500">{storage.files} file tersimpan</p>
+          <StorageRing percent={storage.percent} used={storage.total} limit={storage.limit} remaining={storage.remaining} />
+          <p className="mt-3 text-xs text-slate-500">{storage.files} file tersimpan</p>
           <div className="mt-4 space-y-2">
             {storage.buckets.length === 0 && <p className="text-sm text-slate-400">{storage.error ?? 'Belum ada bucket.'}</p>}
             {storage.buckets.map((bucket) => (
@@ -201,7 +246,21 @@ export default function MonitoringPage() {
             <h2 className="font-semibold text-slate-900">Deployment Vercel</h2>
           </div>
           {!vercel.configured && (
-            <p className="text-sm text-slate-500">Set <code className="font-mono text-xs">VERCEL_TOKEN</code> dan <code className="font-mono text-xs">VERCEL_PROJECT_ID</code> untuk melihat deployment terakhir.</p>
+            <div className="space-y-3 text-sm text-slate-600">
+              <p className="font-medium text-slate-900">Cara mengaktifkan deployment Vercel:</p>
+              <ol className="list-decimal space-y-2 pl-4 text-xs leading-relaxed">
+                <li>
+                  Buka <a href="https://vercel.com/account/tokens" target="_blank" rel="noreferrer" className="font-medium text-primary-600 hover:underline">Vercel Account Tokens</a>, lalu buat token baru.
+                </li>
+                <li>Buka project di Vercel → <span className="font-medium">Settings → General</span>, salin <code className="rounded bg-slate-100 px-1 font-mono">Project ID</code>.</li>
+                <li>
+                  Tambahkan environment variable di <span className="font-medium">Project Settings → Environment Variables</span>:
+                  <pre className="mt-1 overflow-x-auto rounded-lg bg-slate-900 p-2.5 text-[11px] leading-relaxed text-slate-100">{`VERCEL_TOKEN=...\nVERCEL_PROJECT_ID=...\nVERCEL_TEAM_ID=... (opsional)`}</pre>
+                </li>
+                <li>Redeploy project. Untuk lokal, simpan juga di <code className="rounded bg-slate-100 px-1 font-mono">.env.local</code>.</li>
+              </ol>
+              <p className="text-[11px] text-slate-400">Bandwidth/usage detail tetap dibuka lewat tautan Usage Vercel karena tidak tersedia di endpoint API publik.</p>
+            </div>
           )}
           {vercel.configured && !latest && <p className="text-sm text-slate-500">{vercel.error ?? 'Belum ada data deployment.'}</p>}
           {latest && (

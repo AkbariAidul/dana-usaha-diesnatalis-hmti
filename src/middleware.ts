@@ -48,6 +48,9 @@ export function middleware(request: NextRequest) {
     if (!hasSession(request)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    if (request.cookies.get('dashboard_role')?.value === 'viewer' && !['GET', 'HEAD', 'OPTIONS'].includes(request.method)) {
+      return NextResponse.json({ error: 'Mode lihat saja: perubahan data tidak diizinkan' }, { status: 403 })
+    }
     return NextResponse.next()
   }
 

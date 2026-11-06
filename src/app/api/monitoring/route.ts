@@ -12,6 +12,8 @@ type Visit = {
   created_at: string
 }
 
+const STORAGE_LIMIT_BYTES = Number(process.env.SUPABASE_STORAGE_LIMIT_BYTES) || 1024 ** 3
+
 const DATE_KEY = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'Asia/Jakarta',
   year: 'numeric',
@@ -83,13 +85,25 @@ async function storageUsage() {
         }
       }),
     )
+    const total = rows.reduce((sum, row) => sum + row.size, 0)
     return {
-      total: rows.reduce((sum, row) => sum + row.size, 0),
+      total,
       files: rows.reduce((sum, row) => sum + row.files, 0),
+      limit: STORAGE_LIMIT_BYTES,
+      remaining: Math.max(0, STORAGE_LIMIT_BYTES - total),
+      percent: Math.min(100, (total / STORAGE_LIMIT_BYTES) * 100),
       buckets: rows,
     }
   } catch (error) {
-    return { total: 0, files: 0, buckets: [], error: String(error) }
+    return {
+      total: 0,
+      files: 0,
+      limit: STORAGE_LIMIT_BYTES,
+      remaining: STORAGE_LIMIT_BYTES,
+      percent: 0,
+      buckets: [],
+      error: String(error),
+    }
   }
 }
 
