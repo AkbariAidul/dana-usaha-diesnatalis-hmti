@@ -79,16 +79,18 @@ export default function PeralatanPage() {
       // Include venue/place rental as a line item so its capital can be entered
       const baseHarga = Number(tenant.base_harga ?? tenant.harga_akhir)
       if (baseHarga > 0) {
+        const tempatModalUnit = Math.max(0, Number(draft[TEMPAT_KEY] ?? modalMap[TEMPAT_KEY] ?? 0) || 0)
         const current = map.get(TEMPAT_KEY) ?? {
           key: TEMPAT_KEY,
           nama: `Tempat · ${tenant.kategori_sewa?.nama ?? '-'}`,
           qty: 0,
           hargaSewa: 0,
-          modalUnit: 0,
+          modalUnit: tempatModalUnit,
           totalModal: 0,
           keuntungan: 0,
           jumlahTenant: 0,
         }
+        current.modalUnit = tempatModalUnit
         current.qty += jumlahTenant
         current.hargaSewa += baseHarga
         current.jumlahTenant += jumlahTenant
