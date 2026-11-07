@@ -3,24 +3,22 @@
 import { useEffect, useState } from 'react'
 import type { DashboardUser } from './auth'
 
-export function parseDashboardUser(raw: string): DashboardUser | null {
-  try {
-    return JSON.parse(decodeURIComponent(raw))
-  } catch {
-    try {
-      return JSON.parse(decodeURIComponent(decodeURIComponent(raw)))
-    } catch {
-      return null
-    }
-  }
-}
-
 export function useDashboardUser() {
   const [user, setUser] = useState<DashboardUser | null>(null)
 
   useEffect(() => {
-    const match = document.cookie.match(/(?:^|; )dashboard_user=([^;]+)/)
-    if (match) setUser(parseDashboardUser(match[1]))
+    let active = true
+    fetch('/api/auth/me', { cache: 'no-store' })
+      .then((res) => (res.ok ? (res.json() as Promise<DashboardUser>) : null))
+      .then((data) => {
+        if (active) setUser(data)
+      })
+      .catch(() => {
+        if (active) setUser(null)
+      })
+    return () => {
+      active = false
+    }
   }, [])
 
   return user

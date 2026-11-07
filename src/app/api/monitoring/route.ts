@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { getSessionUser } from '@/lib/session-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -270,6 +271,10 @@ async function vercelStatus() {
 }
 
 export async function GET() {
+  const session = await getSessionUser()
+  if (!session || session.role === 'viewer') {
+    return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 })
+  }
   const [storage, vercel, counts] = await Promise.all([
     storageUsage(),
     vercelStatus(),

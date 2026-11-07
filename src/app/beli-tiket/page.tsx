@@ -207,7 +207,7 @@ export default function BeliTiketPublik() {
       fd.append('folder', 'bukti-tiket')
       const up = await fetch('/api/upload', { method: 'POST', body: fd }).then((r) => r.json())
       if (!up.url) throw new Error(up.error || 'Gagal upload bukti')
-      await sendJSON(`/api/public/tiket/${pesanan.id}/bukti`, 'POST', { bukti_url: up.url })
+      await sendJSON(`/api/public/tiket/${pesanan.id}/bukti`, 'POST', { bukti_url: up.url, t: pesanan.t })
       toast.success('Bukti terkirim, menunggu verifikasi')
       setStep(3)
     } catch (e: unknown) {

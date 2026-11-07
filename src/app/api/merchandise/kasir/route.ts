@@ -1,21 +1,8 @@
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabase'
 import { hitungDiskon } from '@/lib/merch-diskon'
 import { createAuditLog } from '@/lib/queries'
-import type { DashboardUser } from '@/lib/auth'
-
-async function getSessionUser(): Promise<DashboardUser | null> {
-  try {
-    const cookieStore = await cookies()
-    const raw = cookieStore.get('dashboard_user')?.value
-    if (!raw) return null
-    const user = JSON.parse(decodeURIComponent(raw)) as DashboardUser
-    return user.name ? user : null
-  } catch {
-    return null
-  }
-}
+import { getSessionUser } from '@/lib/session-server'
 
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams

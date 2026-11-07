@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { verifyRef } from '@/lib/link-token'
+import { isBuktiUrl } from '@/lib/bukti'
 import { kirimNotifTenantMenungguVerifikasi } from '@/lib/notifikasi-tenant'
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -7,17 +9,28 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { id } = await params
     const body = await request.json()
     const buktiUrl = String(body.bukti_url ?? '').trim()
+    const t = typeof body.t === 'string' ? body.t : null
     if (!buktiUrl) {
       return NextResponse.json({ error: 'Bukti pembayaran wajib diupload' }, { status: 400 })
     }
     const { data: pendaftaran } = await supabaseAdmin
       .from('pendaftaran_tenant_pub')
-      .select('id,kode_pendaftaran,nama_usaha,kontak,harga_akhir,dp_wajib,sudah_dibayar,pembayaran_tipe,nominal_bayar,jumlah_tenant,addon')
+      .select('id,kode_pendaftaran,nama_usaha,kontak,harga_akhir,dp_wajib,sudah_dibayar,pembayaran_tipe,nominal_bayar,jumlah_tenant,addon,status')
       .eq('id', id)
       .maybeSingle()
     if (!pendaftaran) {
       return NextResponse.json({ error: 'Pendaftaran tidak ditemukan' }, { status: 404 })
     }
+    if (!verifyRef('tenant', pendaftaran.kode_pendaftaran, t)) {
+      return NextResponse.json({ error: 'Link tidak valid' }, { status: 403 })
+    }
+    if (['dp_diterima', 'lunas', 'batal'].includes(String(pendaftaran.status))) {
+      return NextResponse.json({ error: 'Pendaftaran sudah diverifikasi' }, { status: 400 })
+    }
+    if (!isBuktiUrl(buktiUrl)) {
+      return NextResponse.json({ error: 'Bukti pembayaran tidak valid' }, { status: 400 })
+    }
+
     const total = Number(pendaftaran.harga_akhir)
     const sudah = Number(pendaftaran.sudah_dibayar ?? 0)
     const tipe = body.pembayaran_tipe === 'lunas' ? 'lunas' : 'nyicil'

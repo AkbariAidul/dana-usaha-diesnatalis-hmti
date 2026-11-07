@@ -3,9 +3,10 @@ import { createHmac, timingSafeEqual } from 'crypto'
 export type TipeLacak = 'tenant' | 'tiket' | 'po'
 
 function secret() {
-  return process.env.PUBLIC_LINK_SECRET
-    || process.env.SUPABASE_SERVICE_ROLE_KEY
-    || 'dana-usaha-hmti-dev-secret'
+  if (process.env.PUBLIC_LINK_SECRET) return process.env.PUBLIC_LINK_SECRET
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY) return process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (process.env.NODE_ENV === 'production') throw new Error('PUBLIC_LINK_SECRET belum diset')
+  return 'dana-usaha-hmti-dev-secret'
 }
 
 export function tipeDariKode(kode: string): TipeLacak | null {

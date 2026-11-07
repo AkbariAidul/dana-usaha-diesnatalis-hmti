@@ -2,7 +2,7 @@ import { requestIp, type HeaderReader } from '@/lib/request-meta'
 
 export async function verifyTurnstile(token: unknown, headers: HeaderReader) {
   const secret = process.env.TURNSTILE_SECRET_KEY
-  if (!secret) return true
+  if (!secret) return process.env.NODE_ENV !== 'production'
   if (!token || typeof token !== 'string') return false
 
   try {

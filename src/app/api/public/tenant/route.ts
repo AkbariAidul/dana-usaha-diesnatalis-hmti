@@ -26,8 +26,11 @@ export async function POST(request: Request) {
     if (!(await verifyTurnstile(body.turnstile_token, request.headers))) {
       return NextResponse.json({ error: 'Verifikasi keamanan gagal, coba lagi' }, { status: 400 })
     }
-    const { pilihan: pilihanBody, ...dataBody } = body
-    delete dataBody.turnstile_token
+    const pilihanBody = body.pilihan
+    const dataBody: Record<string, unknown> = {}
+    for (const key of ['nama_usaha', 'kontak', 'email', 'alamat', 'deskripsi_usaha', 'kategori_sewa_id', 'jenis_usaha']) {
+      if (body[key] !== undefined) dataBody[key] = body[key]
+    }
     const tglDaftar = todayISO()
     const [periods, hargaDasar, kategori, acara, bundles] = await Promise.all([
       getPeriodeHarga(),

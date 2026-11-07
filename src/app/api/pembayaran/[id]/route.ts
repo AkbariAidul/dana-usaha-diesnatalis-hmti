@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { deletePembayaran, createAuditLog, syncTenantPaymentStatus } from '@/lib/queries'
-import { supabase, supabaseAdmin } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
 import { kirimNotifTenantDitolak, kirimNotifTenantTerverifikasi } from '@/lib/notifikasi-tenant'
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -76,7 +76,7 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
   try {
     const { id } = await params
     // Ambil dulu untuk tau tenant_id
-    const { data } = await supabase.from('pembayaran').select('tenant_id').eq('id', id).single()
+    const { data } = await supabaseAdmin.from('pembayaran').select('tenant_id').eq('id', id).single()
     if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     await deletePembayaran(id, data.tenant_id)

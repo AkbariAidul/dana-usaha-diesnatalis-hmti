@@ -9,6 +9,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { id } = await params
     const body = await request.json()
     const { status, catatan_admin } = body
+    if (status !== 'dp_diterima' && status !== 'ditolak') {
+      return NextResponse.json({ error: 'Status tidak valid' }, { status: 400 })
+    }
 
     // Update pendaftaran status
     const { data, error } = await supabaseAdmin

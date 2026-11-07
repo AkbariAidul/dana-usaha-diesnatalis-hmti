@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto'
-import { cookies, headers } from 'next/headers'
-import { supabase, supabaseAdmin } from './supabase'
+import { headers } from 'next/headers'
+import { supabaseAdmin } from './supabase'
+import { getSessionUser } from './session-server'
 import { requestIp, requestLocation } from './request-meta'
 import { todayISO } from './utils'
 import type { Tenant, Pembayaran, KategoriSewa, KategoriPilihan, KategoriBundleDiscount, HargaDasar, FaktorHarga, Acara, Merchandise, MerchModalItem, Ticket, TicketPeriode, TicketKatalogItem, TicketBundleDiscount, TicketModalItem, PesananTiket, PeriodeHarga } from './types'
@@ -8,7 +9,7 @@ import type { Tenant, Pembayaran, KategoriSewa, KategoriPilihan, KategoriBundleD
 // ─── Acara ───────────────────────────────────────────────────────────────────
 
 export async function getAcara(): Promise<Acara | null> {
-  const { data } = await supabase.from('acara').select('*').limit(1).maybeSingle()
+  const { data } = await supabaseAdmin.from('acara').select('*').limit(1).maybeSingle()
   return data
 }
 
@@ -27,7 +28,7 @@ export async function upsertAcara(payload: Partial<Acara>) {
 // ─── Kategori Sewa ────────────────────────────────────────────────────────────
 
 export async function getKategoriSewa(): Promise<KategoriSewa[]> {
-  const { data, error } = await supabase.from('kategori_sewa').select('*').order('kode')
+  const { data, error } = await supabaseAdmin.from('kategori_sewa').select('*').order('kode')
   if (error) throw error
   return data ?? []
 }
@@ -108,7 +109,7 @@ export async function deleteKategoriBundleDiscount(id: string) {
 // ─── Harga Dasar ─────────────────────────────────────────────────────────────
 
 export async function getHargaDasar(): Promise<HargaDasar[]> {
-  const { data, error } = await supabase.from('harga_dasar').select('*')
+  const { data, error } = await supabaseAdmin.from('harga_dasar').select('*')
   if (error) throw error
   return data ?? []
 }
@@ -139,7 +140,7 @@ const DEFAULT_PERIODE: PeriodeHarga[] = [
 ]
 
 export async function getPeriodeHarga(): Promise<PeriodeHarga[]> {
-  const { data } = await supabase.from('pengaturan_umum').select('value').eq('key', 'periode_harga').maybeSingle()
+  const { data } = await supabaseAdmin.from('pengaturan_umum').select('value').eq('key', 'periode_harga').maybeSingle()
   if (data?.value) {
     try {
       const parsed = JSON.parse(data.value)
@@ -195,7 +196,7 @@ export async function deletePeriodeHarga(id: string) {
 // ─── Faktor Harga ─────────────────────────────────────────────────────────────
 
 export async function getFaktorHarga(): Promise<FaktorHarga[]> {
-  const { data, error } = await supabase.from('faktor_harga').select('*').order('tipe')
+  const { data, error } = await supabaseAdmin.from('faktor_harga').select('*').order('tipe')
   if (error) throw error
   return data ?? []
 }
@@ -220,7 +221,7 @@ export async function deleteFaktorHarga(id: string) {
 // ─── Tenants ─────────────────────────────────────────────────────────────────
 
 export async function getTenants(): Promise<Tenant[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('tenants')
     .select('*, kategori_sewa(kode, nama)')
     .order('kode_stand')
@@ -229,7 +230,7 @@ export async function getTenants(): Promise<Tenant[]> {
 }
 
 export async function getTenantById(id: string): Promise<Tenant | null> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('tenants')
     .select('*, kategori_sewa(kode, nama)')
     .eq('id', id)
@@ -300,7 +301,7 @@ export async function syncTenantPaymentStatus(tenantId: string) {
 // ─── Pembayaran ───────────────────────────────────────────────────────────────
 
 export async function getPembayaran(tenantId?: string): Promise<Pembayaran[]> {
-  let query = supabase
+  let query = supabaseAdmin
     .from('pembayaran')
     .select('*, tenants(kode_stand, nama_usaha)')
     .order('tanggal_bayar', { ascending: false })
@@ -343,7 +344,7 @@ export async function uploadBuktiBayar(file: File, tenantId: string): Promise<st
 // ─── Merchandise ─────────────────────────────────────────────────────────────
 
 export async function getMerchandise(onlyAktif = false): Promise<Merchandise[]> {
-  let query = supabase.from('merchandise').select('*').order('nama')
+  let query = supabaseAdmin.from('merchandise').select('*').order('nama')
   if (onlyAktif) query = query.eq('aktif', true)
   const { data, error } = await query
   if (error) throw error
@@ -654,22 +655,14 @@ export async function createAuditLog(payload: {
   user_name?: string | null
 }) {
   try {
-    const [headerStore, cookieStore] = await Promise.all([headers(), cookies()])
-    let cookieUser: string | null = null
-    const rawUser = cookieStore.get('dashboard_user')?.value
-    if (rawUser) {
-      try {
-        cookieUser = JSON.parse(decodeURIComponent(rawUser))?.name ?? null
-      } catch {
-        cookieUser = null
-      }
-    }
+    const headerStore = await headers()
+    const session = await getSessionUser()
 
     const userAgent = headerStore.get('user-agent')
     const { user_name: overrideName, ...basePayload } = payload
     const fullPayload = {
       ...basePayload,
-      user_name: overrideName ?? cookieUser,
+      user_name: overrideName ?? session?.name ?? null,
       location: requestLocation(headerStore),
       ip_address: requestIp(headerStore),
       user_agent: userAgent,
@@ -685,7 +678,7 @@ export async function createAuditLog(payload: {
 }
 
 export async function getAuditLog(limit = 1000) {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('audit_log').select('*').order('created_at', { ascending: false }).limit(limit)
   if (error) throw error
   return data ?? []
@@ -694,7 +687,7 @@ export async function getAuditLog(limit = 1000) {
 // ─── Laporan ─────────────────────────────────────────────────────────────────
 
 export async function getLaporanTenants() {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('tenants')
     .select('kode_stand, nama_usaha, jenis_usaha, asal, lokasi, periode_daftar, harga_akhir, dp_wajib, sudah_dibayar, status, tgl_daftar, tgl_dp, kategori_sewa(kode, nama)')
     .neq('status', 'batal')
@@ -704,7 +697,7 @@ export async function getLaporanTenants() {
 }
 
 export async function getRekapKeuangan() {
-  const { data } = await supabase
+  const { data } = await supabaseAdmin
     .from('tenants').select('harga_akhir, sudah_dibayar, status').neq('status', 'batal')
   const all = data ?? []
   const totalTagihan = all.reduce((s: number, t: { harga_akhir: number }) => s + t.harga_akhir, 0)

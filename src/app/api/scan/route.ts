@@ -1,24 +1,11 @@
 import { after, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabase'
 import { parseQrPayload } from '@/lib/link-token'
 import { kirimNotifCheckin } from '@/lib/notifikasi-tiket'
 import { kirimNotifPoDiambil } from '@/lib/notifikasi-po'
 import { kirimNotifTenantCheckin } from '@/lib/notifikasi-tenant'
 import { createAuditLog } from '@/lib/queries'
-import type { DashboardUser } from '@/lib/auth'
-
-async function getSessionUser(): Promise<DashboardUser | null> {
-  try {
-    const cookieStore = await cookies()
-    const raw = cookieStore.get('dashboard_user')?.value
-    if (!raw) return null
-    const user = JSON.parse(decodeURIComponent(raw)) as DashboardUser
-    return user.name ? user : null
-  } catch {
-    return null
-  }
-}
+import { getSessionUser } from '@/lib/session-server'
 
 export async function POST(request: Request) {
   try {

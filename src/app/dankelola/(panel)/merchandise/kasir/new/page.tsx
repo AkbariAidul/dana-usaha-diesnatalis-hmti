@@ -12,11 +12,13 @@ import type { Merchandise } from '@/lib/types'
 import { formatRupiah } from '@/lib/utils'
 import { hitungDiskon } from '@/lib/merch-diskon'
 import { buatQrisDinamis } from '@/lib/qris'
+import { useDashboardUser } from '@/lib/dashboard-user'
 
 const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
 
 export default function KasirNewPage() {
   const router = useRouter()
+  const currentUser = useDashboardUser()
   const [produk, setProduk] = useState<Merchandise[]>([])
   const [kasir, setKasir] = useState('')
   const [qrisPayload, setQrisPayload] = useState('')
@@ -27,14 +29,10 @@ export default function KasirNewPage() {
   const [form, setForm] = useState({ merchandise_id: '', qty: 1, metode: 'Tunai' })
 
   useEffect(() => {
-    const match = document.cookie.match(/(?:^|; )dashboard_user=([^;]+)/)
-    if (match) {
-      try {
-        setKasir(JSON.parse(decodeURIComponent(match[1])).name ?? '')
-      } catch {
-        setKasir('')
-      }
-    }
+    if (currentUser?.name) setKasir(currentUser.name)
+  }, [currentUser])
+
+  useEffect(() => {
     fetch('/api/pengaturan/qris')
       .then((res) => res.json())
       .then((data) => setQrisPayload(data.qris_payload || ''))

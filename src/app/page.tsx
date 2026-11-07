@@ -2,6 +2,7 @@
 import Image from 'next/image'
 import { cookies } from 'next/headers'
 import { ArrowRight, LayoutDashboard, ShoppingBag, Store, Ticket } from 'lucide-react'
+import { SESSION_COOKIE, verifySession } from '@/lib/session'
 
 const services = [
   { no: '01', title: 'Daftar Tenant', desc: 'Buka peluang usahamu di In4Days XI.', href: '/daftar-tenant', icon: Store },
@@ -10,8 +11,7 @@ const services = [
 ]
 
 export default async function Home() {
-  const token = process.env.DASHBOARD_SESSION_SECRET || (process.env.NODE_ENV !== 'production' ? 'authenticated' : '')
-  const authed = !!token && (await cookies()).get('dashboard_session')?.value === token
+  const authed = !!(await verifySession((await cookies()).get(SESSION_COOKIE)?.value))
 
   return (
     <div className="relative min-h-screen bg-white text-[#111827]">

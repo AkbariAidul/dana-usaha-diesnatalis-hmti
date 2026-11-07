@@ -67,7 +67,7 @@ export default function DaftarTenantPublik() {
   useEffect(() => {
     Promise.all([
       getJSON<Katalog>('/api/public/tenant/katalog'),
-      getJSON<Peralatan[]>('/api/peralatan').catch(() => []),
+      getJSON<Peralatan[]>('/api/public/peralatan').catch(() => []),
       getJSON<Record<string, string>>('/api/pengaturan/qris'),
     ]).then(([k, p, q]) => {
       const list = kategoriTenant(k.kategori || [])
@@ -250,6 +250,7 @@ export default function DaftarTenantPublik() {
         bukti_url: up.url,
         pembayaran_tipe: tipeBayar,
         nominal_bayar: nominalBayar,
+        t: pendaftaran.t,
       })
       toast.success('Bukti berhasil diupload, menunggu verifikasi admin')
       setStep(3)

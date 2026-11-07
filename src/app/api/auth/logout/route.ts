@@ -1,20 +1,14 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createAuditLog } from '@/lib/queries'
+import { getSessionUser } from '@/lib/session-server'
+import { SESSION_COOKIE } from '@/lib/session'
 
 export async function POST() {
+  const user = await getSessionUser()
+  await createAuditLog({ aksi: 'LOGOUT', target_type: 'auth', user_name: user?.name ?? null })
   const cookieStore = await cookies()
-  let userName: string | null = null
-  const rawUser = cookieStore.get('dashboard_user')?.value
-  if (rawUser) {
-    try {
-      userName = JSON.parse(decodeURIComponent(rawUser))?.name ?? null
-    } catch {
-      userName = null
-    }
-  }
-  await createAuditLog({ aksi: 'LOGOUT', target_type: 'auth', user_name: userName })
-  cookieStore.delete('dashboard_session')
+  cookieStore.delete(SESSION_COOKIE)
   cookieStore.delete('dashboard_user')
   cookieStore.delete('dashboard_role')
   return NextResponse.json({ success: true })

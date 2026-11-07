@@ -9,6 +9,7 @@ import { PageSkeleton } from '../../ui'
 type DashboardUser = {
   name: string
   pin: string
+  has_pin?: boolean
   role: 'pengelola' | 'viewer'
   aktif: boolean
   owner?: boolean
@@ -76,7 +77,7 @@ export default function KelolaUserPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Kelola User</h1>
-          <p className="text-sm text-slate-500">Atur nama, PIN, status aktif, dan peran pengguna dashboard.</p>
+          <p className="text-sm text-slate-500">Atur nama, PIN, status aktif, dan peran pengguna dashboard. PIN lama tidak ditampilkan; kosongkan kolom PIN jika tidak ingin mengubah.</p>
         </div>
         <div className="flex items-center gap-2">
           <button type="button" onClick={addUser} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-primary-200 hover:text-primary-600">
@@ -113,8 +114,9 @@ export default function KelolaUserPage() {
                 className={input}
                 value={user.pin}
                 inputMode="numeric"
+                autoComplete="new-password"
                 onChange={(e) => update(index, { pin: e.target.value.replace(/\D/g, '').slice(0, 12) })}
-                placeholder="PIN"
+                placeholder={user.has_pin ? 'Kosongkan jika tetap' : 'PIN wajib'}
               />
               <select
                 className={input}

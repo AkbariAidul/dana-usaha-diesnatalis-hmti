@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { requestIp, requestLocation } from '@/lib/request-meta'
+import { clientIp, rateLimit } from '@/lib/rate-limit'
 
 export async function POST(request: Request) {
   try {
+    if (!rateLimit(`visit:${clientIp(request.headers)}`, 60, 60 * 1000)) {
+      return NextResponse.json({ ok: false }, { status: 429 })
+    }
     const body = await request.json().catch(() => ({}))
     const path = String(body.path ?? '').slice(0, 300)
     if (!path.startsWith('/') || path.startsWith('/dankelola') || path.startsWith('/api')) {

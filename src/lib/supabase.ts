@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 // ponytail: network to Supabase here drops TLS connections intermittently (ECONNRESET)
 // and sometimes stalls on the first connection. Fail fast and retry; upgrade to a
@@ -25,8 +24,6 @@ const retryFetch: typeof fetch = async (input, init) => {
   }
   throw lastErr
 }
-
-export const supabase = createClient(url, anonKey, { global: { fetch: retryFetch } })
 
 export const supabaseAdmin = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
   auth: { persistSession: false },
