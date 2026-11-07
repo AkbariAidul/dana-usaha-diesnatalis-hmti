@@ -35,49 +35,74 @@ function download(blob: Blob, filename: string) {
 }
 
 export async function exportReportXlsx(report: ReportPayload) {
-  const XLSX = await import('xlsx')
-  const wb = XLSX.utils.book_new()
+  const { default: writeXlsxFile } = await import('write-excel-file')
+  type Cell = import('write-excel-file').Cell
+  type SheetData = import('write-excel-file').SheetData
 
-  const summaryRows: Array<Array<string | number>> = [
-    [report.title],
-    ['Dibuat', new Date().toLocaleString('id-ID')],
+  const border = { borderColor: '#E2E8F0', borderStyle: 'thin' as const }
+  const headerCell = (value: string): Cell => ({
+    value,
+    type: String,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    backgroundColor: '#6D28D9',
+    align: 'left',
+    alignVertical: 'center',
+    height: 26,
+    ...border,
+  })
+  const dataCell = (value: string | number, currency: boolean, zebra: boolean): Cell => {
+    const base = {
+      align: (typeof value === 'number' ? 'right' : 'left') as 'right' | 'left',
+      alignVertical: 'center' as const,
+      backgroundColor: zebra ? '#F8FAFC' : '#FFFFFF',
+      ...border,
+    }
+    if (currency && typeof value === 'number') {
+      return { ...base, value, type: Number, format: '"Rp"#,##0' }
+    }
+    return { ...base, value: String(value ?? '') }
+  }
+
+  const summaryRows: SheetData = [
+    [{ value: report.title, span: 2, fontWeight: 'bold', fontSize: 14, color: '#0F172A', alignVertical: 'center', height: 28 }, null],
+    [{ value: `Dibuat: ${new Date().toLocaleString('id-ID')}`, color: '#64748B' }, null],
     [],
-    ['Ringkasan', 'Nilai'],
-    ...report.summary.map((item) => [item.label, item.value]),
+    [headerCell('Ringkasan'), headerCell('Nilai')],
+    ...report.summary.map((item, index) => [
+      dataCell(item.label, false, index % 2 === 1),
+      dataCell(item.value, false, index % 2 === 1),
+    ]),
   ]
-  const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows)
-  summarySheet['!cols'] = [{ wch: 30 }, { wch: 28 }]
-  XLSX.utils.book_append_sheet(wb, summarySheet, 'Ringkasan')
+
+  const sheets: SheetData[] = [summaryRows]
+  const names: string[] = ['Ringkasan']
+  const columns: import('write-excel-file').Columns[] = [[{ width: 32 }, { width: 30 }]]
 
   for (const sheet of report.sheets) {
-    const aoa: Array<Array<string | number>> = [sheet.headers, ...sheet.rows]
-    const ws = XLSX.utils.aoa_to_sheet(aoa)
-    ws['!cols'] = sheet.headers.map((header, col) => {
+    const rows: SheetData = [sheet.headers.map(headerCell)]
+    sheet.rows.forEach((row, rowIndex) => {
+      rows.push(row.map((value, col) =>
+        dataCell(value, Boolean(sheet.currencyCols?.includes(col)), rowIndex % 2 === 1),
+      ))
+    })
+    sheets.push(rows)
+    names.push(safeSheetName(sheet.name))
+    columns.push(sheet.headers.map((header, col) => {
       const longest = Math.max(
         header.length,
         ...sheet.rows.map((row) => String(row[col] ?? '').length),
       )
-      return { wch: Math.min(38, Math.max(10, longest + 2)) }
-    })
-    if (sheet.rows.length > 0) {
-      ws['!autofilter'] = {
-        ref: XLSX.utils.encode_range({
-          s: { r: 0, c: 0 },
-          e: { r: aoa.length - 1, c: sheet.headers.length - 1 },
-        }),
-      }
-    }
-    for (const col of sheet.currencyCols ?? []) {
-      for (let row = 1; row < aoa.length; row += 1) {
-        const address = XLSX.utils.encode_cell({ r: row, c: col })
-        const cell = ws[address]
-        if (cell && typeof cell.v === 'number') cell.z = '"Rp"#,##0'
-      }
-    }
-    XLSX.utils.book_append_sheet(wb, ws, safeSheetName(sheet.name))
+      return { width: Math.min(38, Math.max(10, longest + 2)) }
+    }))
   }
 
-  XLSX.writeFile(wb, `${report.filename}-${fileDate()}.xlsx`)
+  await writeXlsxFile(sheets, {
+    sheets: names,
+    columns,
+    stickyRowsCount: 1,
+    fileName: `${report.filename}-${fileDate()}.xlsx`,
+  })
 }
 
 const PAGE_W = 841.89

@@ -11,6 +11,7 @@ import { BuktiPreviewModal, BuktiThumb } from '@/components/bukti'
 import { Modal } from '@/components/modal'
 import { QrImage } from '@/components/qr-image'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
+import { useIsViewer } from '@/lib/dashboard-user'
 import { PageSkeleton } from '../../ui'
 import { formatDate, formatDateTime, formatRupiah } from '@/lib/utils'
 
@@ -77,6 +78,7 @@ type PreOrder = {
 
 export default function PreorderPage() {
   const confirm = useConfirm()
+  const isViewer = useIsViewer()
   const [items, setItems] = useState<PreOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -122,6 +124,7 @@ export default function PreorderPage() {
   useLiveRefresh(load)
 
   async function updateStatus(id: string, status: string, catatan?: string) {
+    if (isViewer) return false
     try {
       await sendJSON('/api/merchandise/preorder', 'PATCH', { id, status, catatan_admin: catatan })
       toast.success(status === 'ditolak' ? 'Pesanan ditolak' : `Status diubah ke ${status.replace(/_/g, ' ')}`)
@@ -134,6 +137,7 @@ export default function PreorderPage() {
   }
 
   async function tambahCicilan(poId: string) {
+    if (isViewer) return
     const nominal = Number(cicilanForm.nominal)
     if (!nominal || nominal <= 0) {
       toast.error('Nominal harus lebih dari 0')
@@ -155,6 +159,7 @@ export default function PreorderPage() {
   }
 
   async function toggleValidasi(id: string, validated: boolean) {
+    if (isViewer) return
     try {
       await sendJSON('/api/merchandise/preorder/cicilan', 'PATCH', { id, validated })
       toast.success(validated ? 'Pembayaran diverifikasi' : 'Verifikasi dibatalkan')
@@ -445,22 +450,26 @@ export default function PreorderPage() {
                       {item.status === 'ditolak' ? (
                         <>
                           <span className="rounded bg-red-100 px-2 py-1 text-xs text-red-800">Ditolak</span>
-                          <button onClick={() => updateStatus(item.id, 'menunggu_verifikasi')} className="rounded bg-slate-600 px-2 py-1 text-xs text-white">Buka Lagi</button>
+                          <span className={isViewer ? 'pointer-events-none select-none opacity-40 blur-[1px]' : undefined}>
+                            <button onClick={() => updateStatus(item.id, 'menunggu_verifikasi')} className="rounded bg-slate-600 px-2 py-1 text-xs text-white">Buka Lagi</button>
+                          </span>
                         </>
                       ) : item.status === 'lunas' ? (
                         <>
                           <span className="rounded bg-green-100 px-2 py-1 text-xs text-green-800">Lunas</span>
-                          <button
-                            onClick={() => setStrukTarget(item)}
-                            className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700 hover:bg-slate-200"
-                          >
-                            Struk
-                          </button>
+                          <span className={isViewer ? 'pointer-events-none select-none opacity-40 blur-[1px]' : undefined}>
+                            <button
+                              onClick={() => setStrukTarget(item)}
+                              className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700 hover:bg-slate-200"
+                            >
+                              Struk
+                            </button>
+                          </span>
                         </>
                       ) : item.status === 'batal' ? (
                         <span className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-600">Batal</span>
                       ) : (
-                        <>
+                        <span className={isViewer ? 'pointer-events-none select-none opacity-40 blur-[1px] flex flex-wrap gap-1' : 'flex flex-wrap gap-1'}>
                           {item.cicilan?.some((c) => !c.validated) && (
                             <button
                               onClick={() => handleVerifikasi(item)}
@@ -477,7 +486,7 @@ export default function PreorderPage() {
                             >Kelola Cicilan</button>
                           )}
                           <button onClick={() => openReject(item)} className="rounded bg-red-600 px-2 py-1 text-xs text-white">Tolak</button>
-                        </>
+                        </span>
                       )}
                     </div>
                   </td>

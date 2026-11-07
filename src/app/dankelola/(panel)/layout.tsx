@@ -8,7 +8,7 @@ import { getJSON, prefetch } from '../api'
 import { menuConfig } from '@/lib/menu'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { useConfirm } from '@/components/confirm-dialog'
-import type { DashboardRole, DashboardUser } from '@/lib/auth'
+import { OWNER_NAME, type DashboardRole, type DashboardUser } from '@/lib/auth'
 import { useDashboardUser } from '@/lib/dashboard-user'
 import type { Tenant } from '@/lib/types'
 
@@ -99,7 +99,9 @@ function getBreadcrumbs(pathname: string) {
     breadcrumbs.push({ label: 'Paket & Harga', href: '/dankelola/tenants/harga' })
     breadcrumbs.push({ label: 'Batas Pembayaran', href: pathname })
   } else if (pathname.startsWith('/dankelola/ticket/tipe/')) {
-    const action = pathname === '/dankelola/ticket/tipe/new' ? 'Tambah Tipe' : 'Edit Tipe'
+    const action = pathname === '/dankelola/ticket/tipe/new'
+      ? 'Tambah Tipe'
+      : pathname.endsWith('/edit') ? 'Edit Tipe' : 'Detail Tipe'
     breadcrumbs.push({ label: action, href: pathname })
   } else if (pathname.startsWith('/dankelola/ticket/periode/')) {
     const action = pathname === '/dankelola/ticket/periode/new' ? 'Tambah Periode' : 'Edit Periode'
@@ -119,7 +121,9 @@ function getBreadcrumbs(pathname: string) {
     const action = pathname === '/dankelola/merchandise/pengurus/new' ? 'Tambah Pengurus' : 'Edit Pengurus'
     breadcrumbs.push({ label: action, href: pathname })
   } else if (pathname.startsWith('/dankelola/merchandise/produk/')) {
-    const action = pathname === '/dankelola/merchandise/produk/new' ? 'Tambah Produk' : 'Edit Produk'
+    const action = pathname === '/dankelola/merchandise/produk/new'
+      ? 'Tambah Produk'
+      : pathname.endsWith('/edit') ? 'Edit Produk' : 'Detail Produk'
     breadcrumbs.push({ label: action, href: pathname })
   } else if (pathname === '/dankelola/merchandise/kasir/new') {
     breadcrumbs.push({ label: 'Transaksi Baru', href: pathname })
@@ -135,6 +139,7 @@ const ROLE_LABEL: Record<DashboardRole, string> = {
   merchandise: 'merchandise',
   ticket: 'tiket',
   viewer: 'lihat saja',
+  pengelola: 'pengelola',
 }
 
 const WELCOME_COPY: Record<DashboardRole, (name: string) => { title: string; body: string }> = {
@@ -153,6 +158,10 @@ const WELCOME_COPY: Record<DashboardRole, (name: string) => { title: string; bod
   viewer: (name) => ({
     title: `Halo, ${name}!`,
     body: 'Kamu masuk dalam mode lihat saja. Semua data bisa dipantau tanpa bisa diubah.',
+  }),
+  pengelola: (name) => ({
+    title: `Halo, ${name}!`,
+    body: 'Semua data udah siap dipantau. Yuk kelola dengan rapi biar makin cuan.',
   }),
 }
 
@@ -307,7 +316,10 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         }
 
         const isOpen = openGroups[group.key] ?? false
-        const hasActiveChild = group.children?.some((child) => isPathActive(pathname, child.href)) ?? false
+        const children = group.children?.filter(
+          (child) => child.href !== '/dankelola/pengaturan/users' || currentUser?.name === OWNER_NAME,
+        )
+        const hasActiveChild = children?.some((child) => isPathActive(pathname, child.href)) ?? false
         const groupActive = hasActiveChild
 
         return (
@@ -332,9 +344,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                 isOpen ? 'rotate-90' : ''
               } ${groupActive ? 'text-white' : 'text-white/60'}`} />
             </button>
-            {isOpen && group.children && (
+            {isOpen && children && (
               <div className="ml-6 mt-0.5 pb-1 sidebar-tree">
-                {group.children.map((child) => {
+                {children.map((child) => {
                   const childActive = isPathActive(pathname, child.href)
                   return (
                     <Link
@@ -468,6 +480,12 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           </div>
           {currentUser && (
             <div className="hidden items-center gap-3 md:flex">
+              {currentUser.role === 'viewer' && (
+                <div className="hidden items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-800 lg:flex">
+                  <Eye className="h-3.5 w-3.5 shrink-0" />
+                  Mode lihat saja: kamu bisa melihat seluruh data, tetapi tidak bisa menambah, mengubah, atau menghapus.
+                </div>
+              )}
               <div className="text-right leading-tight">
                 <p className="text-sm font-medium text-slate-900">{currentUser.name}</p>
                 <p className="text-[11px] text-slate-500">
@@ -532,7 +550,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
         <main className="flex-1 overflow-y-auto">
           {currentUser?.role === 'viewer' && (
-            <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800 md:px-8">
+            <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800 md:px-8 lg:hidden">
               <Eye className="h-4 w-4 shrink-0" />
               Mode lihat saja: kamu bisa melihat seluruh data, tetapi tidak bisa menambah, mengubah, atau menghapus.
             </div>

@@ -9,6 +9,7 @@ import type { TicketKatalogItem, TicketPeriode, TicketBundleDiscount } from '@/l
 import { formatRupiah } from '@/lib/utils'
 import { Pencil, Trash2 } from 'lucide-react'
 import { useConfirm } from '@/components/confirm-dialog'
+import { useIsViewer } from '@/lib/dashboard-user'
 
 type FormState = {
   nama: string
@@ -40,6 +41,7 @@ export default function TipeDetail({
 }) {
   const router = useRouter()
   const confirm = useConfirm()
+  const isViewer = useIsViewer()
   const [ticket, setTicket] = useState<TicketKatalogItem | null>(null)
   const [periods, setPeriods] = useState<TicketPeriode[]>([])
   const [bundles, setBundles] = useState<TicketBundleDiscount[]>([])
@@ -329,7 +331,11 @@ export default function TipeDetail({
         )}
         <div className="flex justify-end gap-2 pt-2">
           {readOnly ? (
-            <Link href={`/dankelola/ticket/tipe/${ticket?.id}/edit`} className="px-4 py-2 bg-primary-600 text-white text-sm rounded-xl">Edit</Link>
+            isViewer ? (
+              <Link href="/dankelola/ticket/tahap" className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl">Kembali</Link>
+            ) : (
+              <Link href={`/dankelola/ticket/tipe/${ticket?.id}/edit`} className="px-4 py-2 bg-primary-600 text-white text-sm rounded-xl">Edit</Link>
+            )
           ) : !ticket ? (
             <>
               <Link href="/dankelola/ticket/tahap" className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl">Batal</Link>

@@ -1,17 +1,19 @@
 import { NextResponse } from 'next/server'
 import { findUserByPIN } from '@/lib/auth'
+import { findActiveUserByPIN } from '@/lib/dashboard-users'
 import { createAuditLog } from '@/lib/queries'
 
 export async function POST(request: Request) {
   const body = await request.json()
-  const pin = body.pin as string
+  const pin = String(body.pin ?? '')
   const session = process.env.DASHBOARD_SESSION_SECRET || (process.env.NODE_ENV !== 'production' ? 'authenticated' : '')
 
   if (!session) {
     return NextResponse.json({ error: 'DASHBOARD_SESSION_SECRET belum diset' }, { status: 500 })
   }
 
-  const user = findUserByPIN(pin)
+  const dbUser = await findActiveUserByPIN(pin).catch(() => null)
+  const user = dbUser ? { name: dbUser.name, role: dbUser.role } : findUserByPIN(pin)
   if (!user) {
     return NextResponse.json({ error: 'PIN salah' }, { status: 401 })
   }

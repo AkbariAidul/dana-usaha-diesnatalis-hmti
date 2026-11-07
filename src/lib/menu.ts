@@ -74,6 +74,7 @@ export const menuConfig: MenuGroup[] = [
       { label: 'Laporan', href: '/dankelola/laporan' },
       { label: 'Monitoring', href: '/dankelola/monitoring' },
       { label: 'Pengaturan QRIS', href: '/dankelola/pengaturan/qris' },
+      { label: 'Kelola User', href: '/dankelola/pengaturan/users' },
       { label: 'Audit Log', href: '/dankelola/audit' },
     ],
   },

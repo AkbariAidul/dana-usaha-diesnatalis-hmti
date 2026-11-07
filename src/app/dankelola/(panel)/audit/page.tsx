@@ -5,6 +5,7 @@ import { RotateCcw, Search } from 'lucide-react'
 import { getJSON } from '../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { parseUserAgent } from '@/lib/request-meta'
+import { menuConfig } from '@/lib/menu'
 import { TableSkeleton } from '../ui'
 
 type AuditRow = {
@@ -33,9 +34,35 @@ function formatWaktu(value: string) {
   })
 }
 
+const PAGE_RULES: Array<[RegExp, string]> = [
+  [/^\/dankelola$/, 'Ringkasan'],
+  [/^\/dankelola\/scan$/, 'Scan QR'],
+  [/^\/dankelola\/tenants\/harga\/new$/, 'Tambah Paket'],
+  [/^\/dankelola\/tenants\/harga\/[^/]+\/edit$/, 'Edit Paket'],
+  [/^\/dankelola\/tenants\/harga\/[^/]+$/, 'Detail Paket'],
+  [/^\/dankelola\/tenants\/pembayaran$/, 'Batas Pembayaran'],
+  [/^\/dankelola\/tenants\/[^/]+$/, 'Detail Tenant'],
+  [/^\/dankelola\/merchandise\/produk\/new$/, 'Tambah Produk'],
+  [/^\/dankelola\/merchandise\/produk\/[^/]+\/edit$/, 'Edit Produk'],
+  [/^\/dankelola\/merchandise\/produk\/[^/]+$/, 'Detail Produk'],
+  [/^\/dankelola\/ticket\/tipe\/new$/, 'Tambah Tipe'],
+  [/^\/dankelola\/ticket\/tipe\/[^/]+\/edit$/, 'Edit Tipe'],
+  [/^\/dankelola\/ticket\/tipe\/[^/]+$/, 'Detail Tipe'],
+  [/^\/dankelola\/ticket\/periode\/new$/, 'Tambah Periode'],
+  [/^\/dankelola\/ticket\/periode\/[^/]+\/edit$/, 'Edit Periode'],
+]
+
+function pageLabel(path: string) {
+  const exact = menuConfig
+    .flatMap((group) => [...(group.href ? [{ href: group.href, label: group.label }] : []), ...(group.children ?? [])])
+    .find((item) => item.href === path)
+  if (exact) return exact.label
+  return PAGE_RULES.find(([pattern]) => pattern.test(path))?.[1] ?? path
+}
+
 function targetLabel(row: AuditRow) {
   if (!row.target_type && !row.target_id) return '-'
-  if (row.target_type === 'page' && row.target_id) return row.target_id
+  if (row.target_type === 'page' && row.target_id) return pageLabel(row.target_id)
   return row.target_id ? `${row.target_type ?? 'target'} · ${row.target_id.slice(0, 8)}` : row.target_type ?? '-'
 }
 
@@ -72,6 +99,19 @@ export default function AuditPage() {
     [data],
   )
 
+  const summary = useMemo(() => {
+    const map = new Map<string, { total: number; pages: number; last: string }>()
+    for (const row of data) {
+      const name = row.user_name || 'Tanpa nama'
+      const entry = map.get(name) ?? { total: 0, pages: 0, last: row.created_at }
+      entry.total += 1
+      if (row.aksi === 'BUKA_HALAMAN') entry.pages += 1
+      if (new Date(row.created_at).getTime() > new Date(entry.last).getTime()) entry.last = row.created_at
+      map.set(name, entry)
+    }
+    return Array.from(map, ([name, value]) => ({ name, ...value })).sort((a, b) => b.total - a.total)
+  }, [data])
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     const start = from ? new Date(`${from}T00:00:00`).getTime() : null
@@ -107,6 +147,21 @@ export default function AuditPage() {
           {filtered.length} dari {data.length} aktivitas
         </span>
       </div>
+
+      {summary.length > 0 && (
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {summary.map((item) => (
+            <div key={item.name} className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm shadow-slate-200/40">
+              <p className="truncate text-sm font-semibold text-slate-900">{item.name}</p>
+              <div className="mt-2 flex items-baseline gap-3 text-xs text-slate-500">
+                <span><strong className="text-base font-semibold text-slate-900">{item.total}</strong> aktivitas</span>
+                <span><strong className="text-base font-semibold text-slate-900">{item.pages}</strong> halaman</span>
+              </div>
+              <p className="mt-1 text-[11px] text-slate-400">Terakhir aktif: {formatWaktu(item.last)}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid gap-2 rounded-2xl border border-slate-200/70 bg-white p-3 shadow-sm shadow-slate-200/40 sm:grid-cols-2 xl:grid-cols-7">
         <label className="flex flex-col gap-1 sm:col-span-2">

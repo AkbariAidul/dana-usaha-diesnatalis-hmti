@@ -1,4 +1,6 @@
-export type DashboardRole = 'tenant' | 'merchandise' | 'ticket' | 'viewer'
+export type DashboardRole = 'tenant' | 'merchandise' | 'ticket' | 'viewer' | 'pengelola'
+
+export const OWNER_NAME = 'Aidul Akbari'
 
 export type DashboardUser = {
   name: string

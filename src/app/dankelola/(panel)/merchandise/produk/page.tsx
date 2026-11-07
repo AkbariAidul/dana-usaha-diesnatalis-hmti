@@ -9,9 +9,10 @@ import { getJSON, sendJSON } from '../../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
 import { useConfirm } from '@/components/confirm-dialog'
+import { useIsViewer } from '@/lib/dashboard-user'
 import type { Merchandise } from '@/lib/types'
 import { formatRupiah } from '@/lib/utils'
-import { Copy, Image as ImageIcon, Pencil, Plus, Trash2, Wallet } from 'lucide-react'
+import { Copy, Eye, Image as ImageIcon, Pencil, Plus, Trash2, Wallet } from 'lucide-react'
 
 function formatJadwal(value: string | null) {
   if (!value) return '-'
@@ -20,6 +21,7 @@ function formatJadwal(value: string | null) {
 
 export default function ProdukPage() {
   const confirm = useConfirm()
+  const isViewer = useIsViewer()
   const [items, setItems] = useState<Merchandise[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -143,20 +145,22 @@ export default function ProdukPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Produk & Harga</h1>
           <p className="text-sm text-slate-500">Daftar produk merchandise yang dijual.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/dankelola/merchandise/modal"
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-primary-200 hover:text-primary-600"
-          >
-            <Wallet className="h-4 w-4" /> Kelola Modal
-          </Link>
-          <Link
-            href="/dankelola/merchandise/produk/new"
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-700"
-          >
-            <Plus className="h-4 w-4" /> Tambah Produk
-          </Link>
-        </div>
+        {!isViewer && (
+          <div className="flex items-center gap-2">
+            <Link
+              href="/dankelola/merchandise/modal"
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-primary-200 hover:text-primary-600"
+            >
+              <Wallet className="h-4 w-4" /> Kelola Modal
+            </Link>
+            <Link
+              href="/dankelola/merchandise/produk/new"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-700"
+            >
+              <Plus className="h-4 w-4" /> Tambah Produk
+            </Link>
+          </div>
+        )}
       </div>
 
       {selected.size > 0 && (
@@ -187,13 +191,15 @@ export default function ProdukPage() {
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/70 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                 <th className="px-5 py-3">
-                  <input
-                    type="checkbox"
-                    checked={allSelected}
-                    onChange={toggleSelectAll}
-                    aria-label="Pilih semua produk"
-                    className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
-                  />
+                  {!isViewer && (
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={toggleSelectAll}
+                      aria-label="Pilih semua produk"
+                      className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                    />
+                  )}
                 </th>
                 <th className="px-5 py-3">Foto</th>
                 <th className="px-5 py-3">Nama</th>
@@ -215,13 +221,15 @@ export default function ProdukPage() {
               {items.map((item) => (
                 <tr key={item.id} className="transition-colors hover:bg-slate-50/70">
                   <td className="px-5 py-3">
-                    <input
-                      type="checkbox"
-                      checked={selected.has(item.id)}
-                      onChange={() => toggleSelect(item.id)}
-                      aria-label={`Pilih ${item.nama}`}
-                      className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
-                    />
+                    {!isViewer && (
+                      <input
+                        type="checkbox"
+                        checked={selected.has(item.id)}
+                        onChange={() => toggleSelect(item.id)}
+                        aria-label={`Pilih ${item.nama}`}
+                        className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                      />
+                    )}
                   </td>
                   <td className="px-5 py-3">
                     <div className="grid h-10 w-10 place-items-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
@@ -269,39 +277,57 @@ export default function ProdukPage() {
                     ) : null}
                   </td>
                   <td className="px-5 py-3">
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={item.aktif}
-                      aria-label={item.aktif ? `Nonaktifkan ${item.nama}` : `Aktifkan ${item.nama}`}
-                      title={item.aktif ? 'Nonaktifkan' : 'Aktifkan'}
-                      onClick={() => toggle(item)}
-                      className="group inline-flex items-center gap-2"
-                    >
-                      <span className={`relative h-5 w-9 rounded-full transition-colors ${item.aktif ? 'bg-green-500' : 'bg-slate-300'}`}>
-                        <span className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${item.aktif ? 'translate-x-4' : 'translate-x-0'}`} />
+                    {isViewer ? (
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${item.aktif ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                        {item.aktif ? 'Aktif' : 'Nonaktif'}
                       </span>
-                    </button>
+                    ) : (
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={item.aktif}
+                        aria-label={item.aktif ? `Nonaktifkan ${item.nama}` : `Aktifkan ${item.nama}`}
+                        title={item.aktif ? 'Nonaktifkan' : 'Aktifkan'}
+                        onClick={() => toggle(item)}
+                        className="group inline-flex items-center gap-2"
+                      >
+                        <span className={`relative h-5 w-9 rounded-full transition-colors ${item.aktif ? 'bg-green-500' : 'bg-slate-300'}`}>
+                          <span className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${item.aktif ? 'translate-x-4' : 'translate-x-0'}`} />
+                        </span>
+                      </button>
+                    )}
                   </td>
                   <td className="px-5 py-3">
                     <div className="flex items-center justify-end gap-1">
                       <Link
-                        href={`/dankelola/merchandise/produk/${item.id}/edit`}
-                        aria-label={`Edit ${item.nama}`}
-                        title="Edit"
-                        className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                        href={`/dankelola/merchandise/produk/${item.id}`}
+                        aria-label={`Detail ${item.nama}`}
+                        title="Detail"
+                        className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-primary-600"
                       >
-                        <Pencil className="h-4 w-4" />
+                        <Eye className="h-4 w-4" />
                       </Link>
-                      <button
-                        type="button"
-                        onClick={() => hapus(item)}
-                        aria-label={`Hapus ${item.nama}`}
-                        title="Hapus"
-                        className="rounded-lg p-1.5 text-red-600 transition hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {!isViewer && (
+                        <>
+                          <Link
+                            href={`/dankelola/merchandise/produk/${item.id}/edit`}
+                            aria-label={`Edit ${item.nama}`}
+                            title="Edit"
+                            className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => hapus(item)}
+                            aria-label={`Hapus ${item.nama}`}
+                            title="Hapus"
+                            className="rounded-lg p-1.5 text-red-600 transition hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>

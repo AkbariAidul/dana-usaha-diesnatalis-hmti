@@ -11,6 +11,7 @@ import { useConfirm } from '@/components/confirm-dialog'
 import { BuktiPreviewModal, BuktiThumb } from '@/components/bukti'
 import { Modal } from '@/components/modal'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
+import { useIsViewer } from '@/lib/dashboard-user'
 import { formatDateTime, formatRupiah } from '@/lib/utils'
 import type { PesananTiket, TicketPeriode } from '@/lib/types'
 
@@ -23,6 +24,7 @@ const STATUS: Record<PesananTiket['status'], { label: string; className: string;
 
 export default function PenjualanPage() {
   const confirm = useConfirm()
+  const isViewer = useIsViewer()
   const [pesanan, setPesanan] = useState<PesananTiket[]>([])
   const [periodeList, setPeriodeList] = useState<TicketPeriode[]>([])
   const [loading, setLoading] = useState(true)
@@ -58,6 +60,7 @@ export default function PenjualanPage() {
   }, [search, periodeFilter])
 
   async function verifikasi(id: string, status: 'lunas' | 'ditolak', catatan: string | null = null) {
+    if (isViewer) return
     setBusyId(id)
     try {
       await sendJSON('/api/ticket/verification', 'POST', { id, status, catatan_admin: catatan })
@@ -217,24 +220,26 @@ export default function PenjualanPage() {
                           <span className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />
                           {status.label}
                         </span>
-                        {p.status === 'menunggu_verifikasi' && (
-                          <>
-                            <button
-                              onClick={() => void handleVerifikasi(p)}
-                              disabled={busyId === p.id}
-                              className="rounded-lg bg-green-600 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-green-700 disabled:opacity-50"
-                            >
-                              Verifikasi
-                            </button>
-                            <button
-                              onClick={() => openReject(p)}
-                              disabled={busyId === p.id}
-                              className="rounded-lg bg-red-600 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-red-700 disabled:opacity-50"
-                            >
-                              Tolak
-                            </button>
-                          </>
-                        )}
+                        <span className={isViewer ? 'pointer-events-none select-none opacity-40 blur-[1px] flex flex-wrap items-center gap-1.5' : 'flex flex-wrap items-center gap-1.5'}>
+                          {p.status === 'menunggu_verifikasi' && (
+                            <>
+                              <button
+                                onClick={() => void handleVerifikasi(p)}
+                                disabled={busyId === p.id}
+                                className="rounded-lg bg-green-600 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-green-700 disabled:opacity-50"
+                              >
+                                Verifikasi
+                              </button>
+                              <button
+                                onClick={() => openReject(p)}
+                                disabled={busyId === p.id}
+                                className="rounded-lg bg-red-600 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-red-700 disabled:opacity-50"
+                              >
+                                Tolak
+                              </button>
+                            </>
+                          )}
+                        </span>
                         {p.status === 'lunas' && (
                           <button
                             type="button"

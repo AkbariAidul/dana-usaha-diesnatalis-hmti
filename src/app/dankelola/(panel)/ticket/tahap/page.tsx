@@ -12,6 +12,7 @@ import type { TicketKatalogItem, TicketPeriode, TicketBundleDiscount } from '@/l
 import { formatRupiah, todayISO } from '@/lib/utils'
 import { Pencil, Trash2, Eye, Wallet } from 'lucide-react'
 import { useConfirm } from '@/components/confirm-dialog'
+import { useIsViewer } from '@/lib/dashboard-user'
 
 function formatTanggal(iso: string) {
   const d = new Date(iso.includes('T') ? iso : `${iso}T00:00:00`)
@@ -20,6 +21,7 @@ function formatTanggal(iso: string) {
 
 export default function TahapPage() {
   const confirm = useConfirm()
+  const isViewer = useIsViewer()
   const [tiket, setTiket] = useState<TicketKatalogItem[]>([])
   const [periods, setPeriods] = useState<TicketPeriode[]>([])
   const [bundles, setBundles] = useState<TicketBundleDiscount[]>([])
@@ -89,12 +91,14 @@ export default function TahapPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Tipe & Harga</h1>
           <p className="text-sm text-slate-500">Kelola tipe tiket, periode harga, dan diskon bundle.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Link href="/dankelola/ticket/modal" className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-primary-200 hover:text-primary-600">
-            <Wallet className="h-4 w-4" /> Kelola Modal
-          </Link>
-          <Link href="/dankelola/ticket/tipe/new" className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">+ Tambah Tipe</Link>
-        </div>
+        {!isViewer && (
+          <div className="flex items-center gap-2">
+            <Link href="/dankelola/ticket/modal" className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-primary-200 hover:text-primary-600">
+              <Wallet className="h-4 w-4" /> Kelola Modal
+            </Link>
+            <Link href="/dankelola/ticket/tipe/new" className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">+ Tambah Tipe</Link>
+          </div>
+        )}
       </div>
 
       <div className="rounded-2xl border border-slate-200/70 bg-white shadow-sm overflow-hidden">
@@ -159,17 +163,23 @@ export default function TahapPage() {
 
                   {/* Status */}
                   <td className="px-4 py-3">
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={t.aktif}
-                      disabled={togglingId === t.id}
-                      onClick={() => toggleAktif(t)}
-                      className={`inline-flex h-6 w-11 items-center rounded-full p-0.5 transition-colors disabled:opacity-50 ${t.aktif ? 'bg-primary-600' : 'bg-slate-300'}`}
-                      title={t.aktif ? 'Nonaktifkan tiket' : 'Aktifkan tiket'}
-                    >
-                      <span className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${t.aktif ? 'translate-x-5' : 'translate-x-0'}`} />
-                    </button>
+                    {isViewer ? (
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${t.aktif ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                        {t.aktif ? 'Aktif' : 'Nonaktif'}
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={t.aktif}
+                        disabled={togglingId === t.id}
+                        onClick={() => toggleAktif(t)}
+                        className={`inline-flex h-6 w-11 items-center rounded-full p-0.5 transition-colors disabled:opacity-50 ${t.aktif ? 'bg-primary-600' : 'bg-slate-300'}`}
+                        title={t.aktif ? 'Nonaktifkan tiket' : 'Aktifkan tiket'}
+                      >
+                        <span className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${t.aktif ? 'translate-x-5' : 'translate-x-0'}`} />
+                      </button>
+                    )}
                   </td>
 
                   {/* Periode */}
@@ -233,20 +243,24 @@ export default function TahapPage() {
                       >
                         <Eye className="h-3.5 w-3.5" />
                       </Link>
-                      <Link
-                        href={`/dankelola/ticket/tipe/${t.id}/edit`}
-                        className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-primary-600 transition-colors"
-                        title="Edit"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Link>
-                      <button
-                        onClick={() => hapusTiket(t.id, t.nama)}
-                        className="grid h-7 w-7 place-items-center rounded-lg text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors"
-                        title="Hapus"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      {!isViewer && (
+                        <>
+                          <Link
+                            href={`/dankelola/ticket/tipe/${t.id}/edit`}
+                            className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-primary-600 transition-colors"
+                            title="Edit"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Link>
+                          <button
+                            onClick={() => hapusTiket(t.id, t.nama)}
+                            className="grid h-7 w-7 place-items-center rounded-lg text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+                            title="Hapus"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>

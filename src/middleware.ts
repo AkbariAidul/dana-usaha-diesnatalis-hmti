@@ -32,6 +32,10 @@ const VIEWER_BLOCKED_PAGES: Array<{ pattern: RegExp; redirectTo: string }> = [
   { pattern: /^\/dankelola\/tenants\/harga\/new$/, redirectTo: '/dankelola/tenants/harga' },
   { pattern: /^\/dankelola\/tenants\/harga\/[^/]+\/edit$/, redirectTo: '/dankelola/tenants/harga' },
   { pattern: /^\/dankelola\/tenants\/pembayaran$/, redirectTo: '/dankelola/tenants/harga' },
+  { pattern: /^\/dankelola\/merchandise\/produk\/new$/, redirectTo: '/dankelola/merchandise/produk' },
+  { pattern: /^\/dankelola\/merchandise\/produk\/[^/]+\/edit$/, redirectTo: '/dankelola/merchandise/produk' },
+  { pattern: /^\/dankelola\/ticket\/tipe\/new$/, redirectTo: '/dankelola/ticket/tahap' },
+  { pattern: /^\/dankelola\/ticket\/tipe\/[^/]+\/edit$/, redirectTo: '/dankelola/ticket/tahap' },
 ]
 
 function isPublicApi(method: string, pathname: string) {
