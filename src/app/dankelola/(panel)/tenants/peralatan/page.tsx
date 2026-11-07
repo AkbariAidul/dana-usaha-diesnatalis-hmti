@@ -49,11 +49,20 @@ export default function PeralatanPage() {
     setModalMap(m || {})
     setDraft((prev) => {
       const next = { ...prev }
+      // Restore saved modal values for semua item yang muncul dari data tenant saat ini
+      const neededKeys = new Set<string>()
       for (const tenant of aktif) {
+        const baseHarga = Number(tenant.base_harga ?? tenant.harga_akhir)
+        if (baseHarga > 0) {
+          neededKeys.add(kunci(`Tempat · ${tenant.kategori_sewa?.nama ?? '-'}`))
+        }
         for (const addon of tenant.addon ?? []) {
           const key = kunci(addon.nama)
-          if (key && next[key] === undefined) next[key] = String(m?.[key] ?? 0)
+          if (key) neededKeys.add(key)
         }
+      }
+      for (const key of neededKeys) {
+        if (next[key] === undefined) next[key] = String(m?.[key] ?? 0)
       }
       return next
     })
