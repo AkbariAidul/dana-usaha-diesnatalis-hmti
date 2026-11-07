@@ -11,6 +11,7 @@ const PUBLIC_API: Array<{ method: string; pattern: RegExp }> = [
   { method: 'GET', pattern: /^\/api\/public\/struk$/ },
   { method: 'POST', pattern: /^\/api\/public\/status\/bukti$/ },
   { method: 'GET', pattern: /^\/api\/public\/katalog$/ },
+  { method: 'GET', pattern: /^\/api\/public\/produk$/ },
   { method: 'GET', pattern: /^\/api\/public\/po\/katalog$/ },
   { method: 'GET', pattern: /^\/api\/public\/tenant\/pilihan$/ },
   { method: 'GET', pattern: /^\/api\/public\/tenant\/katalog$/ },

@@ -8,6 +8,7 @@ import { Check, ChevronDown, Clock, Shirt, Trash2, Plus, Minus } from 'lucide-re
 import { PublicNavbar } from '@/components/public-navbar'
 import { PoStepper } from '@/components/po-stepper'
 import { Turnstile } from '@/components/turnstile'
+import { getJSON } from '@/app/dankelola/api'
 import { formatDate, formatRupiah } from '@/lib/utils'
 import { buatQrisDinamis } from '@/lib/qris'
 import { hitungDiskon } from '@/lib/merch-diskon'
@@ -108,14 +109,14 @@ export default function PoMerchandisePage() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/public/produk').then((r) => r.json()),
-      fetch('/api/public/po/katalog').then((r) => r.json()),
-      fetch('/api/pengaturan/qris').then((r) => r.json()),
+      getJSON<Produk[]>('/api/public/produk'),
+      getJSON<{ pengurus?: Pengurus[]; varian?: Varian[] }>('/api/public/po/katalog'),
+      getJSON<Record<string, string>>('/api/pengaturan/qris'),
     ]).then(([produk, k, q]) => {
-      setProdukList(produk ?? [])
-      setPengurus(k.pengurus ?? [])
-      setVarianList(k.varian ?? [])
-      setQris(q)
+      setProdukList(Array.isArray(produk) ? produk : [])
+      setPengurus(Array.isArray(k?.pengurus) ? k.pengurus : [])
+      setVarianList(Array.isArray(k?.varian) ? k.varian : [])
+      setQris(q ?? {})
     }).catch(() => toast.error('Gagal memuat katalog'))
   }, [])
 
