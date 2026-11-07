@@ -108,6 +108,7 @@ export default function PoMerchandisePage() {
   const [pengurusOpen, setPengurusOpen] = useState(false)
   const turnstileRef = useRef<TurnstileHandle>(null)
   const turnstileLock = useRef(false)
+  const submitting = useRef(false)
 
   useEffect(() => {
     Promise.all([
@@ -220,7 +221,9 @@ export default function PoMerchandisePage() {
   }
 
   async function pesan() {
+    if (submitting.current) return
     if (!validasiPemesan()) return
+    submitting.current = true
     try {
       let token = turnstileRef.current?.getToken() ?? null
       if (TURNSTILE_ENABLED && !token) {
@@ -259,6 +262,8 @@ export default function PoMerchandisePage() {
     } catch (e) {
       turnstileRef.current?.reset()
       toast.error((e as Error).message)
+    } finally {
+      submitting.current = false
     }
   }
 
@@ -651,8 +656,8 @@ export default function PoMerchandisePage() {
 
               <div className="mt-4 flex flex-col items-end gap-3 sm:flex-row sm:justify-end">
                 <Turnstile ref={turnstileRef} />
-                <button onClick={pesan} className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-medium text-white">
-                  Buat Pesanan
+                <button onClick={pesan} disabled={submitting.current} className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed">
+                  {submitting.current ? 'Mengirim…' : 'Buat Pesanan'}
                 </button>
               </div>
             </div>

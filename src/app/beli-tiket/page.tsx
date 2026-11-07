@@ -157,7 +157,11 @@ export default function BeliTiketPublik() {
     }, 80)
   }
 
+  const submittingTiket = useRef(false)
+
   async function beli() {
+    if (submittingTiket.current) return
+    submittingTiket.current = true
     if (!tipe) {
       toast.error('Pilih tipe tiket')
       return
@@ -215,6 +219,8 @@ export default function BeliTiketPublik() {
     } catch (e: unknown) {
       turnstileRef.current?.reset()
       toast.error((e as Error).message)
+    } finally {
+      submittingTiket.current = false
     }
   }
 
@@ -596,10 +602,10 @@ export default function BeliTiketPublik() {
                         <button
                           type="button"
                           onClick={beli}
-                          disabled={!form.nama_pembeli || !form.kontak || !form.jumlah || !tipe.buka}
+                          disabled={!form.nama_pembeli || !form.kontak || !form.jumlah || !tipe.buka || submittingTiket.current}
                           className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-600/20 transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none"
                         >
-                          {tipe.buka ? 'Buat Pesanan' : 'Tiket Ditutup'}
+                          {!tipe.buka ? 'Tiket Ditutup' : submittingTiket.current ? 'Mengirim…' : 'Buat Pesanan'}
                           {tipe.buka && <ArrowRight className="h-4 w-4" />}
                         </button>
                         <p className="text-center text-[11px] leading-relaxed text-slate-400">

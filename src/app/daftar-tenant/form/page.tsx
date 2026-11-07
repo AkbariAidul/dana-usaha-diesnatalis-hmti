@@ -65,6 +65,7 @@ export default function DaftarTenantPublik() {
   const [qr, setQr] = useState('')
   const turnstileRef = useRef<TurnstileHandle>(null)
   const turnstileLock = useRef(false)
+  const submittingTenant = useRef(false)
 
   useEffect(() => {
     Promise.all([
@@ -204,8 +205,10 @@ export default function DaftarTenantPublik() {
   }
 
   async function daftar() {
+    if (submittingTenant.current) return
     if (!periode) return toast.error('Tanggal daftar di luar periode open tenant')
     if (sisaSlot === 0) return toast.error('Slot kategori ini sudah habis')
+    submittingTenant.current = true
     try {
       let token = turnstileRef.current?.getToken() ?? null
       if (TURNSTILE_ENABLED && !token) {
@@ -239,6 +242,8 @@ export default function DaftarTenantPublik() {
     } catch (e: unknown) {
       turnstileRef.current?.reset()
       toast.error((e as Error).message)
+    } finally {
+      submittingTenant.current = false
     }
   }
 
@@ -451,7 +456,7 @@ export default function DaftarTenantPublik() {
               </div>
               <div className="flex flex-col items-end gap-3 md:col-span-4 sm:flex-row sm:justify-end">
                 <Turnstile ref={turnstileRef} />
-                <button onClick={daftar} disabled={!periode || !form.nama_usaha || !form.kontak || !form.kategori_sewa_id || sisaSlot === 0} className="rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50">Lanjut ke Pembayaran</button>
+                <button onClick={daftar} disabled={!periode || !form.nama_usaha || !form.kontak || !form.kategori_sewa_id || sisaSlot === 0 || submittingTenant.current} className="rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50">{submittingTenant.current ? 'Mengirim…' : 'Lanjut ke Pembayaran'}</button>
               </div>
             </div>
           </div>
