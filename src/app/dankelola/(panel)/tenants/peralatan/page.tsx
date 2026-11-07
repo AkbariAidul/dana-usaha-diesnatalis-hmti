@@ -23,6 +23,8 @@ type VendorItem = {
   jumlahTenant: number
 }
 
+const TEMPAT_KEY = 'tempat-sewa'
+
 function kunci(nama: string) {
   return nama.trim().toLowerCase().replace(/\s+/g, ' ')
 }
@@ -74,6 +76,24 @@ export default function PeralatanPage() {
     const map = new Map<string, VendorItem>()
     for (const tenant of tenants) {
       const jumlahTenant = Math.max(1, Number(tenant.jumlah_tenant ?? 1))
+      // Include venue/place rental as a line item so its capital can be entered
+      const baseHarga = Number(tenant.base_harga ?? tenant.harga_akhir)
+      if (baseHarga > 0) {
+        const current = map.get(TEMPAT_KEY) ?? {
+          key: TEMPAT_KEY,
+          nama: `Tempat · ${tenant.kategori_sewa?.nama ?? '-'}`,
+          qty: 0,
+          hargaSewa: 0,
+          modalUnit: 0,
+          totalModal: 0,
+          keuntungan: 0,
+          jumlahTenant: 0,
+        }
+        current.qty += jumlahTenant
+        current.hargaSewa += baseHarga
+        current.jumlahTenant += jumlahTenant
+        map.set(TEMPAT_KEY, current)
+      }
       for (const addon of tenant.addon ?? []) {
         const nama = String(addon.nama ?? '').trim()
         const key = kunci(nama)
@@ -82,7 +102,8 @@ export default function PeralatanPage() {
         const qty = Math.max(0, Number(addon.qty ?? 0)) * (perTenant ? jumlahTenant : 1)
         const hargaSewa = Number(addon.subtotal ?? Number(addon.harga_satuan ?? 0) * Number(addon.qty ?? 0))
         const modalUnit = Math.max(0, Number(draft[key] ?? modalMap[key] ?? 0) || 0)
-        const current = map.get(key) ?? {
+        const existing = map.get(key)
+        const current = existing ?? {
           key,
           nama,
           qty: 0,
@@ -94,7 +115,7 @@ export default function PeralatanPage() {
         }
         current.qty += qty
         current.hargaSewa += hargaSewa
-        current.modalUnit = modalUnit
+        current.modalUnit = existing?.modalUnit ?? modalUnit
         current.totalModal = current.modalUnit * current.qty
         current.keuntungan = current.hargaSewa - current.totalModal
         current.jumlahTenant += perTenant ? jumlahTenant : 1
