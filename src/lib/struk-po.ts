@@ -443,11 +443,11 @@ export async function buatStrukTenantPdf(
   qrUrl?: string
 ): Promise<Buffer> {
   const total = Number(tenant.harga_akhir)
-  const baseHarga = Number(tenant.base_harga ?? 0)
+  // Base harga sewa tempat per-jumlah-tenant; fallback ke harga_akhir jika belum ada (tenant lama sebelum migrasi 033)
+  const baseHarga = Number(tenant.base_harga || Math.max(0, total - addon.reduce((s, i) => s + Number(i.subtotal ?? 0), 0)))
   const dibayar = Number(tenant.sudah_dibayar ?? 0)
   const sisa = Math.max(0, total - dibayar)
   const addonTotal = addon.reduce((sum, item) => sum + Number(item.subtotal), 0)
-  const paketSubtotal = Math.max(0, total - addonTotal)
   const jumlahTenant = Math.max(1, Number(tenant.jumlah_tenant || 1))
 
   return buatInvoicePdf({
