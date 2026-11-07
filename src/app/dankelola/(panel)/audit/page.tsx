@@ -62,8 +62,8 @@ function pageLabel(path: string) {
 
 function targetLabel(row: AuditRow) {
   if (!row.target_type && !row.target_id) return '-'
-  if (row.target_type === 'page' && row.target_id) return pageLabel(row.target_id)
-  return row.target_id ? `${row.target_type ?? 'target'} · ${row.target_id.slice(0, 8)}` : row.target_type ?? '-'
+  if (row.target_type === 'page' && row.target_id) return `${pageLabel(row.target_id)} · ${row.target_id}`
+  return row.target_id ? `${row.target_type ?? 'target'} · ${row.target_id}` : row.target_type ?? '-'
 }
 
 function deviceLabel(ua: string | null) {
@@ -150,16 +150,36 @@ export default function AuditPage() {
 
       {summary.length > 0 && (
         <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-          {summary.map((item) => (
-            <div key={item.name} className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm shadow-slate-200/40">
-              <p className="truncate text-sm font-semibold text-slate-900">{item.name}</p>
-              <div className="mt-2 flex items-baseline gap-3 text-xs text-slate-500">
-                <span><strong className="text-base font-semibold text-slate-900">{item.total}</strong> aktivitas</span>
-                <span><strong className="text-base font-semibold text-slate-900">{item.pages}</strong> halaman</span>
-              </div>
-              <p className="mt-1 text-[11px] text-slate-400">Terakhir aktif: {formatWaktu(item.last)}</p>
-            </div>
-          ))}
+          {summary.map((item) => {
+            const selectable = item.name !== 'Tanpa nama'
+            const active = selectable && userFilter === item.name
+            return (
+              <button
+                key={item.name}
+                type="button"
+                disabled={!selectable}
+                onClick={() => setUserFilter(active ? '' : item.name)}
+                aria-pressed={active}
+                className={`rounded-2xl border p-4 text-left shadow-sm shadow-slate-200/40 transition ${
+                  active
+                    ? 'border-primary-300 bg-primary-50/60 ring-1 ring-primary-200'
+                    : 'border-slate-200/70 bg-white'
+                } ${selectable ? 'hover:border-primary-200 hover:bg-primary-50/30' : 'cursor-default'}`}
+              >
+                <p className="truncate text-sm font-semibold text-slate-900">{item.name}</p>
+                <div className="mt-2 flex items-baseline gap-3 text-xs text-slate-500">
+                  <span><strong className="text-base font-semibold text-slate-900">{item.total}</strong> aktivitas</span>
+                  <span><strong className="text-base font-semibold text-slate-900">{item.pages}</strong> halaman</span>
+                </div>
+                <p className="mt-1 text-[11px] text-slate-400">Terakhir aktif: {formatWaktu(item.last)}</p>
+                {selectable && (
+                  <p className="mt-2 text-[11px] font-medium text-primary-600">
+                    {active ? 'Menampilkan detail di tabel · klik untuk reset' : 'Klik untuk lihat detail aktivitas'}
+                  </p>
+                )}
+              </button>
+            )
+          })}
         </div>
       )}
 
