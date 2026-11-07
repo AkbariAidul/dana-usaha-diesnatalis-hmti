@@ -50,7 +50,7 @@ export async function deleteKategoriSewa(id: string) {
   if (error) throw error
 }
 
-const KATEGORI_PILIHAN_FIELDS = ['kategori_sewa_id', 'nama', 'harga', 'urutan'] as const
+const KATEGORI_PILIHAN_FIELDS = ['kategori_sewa_id', 'nama', 'harga', 'urutan', 'gambar_url'] as const
 
 export async function getKategoriPilihan(kategoriId?: string): Promise<KategoriPilihan[]> {
   let query = supabaseAdmin.from('kategori_pilihan').select('*').order('urutan').order('nama')

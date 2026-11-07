@@ -353,6 +353,9 @@ export default function DaftarTenantPublik() {
                       <div key={item.id} className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 ${checked ? 'border-primary-200 bg-primary-50/50' : 'border-slate-100'}`}>
                         <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-sm">
                           <input type="checkbox" checked={checked} onChange={(e) => togglePilihan(item.id, e.target.checked)} className="h-4 w-4 shrink-0 rounded border-slate-300 text-primary-600 focus:ring-primary-500" />
+                          {item.gambar_url && (
+                            <img src={item.gambar_url} alt={item.nama} className="h-7 w-7 shrink-0 rounded-md border border-slate-200 object-cover" />
+                          )}
                           <span className="truncate font-medium text-slate-800">{item.nama}</span>
                           <span className="shrink-0 text-xs text-slate-500">{Number(item.harga) > 0 ? formatRupiah(Number(item.harga)) : 'Gratis'}</span>
                         </label>

@@ -19,7 +19,7 @@ const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm foc
 const label = 'mb-1 block text-xs font-medium text-slate-500'
 
 const emptyPeriode = { id: '', nama: '', tanggal_mulai: '', tanggal_selesai: '', harga_fnb: '' }
-const emptyPilihan = { id: '', nama: '', harga: '' }
+const emptyPilihan = { id: '', nama: '', harga: '', gambar_url: '' }
 const emptyBundle = { id: '', jumlah_min: '', diskon_nominal: '', diskon_persen: '' }
 
 export default function PaketDetail({
@@ -58,6 +58,8 @@ export default function PaketDetail({
   const [savingInfo, setSavingInfo] = useState(false)
   const [savingPeriode, setSavingPeriode] = useState(false)
   const [savingPilihan, setSavingPilihan] = useState(false)
+  const [pilihanGambarFile, setPilihanGambarFile] = useState<File | null>(null)
+  const [pilihanGambarPreview, setPilihanGambarPreview] = useState<string | null>(null)
   const [savingBundle, setSavingBundle] = useState(false)
 
   useEffect(() => {
@@ -273,10 +275,14 @@ export default function PaketDetail({
 
   function resetPilihanForm() {
     setPilihanForm(emptyPilihan)
+    setPilihanGambarFile(null)
+    setPilihanGambarPreview(null)
   }
 
   function editPilihan(p: KategoriPilihan) {
-    setPilihanForm({ id: p.id, nama: p.nama, harga: String(p.harga) })
+    setPilihanForm({ id: p.id, nama: p.nama, harga: String(p.harga), gambar_url: p.gambar_url ?? '' })
+    setPilihanGambarFile(null)
+    setPilihanGambarPreview(p.gambar_url ?? null)
   }
 
   async function simpanPilihan() {
@@ -285,6 +291,16 @@ export default function PaketDetail({
     const harga = Number(pilihanForm.harga)
     if (!nama) { toast.error('Nama pilihan wajib diisi'); return }
     if (!Number.isFinite(harga) || harga < 0) { toast.error('Harga tidak valid'); return }
+    let gambarUrl = pilihanForm.gambar_url?.trim() || null
+    if (pilihanGambarFile) {
+      const fd = new FormData()
+      fd.append('file', pilihanGambarFile)
+      fd.append('folder', 'tenant-pilihan-gambar')
+      const res = await fetch('/api/upload', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Gagal upload gambar')
+      gambarUrl = data.url || null
+    }
     setSavingPilihan(true)
     try {
       await sendJSON('/api/tenant/pilihan', 'POST', {
@@ -292,6 +308,7 @@ export default function PaketDetail({
         kategori_sewa_id: paket.id,
         nama,
         harga,
+        gambar_url: gambarUrl,
       })
       await reloadPilihan()
       resetPilihanForm()
@@ -519,8 +536,15 @@ export default function PaketDetail({
                   <tbody className="divide-y divide-slate-100/80">
                     {paketPilihan.map((p) => (
                       <tr key={p.id} className="hover:bg-slate-50">
-                        <td className="px-3 py-2 font-medium">{p.nama}</td>
-                        <td className="px-3 py-2 font-semibold text-primary-600">{formatRupiah(Number(p.harga))}</td>
+                  <td className="px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      {p.gambar_url && (
+                        <img src={p.gambar_url} alt={p.nama} className="h-8 w-8 shrink-0 rounded-lg border border-slate-200 object-cover" />
+                      )}
+                      <span className="font-medium">{p.nama}</span>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2 font-semibold text-primary-600">{formatRupiah(Number(p.harga))}</td>
                         {!readOnly && (
                           <td className="px-3 py-2">
                             <div className="flex gap-1">
@@ -546,10 +570,36 @@ export default function PaketDetail({
               </div>
             )}
             {!readOnly && (
-              <div className="grid gap-3 border-t border-slate-100 pt-3 md:grid-cols-3 md:items-end">
+              <div className="grid gap-3 border-t border-slate-100 pt-3 md:grid-cols-[1fr_1fr_120px] md:items-end">
                 <div><label className={label}>Nama Pilihan</label><input className={input} placeholder="cth: Meja + Kursi" value={pilihanForm.nama} onChange={(e) => setPilihanForm({ ...pilihanForm, nama: e.target.value })} /></div>
                 <div><label className={label}>Harga (Rp)</label><input type="number" min={0} className={input} placeholder="cth: 100000" value={pilihanForm.harga} onChange={(e) => setPilihanForm({ ...pilihanForm, harga: e.target.value })} /></div>
-                <div className="flex gap-2">
+                <div>
+                  <label className={label}>Gambar Ilustrasi</label>
+                  <div className="flex items-center gap-2">
+                    {pilihanGambarPreview ? (
+                      <img src={pilihanGambarPreview} alt="Preview" className="h-10 w-10 rounded-lg border border-slate-200 object-cover" />
+                    ) : (
+                      <div className="grid h-10 w-10 place-items-center rounded-lg border border-dashed border-slate-300 text-[9px] text-slate-400">+</div>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0] || null
+                        setPilihanGambarFile(f)
+                        if (f) {
+                          const url = URL.createObjectURL(f)
+                          setPilihanGambarPreview(url)
+                        } else {
+                          setPilihanGambarPreview(null)
+                        }
+                      }}
+                      className="block w-full text-xs text-slate-500 file:mr-2 file:rounded file:border-0 file:bg-slate-100 file:px-2 file:py-1 file:text-xs file:font-medium file:text-slate-700 hover:file:bg-slate-200"
+                    />
+                  </div>
+                  <p className="mt-1 text-[10px] text-slate-400">Opsional · JPG/PNG/WebP maks 5MB</p>
+                </div>
+                <div className="flex gap-2 md:col-span-3">
                   <button onClick={simpanPilihan} disabled={savingPilihan} className="flex-1 rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
                     {savingPilihan ? 'Menyimpan...' : pilihanForm.id ? 'Simpan' : '+ Tambah Pilihan'}
                   </button>

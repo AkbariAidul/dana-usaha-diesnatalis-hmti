@@ -30,6 +30,7 @@ export async function POST(request: Request) {
       nama,
       harga,
       urutan,
+      gambar_url: typeof body.gambar_url === 'string' ? body.gambar_url.trim() || null : null,
     })
     await createAuditLog({
       aksi: body.id ? 'UPDATE_TENANT_PILIHAN' : 'CREATE_TENANT_PILIHAN',

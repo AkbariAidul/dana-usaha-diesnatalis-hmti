@@ -17,6 +17,7 @@ export interface KategoriPilihan {
   nama: string
   harga: number
   urutan: number
+  gambar_url: string | null
 }
 
 export interface KategoriBundleDiscount {
