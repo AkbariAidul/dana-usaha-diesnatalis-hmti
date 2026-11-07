@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabase'
+import { createAuditLog } from '@/lib/queries'
 
 const BUCKET = 'bukti'
 const MAX_SIZE = 5 * 1024 * 1024
@@ -37,6 +39,9 @@ export async function POST(request: Request) {
     if (error) throw error
 
     const { data } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(path)
+    if ((await cookies()).get('dashboard_user')?.value) {
+      await createAuditLog({ aksi: 'UPLOAD_FILE', target_type: 'storage', target_id: path, data_baru: { url: data.publicUrl } })
+    }
     return NextResponse.json({ url: data.publicUrl })
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })

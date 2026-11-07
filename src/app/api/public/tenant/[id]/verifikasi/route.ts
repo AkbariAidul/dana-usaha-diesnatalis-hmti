@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { createPembayaran } from '@/lib/queries'
+import { createPembayaran, createAuditLog } from '@/lib/queries'
 import { todayISO } from '@/lib/utils'
 import { kirimNotifTenantDitolak, kirimNotifTenantTerverifikasi } from '@/lib/notifikasi-tenant'
 
@@ -23,6 +23,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       .single()
 
     if (error) throw error
+    await createAuditLog({ aksi: status === 'ditolak' ? 'TOLAK_PENDAFTARAN' : 'VERIFIKASI_PENDAFTARAN', target_type: 'pendaftaran_tenant_pub', target_id: id, data_baru: { status, catatan_admin } })
 
     // If approved, also create tenant in main table + catat DP dari bukti pendaftaran
     if (status === 'dp_diterima') {

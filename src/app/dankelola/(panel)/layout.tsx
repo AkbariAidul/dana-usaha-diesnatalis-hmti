@@ -2,13 +2,14 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronRight, Eye, Globe, LogOut, Menu, PartyPopper, X } from 'lucide-react'
 import { getJSON, prefetch } from '../api'
 import { menuConfig } from '@/lib/menu'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { useConfirm } from '@/components/confirm-dialog'
 import type { DashboardRole, DashboardUser } from '@/lib/auth'
+import { useDashboardUser } from '@/lib/dashboard-user'
 import type { Tenant } from '@/lib/types'
 
 const MENU_HREFS = menuConfig.flatMap((group) =>
@@ -42,18 +43,6 @@ function bestActiveHref(pathname: string) {
 
 function isPathActive(pathname: string, href: string) {
   return bestActiveHref(pathname) === href
-}
-
-function parseDashboardUser(raw: string): DashboardUser | null {
-  try {
-    return JSON.parse(decodeURIComponent(raw))
-  } catch {
-    try {
-      return JSON.parse(decodeURIComponent(decodeURIComponent(raw)))
-    } catch {
-      return null
-    }
-  }
 }
 
 function findActiveGroup(pathname: string) {
@@ -173,7 +162,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const confirm = useConfirm()
   const [open, setOpen] = useState(false)
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
-  const [currentUser, setCurrentUser] = useState<DashboardUser | null>(null)
+  const currentUser = useDashboardUser()
+  const lastAuditPath = useRef<string | null>(null)
   const [welcome, setWelcome] = useState<DashboardUser | null>(null)
   const [tiketTerjual, setTiketTerjual] = useState<number | null>(null)
   const [tenantCount, setTenantCount] = useState<number | null>(null)
@@ -242,10 +232,6 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   useLiveRefresh(loadBadges, 15000)
 
   useEffect(() => {
-    const match = document.cookie.match(/(?:^|; )dashboard_user=([^;]+)/)
-    if (match) {
-      setCurrentUser(parseDashboardUser(match[1]))
-    }
     const pending = sessionStorage.getItem('dashboard_welcome')
     if (pending) {
       sessionStorage.removeItem('dashboard_welcome')
@@ -256,6 +242,21 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       }
     }
   }, [])
+
+  useEffect(() => {
+    if (!currentUser) return
+    const timer = setTimeout(() => {
+      if (lastAuditPath.current === pathname) return
+      lastAuditPath.current = pathname
+      fetch('/api/audit/page', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: pathname }),
+        keepalive: true,
+      }).catch(() => {})
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [currentUser, pathname])
 
   async function logout() {
     const done = await confirm({

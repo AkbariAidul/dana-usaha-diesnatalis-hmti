@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { todayISO, formatRupiah } from '@/lib/utils'
 import { kirimNotifPoTerverifikasi } from '@/lib/notifikasi-po'
+import { createAuditLog } from '@/lib/queries'
 
 type PoRow = {
   id: string
@@ -168,6 +169,7 @@ export async function POST(request: Request) {
     if (error) throw error
 
     await sinkronPo(request, po_id, incoming)
+    await createAuditLog({ aksi: 'CREATE_CICILAN', target_type: 'merch_po_cicilan', target_id: inserted.id, data_baru: inserted })
 
     return NextResponse.json(inserted, { status: 201 })
   } catch (err: unknown) {
@@ -195,6 +197,7 @@ export async function PATCH(request: Request) {
     if (data?.po_id) {
       await sinkronPo(request, data.po_id, validated ? Number(data.nominal) : undefined)
     }
+    await createAuditLog({ aksi: 'UPDATE_CICILAN', target_type: 'merch_po_cicilan', target_id: id, data_baru: data })
 
     return NextResponse.json(data)
   } catch (err: unknown) {

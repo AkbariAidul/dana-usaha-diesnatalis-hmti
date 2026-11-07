@@ -44,10 +44,53 @@ type Monitoring = {
     configured: boolean
     dashboardUrl: string
     usageUrl: string
-    latest: { id: string | null; state: string; target: string | null; url: string | null; createdAt: string | null } | null
+    project: {
+      id: string | null
+      name: string | null
+      framework: string | null
+      createdAt: string | null
+      nodeVersion: string | null
+      rootDirectory: string | null
+      buildCommand: string | null
+      devCommand: string | null
+      installCommand: string | null
+      outputDirectory: string | null
+    } | null
+    latest: VercelDeploymentInfo | null
+    recent: Array<VercelDeploymentInfo | null>
     error?: string
   }
   supabase: { projectRef: string | null; dashboardUrl: string }
+}
+
+type VercelCommit = {
+  provider: string
+  branch: string | null
+  sha: string | null
+  message: string | null
+  author: string | null
+  authorLogin: string | null
+  repo: string | null
+  org: string | null
+}
+
+type VercelDeploymentInfo = {
+  id: string | null
+  name: string | null
+  state: string
+  target: string | null
+  url: string | null
+  inspectorUrl: string | null
+  createdAt: string | null
+  buildingAt: string | null
+  readyAt: string | null
+  durationSeconds: number | null
+  readySubstate: string | null
+  source: string | null
+  aliases: string[]
+  regions: string[]
+  creator: { username?: string; email?: string } | null
+  commit: VercelCommit | null
 }
 
 const TABLE_LABEL: Record<string, string> = {
@@ -134,6 +177,76 @@ function Card({ icon: Icon, label, value, note, color = 'text-primary-600' }: {
   )
 }
 
+function stateClass(state: string) {
+  if (state === 'READY') return 'bg-emerald-50 text-emerald-700'
+  if (state === 'ERROR') return 'bg-red-50 text-red-700'
+  if (state === 'CANCELED') return 'bg-slate-100 text-slate-600'
+  return 'bg-amber-50 text-amber-700'
+}
+
+function formatDuration(seconds: number | null) {
+  if (seconds == null) return null
+  if (seconds < 60) return `${seconds} detik`
+  return `${Math.floor(seconds / 60)} menit ${seconds % 60} detik`
+}
+
+function InfoRow({ label, value, mono = false, href, title }: {
+  label: string
+  value: string | null | undefined
+  mono?: boolean
+  href?: string
+  title?: string
+}) {
+  if (!value) return null
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <span className="shrink-0 text-slate-500">{label}</span>
+      {href ? (
+        <a href={href} target="_blank" rel="noreferrer" className="min-w-0 break-all text-right text-xs font-medium text-primary-600 hover:underline" title={title ?? value}>
+          {value}
+        </a>
+      ) : (
+        <span className={`min-w-0 break-words text-right text-xs text-slate-700 ${mono ? 'font-mono' : ''}`} title={title ?? value}>{value}</span>
+      )}
+    </div>
+  )
+}
+
+function DeploymentDetails({ item }: { item: VercelDeploymentInfo }) {
+  return (
+    <div className="space-y-2 text-sm">
+      <div className="flex items-center justify-between">
+        <span className="text-slate-500">Status</span>
+        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${stateClass(item.state)}`}>{item.state}</span>
+      </div>
+      <InfoRow label="Target" value={item.target ?? '-'} />
+      <InfoRow label="Source" value={item.source ?? '-'} />
+      <InfoRow label="Deployment" value={item.name ?? item.id} mono />
+      <InfoRow label="URL" value={item.url} href={item.url ?? undefined} />
+      <InfoRow label="Inspector" value={item.inspectorUrl ? 'Buka inspector deployment' : null} href={item.inspectorUrl ?? undefined} />
+      <InfoRow label="Dibuat" value={item.createdAt ? formatDateTime(item.createdAt) : null} />
+      <InfoRow label="Mulai build" value={item.buildingAt ? formatDateTime(item.buildingAt) : null} />
+      <InfoRow label="Selesai" value={item.readyAt ? formatDateTime(item.readyAt) : null} />
+      <InfoRow label="Durasi" value={formatDuration(item.durationSeconds)} />
+      <InfoRow label="Ready substate" value={item.readySubstate} />
+      <InfoRow label="Region" value={item.regions.length > 0 ? item.regions.join(', ') : null} />
+      <InfoRow label="Alias" value={item.aliases.length > 0 ? item.aliases.join(', ') : null} />
+      <InfoRow label="Creator" value={item.creator?.username || item.creator?.email || null} />
+      {item.commit && (
+        <div className="mt-3 space-y-2 rounded-xl bg-slate-50 p-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Commit {item.commit.provider}</p>
+          <InfoRow label="Branch" value={item.commit.branch} mono />
+          <InfoRow label="Commit" value={item.commit.sha} mono />
+          <InfoRow label="Pesan" value={item.commit.message} />
+          <InfoRow label="Author" value={item.commit.author ?? item.commit.authorLogin} />
+          <InfoRow label="Repo" value={item.commit.repo} />
+          <InfoRow label="Organisasi" value={item.commit.org} />
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function MonitoringPage() {
   const [data, setData] = useState<Monitoring | null>(null)
   const [loading, setLoading] = useState(true)
@@ -151,7 +264,6 @@ export default function MonitoringPage() {
   if (!data) return <p className="text-sm text-slate-500">Monitoring belum tersedia.</p>
 
   const { visitors, storage, database, vercel, supabase } = data
-  const latest = vercel.latest
 
   return (
     <div className="space-y-5">
@@ -224,8 +336,8 @@ export default function MonitoringPage() {
         </section>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-3">
-        <section className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm shadow-slate-200/40">
+      <div className="grid gap-4 xl:grid-cols-2">
+        <section className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm shadow-slate-200/40 xl:order-1">
           <div className="mb-4 flex items-center gap-2">
             <Database className="h-4 w-4 text-primary-600" />
             <h2 className="font-semibold text-slate-900">Isi database</h2>
@@ -240,7 +352,21 @@ export default function MonitoringPage() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm shadow-slate-200/40">
+        <section className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm shadow-slate-200/40 xl:order-2">
+          <h2 className="font-semibold text-slate-900">Halaman terpopuler</h2>
+          <p className="mb-3 text-xs text-slate-500">30 hari terakhir.</p>
+          <div className="space-y-2">
+            {visitors.topPages.length === 0 && <p className="text-sm text-slate-400">Belum ada kunjungan.</p>}
+            {visitors.topPages.map((page) => (
+              <div key={page.path} className="flex items-center justify-between gap-3 text-sm">
+                <span className="min-w-0 truncate text-slate-600">{page.path}</span>
+                <span className="shrink-0 font-mono text-xs text-slate-500">{page.total}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm shadow-slate-200/40 xl:order-3 xl:col-span-2">
           <div className="mb-4 flex items-center gap-2">
             <Cloud className="h-4 w-4 text-primary-600" />
             <h2 className="font-semibold text-slate-900">Deployment Vercel</h2>
@@ -262,41 +388,58 @@ export default function MonitoringPage() {
               <p className="text-[11px] text-slate-400">Bandwidth/usage detail tetap dibuka lewat tautan Usage Vercel karena tidak tersedia di endpoint API publik.</p>
             </div>
           )}
-          {vercel.configured && !latest && <p className="text-sm text-slate-500">{vercel.error ?? 'Belum ada data deployment.'}</p>}
-          {latest && (
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500">Status</span>
-                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">{latest.state}</span>
+          {vercel.configured && !vercel.latest && <p className="text-sm text-slate-500">{vercel.error ?? 'Belum ada data deployment.'}</p>}
+          {vercel.latest && (
+            <div className="grid gap-5 lg:grid-cols-2">
+              <div>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-slate-900">Deployment terbaru</p>
+                  {vercel.project?.name && <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[11px] text-slate-600">{vercel.project.name}</span>}
+                </div>
+                <DeploymentDetails item={vercel.latest} />
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500">Target</span>
-                <span className="font-medium text-slate-700">{latest.target ?? '-'}</span>
+              <div className="space-y-4">
+                {vercel.project && (
+                  <div className="space-y-2 rounded-xl bg-slate-50 p-3 text-sm">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Project</p>
+                    <InfoRow label="Nama" value={vercel.project.name} />
+                    <InfoRow label="Framework" value={vercel.project.framework} />
+                    <InfoRow label="Node.js" value={vercel.project.nodeVersion} />
+                    <InfoRow label="Dibuat" value={vercel.project.createdAt ? formatDateTime(vercel.project.createdAt) : null} />
+                    <InfoRow label="Root directory" value={vercel.project.rootDirectory} mono />
+                    <InfoRow label="Build command" value={vercel.project.buildCommand} mono />
+                    <InfoRow label="Dev command" value={vercel.project.devCommand} mono />
+                    <InfoRow label="Install command" value={vercel.project.installCommand} mono />
+                    <InfoRow label="Output directory" value={vercel.project.outputDirectory} mono />
+                  </div>
+                )}
+                {vercel.recent.filter(Boolean).length > 0 && (
+                  <div>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Deployment sebelumnya</p>
+                    <div className="space-y-2">
+                      {vercel.recent.filter((item): item is VercelDeploymentInfo => Boolean(item)).map((item) => (
+                        <div key={item.id ?? `${item.createdAt}-${item.state}`} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-100 px-3 py-2 text-xs">
+                          <div className="min-w-0">
+                            <p className="truncate font-medium text-slate-700">{item.commit?.branch ?? item.name ?? item.id ?? '-'}</p>
+                            <p className="text-slate-400">{item.createdAt ? formatDateTime(item.createdAt) : '-'}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {item.target && <span className="text-slate-500">{item.target}</span>}
+                            <span className={`rounded-full px-2 py-0.5 font-semibold ${stateClass(item.state)}`}>{item.state}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500">Dibuat</span>
-                <span className="text-xs text-slate-500">{latest.createdAt ? formatDateTime(latest.createdAt) : '-'}</span>
-              </div>
-              {latest.url && <a href={latest.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:underline">Buka deployment <ExternalLink className="h-3.5 w-3.5" /></a>}
             </div>
           )}
           <div className="mt-4 flex flex-wrap gap-3 text-sm font-medium">
-            <a href={vercel.dashboardUrl} target="_blank" rel="noreferrer" className="text-primary-600 hover:underline">Dashboard</a>
-            <a href={vercel.usageUrl} target="_blank" rel="noreferrer" className="text-primary-600 hover:underline">Usage Vercel</a>
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm shadow-slate-200/40">
-          <h2 className="font-semibold text-slate-900">Halaman terpopuler</h2>
-          <p className="mb-3 text-xs text-slate-500">30 hari terakhir.</p>
-          <div className="space-y-2">
-            {visitors.topPages.length === 0 && <p className="text-sm text-slate-400">Belum ada kunjungan.</p>}
-            {visitors.topPages.map((page) => (
-              <div key={page.path} className="flex items-center justify-between gap-3 text-sm">
-                <span className="min-w-0 truncate text-slate-600">{page.path}</span>
-                <span className="shrink-0 font-mono text-xs text-slate-500">{page.total}</span>
-              </div>
-            ))}
+            <a href={vercel.dashboardUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary-600 hover:underline">Dashboard <ExternalLink className="h-3.5 w-3.5" /></a>
+            <a href={vercel.usageUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary-600 hover:underline">Usage Vercel <ExternalLink className="h-3.5 w-3.5" /></a>
+            {vercel.latest?.url && <a href={vercel.latest.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary-600 hover:underline">Buka deployment <ExternalLink className="h-3.5 w-3.5" /></a>}
+            {vercel.latest?.inspectorUrl && <a href={vercel.latest.inspectorUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary-600 hover:underline">Inspector <ExternalLink className="h-3.5 w-3.5" /></a>}
           </div>
         </section>
       </div>

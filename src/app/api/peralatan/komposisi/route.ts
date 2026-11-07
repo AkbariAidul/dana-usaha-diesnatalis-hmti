@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getKomposisiPeralatan, saveKomposisiPeralatan } from '@/lib/peralatan'
 import type { KomposisiPeralatan } from '@/lib/types'
+import { createAuditLog } from '@/lib/queries'
 
 export async function GET() {
   try {
@@ -28,6 +29,7 @@ export async function POST(request: Request) {
       clean[kategoriId] = row
     }
     await saveKomposisiPeralatan(clean)
+    await createAuditLog({ aksi: 'UPDATE_KOMPOSISI_PERALATAN', target_type: 'peralatan_komposisi', data_baru: clean })
     return NextResponse.json(clean)
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })

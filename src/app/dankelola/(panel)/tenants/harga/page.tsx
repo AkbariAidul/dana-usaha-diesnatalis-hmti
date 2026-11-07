@@ -8,6 +8,7 @@ import { CalendarClock, Eye, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
+import { useIsViewer } from '@/lib/dashboard-user'
 import { PageSkeleton } from '../../ui'
 import { useConfirm } from '@/components/confirm-dialog'
 import type { KategoriSewa, KategoriBundleDiscount, HargaDasar, PeriodeHarga } from '@/lib/types'
@@ -19,6 +20,7 @@ type Master = { kategori: KategoriSewa[]; hargaDasar: HargaDasar[]; periode: Per
 
 export default function HargaPage() {
   const confirm = useConfirm()
+  const isViewer = useIsViewer()
   const [kategori, setKategori] = useState<KategoriSewa[]>([])
   const [hargaDasar, setHargaDasar] = useState<HargaDasar[]>([])
   const [bundles, setBundles] = useState<KategoriBundleDiscount[]>([])
@@ -51,6 +53,7 @@ export default function HargaPage() {
   const activePeriod = periods.find((p) => p.kode === activeKode)
 
   async function hapusPaket(k: KategoriSewa) {
+    if (isViewer) return
     const ok = await confirm({
       title: 'Hapus paket tenant?',
       description: `Paket "${k.nama}" beserta harga dan diskon bundle-nya akan dihapus permanen.`,
@@ -67,6 +70,7 @@ export default function HargaPage() {
   }
 
   async function toggleAktif(k: KategoriSewa) {
+    if (isViewer) return
     const aktif = k.aktif === false
     setKategori((prev) => prev.map((p) => (p.id === k.id ? { ...p, aktif } : p)))
     try {
@@ -109,20 +113,22 @@ export default function HargaPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Paket & Harga Tenant</h1>
           <p className="text-sm text-slate-500">Kelola paket tenant, periode harga, dan diskon bundle.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/dankelola/tenants/pembayaran"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-primary-200 hover:text-primary-600"
-          >
-            <CalendarClock className="h-4 w-4" /> Batas Pembayaran
-          </Link>
-          <Link
-            href="/dankelola/tenants/harga/new"
-            className="bg-primary-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-primary-700"
-          >
-            + Tambah Paket
-          </Link>
-        </div>
+        {!isViewer && (
+          <div className="flex items-center gap-2">
+            <Link
+              href="/dankelola/tenants/pembayaran"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-primary-200 hover:text-primary-600"
+            >
+              <CalendarClock className="h-4 w-4" /> Batas Pembayaran
+            </Link>
+            <Link
+              href="/dankelola/tenants/harga/new"
+              className="bg-primary-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-primary-700"
+            >
+              + Tambah Paket
+            </Link>
+          </div>
+        )}
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200/70 bg-white shadow-sm">
@@ -186,18 +192,24 @@ export default function HargaPage() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={aktif}
-                      onClick={() => toggleAktif(k)}
-                      className="group inline-flex items-center"
-                      title={aktif ? 'Nonaktifkan paket' : 'Aktifkan paket'}
-                    >
-                      <span className={`relative h-5 w-9 rounded-full transition-colors ${aktif ? 'bg-green-500' : 'bg-slate-300'}`}>
-                        <span className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${aktif ? 'translate-x-4' : 'translate-x-0'}`} />
+                    {isViewer ? (
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${aktif ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                        {aktif ? 'Aktif' : 'Nonaktif'}
                       </span>
-                    </button>
+                    ) : (
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={aktif}
+                        onClick={() => toggleAktif(k)}
+                        className="group inline-flex items-center"
+                        title={aktif ? 'Nonaktifkan paket' : 'Aktifkan paket'}
+                      >
+                        <span className={`relative h-5 w-9 rounded-full transition-colors ${aktif ? 'bg-green-500' : 'bg-slate-300'}`}>
+                          <span className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${aktif ? 'translate-x-4' : 'translate-x-0'}`} />
+                        </span>
+                      </button>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
@@ -208,20 +220,24 @@ export default function HargaPage() {
                       >
                         <Eye className="h-3.5 w-3.5" />
                       </Link>
-                      <Link
-                        href={`/dankelola/tenants/harga/${k.id}/edit`}
-                        className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-primary-600"
-                        title="Edit"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Link>
-                      <button
-                        onClick={() => hapusPaket(k)}
-                        className="grid h-7 w-7 place-items-center rounded-lg text-red-500 transition-colors hover:bg-red-50 hover:text-red-600"
-                        title="Hapus"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      {!isViewer && (
+                        <>
+                          <Link
+                            href={`/dankelola/tenants/harga/${k.id}/edit`}
+                            className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-primary-600"
+                            title="Edit"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Link>
+                          <button
+                            onClick={() => hapusPaket(k)}
+                            className="grid h-7 w-7 place-items-center rounded-lg text-red-500 transition-colors hover:bg-red-50 hover:text-red-600"
+                            title="Hapus"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>

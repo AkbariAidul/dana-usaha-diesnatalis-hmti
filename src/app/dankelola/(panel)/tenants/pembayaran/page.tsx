@@ -1,18 +1,26 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { DataError } from '@/components/data-error'
 import { getJSON, sendJSON } from '../../../api'
 import { type Acara } from '@/lib/types'
+import { useIsViewer } from '@/lib/dashboard-user'
 import { PageSkeleton } from '../../ui'
 
 export default function BatasPembayaranPage() {
+  const isViewer = useIsViewer()
+  const router = useRouter()
   const [acara, setAcara] = useState<Acara | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({ tanggal_acara: '', batas_pelunasan: '' })
+
+  useEffect(() => {
+    if (isViewer) router.replace('/dankelola/tenants/harga')
+  }, [isViewer, router])
 
   useEffect(() => {
     getJSON<Acara | null>('/api/acara')
@@ -51,7 +59,7 @@ export default function BatasPembayaranPage() {
     }
   }
 
-  if (loading) return <PageSkeleton />
+  if (isViewer || loading) return <PageSkeleton />
   if (error) return <div className="flex justify-center"><DataError title={error} /></div>
 
   const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'

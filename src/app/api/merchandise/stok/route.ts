@@ -1,14 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-
-type StokLog = {
-  id: string
-  produk: string
-  jenis: 'masuk' | 'keluar'
-  qty: number
-  tanggal: string
-  keterangan: string | null
-}
+import { createAuditLog } from '@/lib/queries'
 
 export async function GET() {
   try {
@@ -51,6 +43,7 @@ export async function POST(request: Request) {
       .single()
     
     if (error) throw error
+    await createAuditLog({ aksi: 'CREATE_STOK_LOG', target_type: 'stok_log', target_id: data.id, data_baru: data })
     return NextResponse.json(data, { status: 201 })
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })

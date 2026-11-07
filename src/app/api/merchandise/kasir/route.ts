@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabase'
 import { hitungDiskon } from '@/lib/merch-diskon'
+import { createAuditLog } from '@/lib/queries'
 import type { DashboardUser } from '@/lib/auth'
 
 async function getSessionUser(): Promise<DashboardUser | null> {
@@ -132,6 +133,7 @@ export async function POST(request: Request) {
       }
       throw error
     }
+    await createAuditLog({ aksi: 'CREATE_KASIR', target_type: 'kasir_transaksi', target_id: data.id, data_baru: data })
     return NextResponse.json(data, { status: 201 })
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })

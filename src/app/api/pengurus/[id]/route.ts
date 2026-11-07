@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { createAuditLog } from '@/lib/queries'
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -18,6 +19,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       .select()
       .single()
     if (error) throw error
+    await createAuditLog({ aksi: 'UPDATE_PENGURUS', target_type: 'pengurus', target_id: id, data_baru: data })
     return NextResponse.json(data)
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })
@@ -29,6 +31,7 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
     const { id } = await params
     const { error } = await supabaseAdmin.from('pengurus').delete().eq('id', id)
     if (error) throw error
+    await createAuditLog({ aksi: 'DELETE_PENGURUS', target_type: 'pengurus', target_id: id })
     return NextResponse.json({ success: true })
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })

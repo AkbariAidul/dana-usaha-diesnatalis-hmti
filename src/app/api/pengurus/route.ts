@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { createAuditLog } from '@/lib/queries'
 
 export async function GET() {
   try {
@@ -31,6 +32,7 @@ export async function POST(request: Request) {
       .select()
       .single()
     if (error) throw error
+    await createAuditLog({ aksi: 'CREATE_PENGURUS', target_type: 'pengurus', target_id: data.id, data_baru: data })
     return NextResponse.json(data, { status: 201 })
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })

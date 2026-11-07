@@ -9,6 +9,7 @@ import { STATUS_LABEL, STATUS_COLOR } from '@/lib/types'
 import { kategoriTenant } from '@/lib/tenant'
 import { getJSON, sendJSON } from '../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
+import { useIsViewer } from '@/lib/dashboard-user'
 import { TableSkeleton } from '../ui'
 import { useConfirm } from '@/components/confirm-dialog'
 import { Modal } from '@/components/modal'
@@ -76,6 +77,7 @@ function ProofButton({ url, label, onPreview }: { url: string | null | undefined
 
 export default function TenantsPage() {
   const confirm = useConfirm()
+  const isViewer = useIsViewer()
   const [tenants, setTenants] = useState<Tenant[]>([])
   const [pendaftaran, setPendaftaran] = useState<Pendaftaran[]>([])
   const [pembayaran, setPembayaran] = useState<Pembayaran[]>([])
@@ -110,6 +112,7 @@ export default function TenantsPage() {
   useLiveRefresh(load)
 
   async function hapus(id: string) {
+    if (isViewer) return
     const ok = await confirm({
       title: 'Hapus tenant?',
       description: 'Tenant ini dan semua data terkait bisa ikut terhapus permanen.',
@@ -126,6 +129,7 @@ export default function TenantsPage() {
   }
 
   async function verifikasiPendaftaran(item: Pendaftaran, status: 'dp_diterima' | 'ditolak', catatan: string | null) {
+    if (isViewer) return
     if (status === 'dp_diterima') {
       const ok = await confirm({
         title: 'Terima pendaftaran?',
@@ -146,13 +150,14 @@ export default function TenantsPage() {
   }
 
   async function tolakPendaftaran() {
-    if (!rejectDaftar) return
+    if (isViewer || !rejectDaftar) return
     const catatan = rejectCatatan.trim()
     if (!catatan) { toast.error('Alasan penolakan wajib diisi'); return }
     await verifikasiPendaftaran(rejectDaftar, 'ditolak', catatan)
   }
 
   async function verifikasiPembayaran(item: Pembayaran, action: 'approve' | 'reject') {
+    if (isViewer) return
     const ok = await confirm({
       title: action === 'approve' ? 'Setujui pembayaran?' : 'Tolak pembayaran?',
       description: action === 'approve'
@@ -419,8 +424,8 @@ export default function TenantsPage() {
                                   <ProofButton url={p.bukti_url} label={`${p.jenis} ${r.kode}`} onPreview={setProofPreview} />
                                 </div>
                                 <div className="mt-1 flex gap-1">
-                                  <button onClick={() => verifikasiPembayaran(p, 'approve')} className="rounded bg-green-600 px-2 py-0.5 text-xs text-white">Setujui</button>
-                                  <button onClick={() => verifikasiPembayaran(p, 'reject')} className="rounded bg-red-600 px-2 py-0.5 text-xs text-white">Tolak</button>
+                                  <button onClick={() => verifikasiPembayaran(p, 'approve')} disabled={isViewer} className="rounded bg-green-600 px-2 py-0.5 text-xs text-white disabled:cursor-not-allowed disabled:opacity-40">Setujui</button>
+                                  <button onClick={() => verifikasiPembayaran(p, 'reject')} disabled={isViewer} className="rounded bg-red-600 px-2 py-0.5 text-xs text-white disabled:cursor-not-allowed disabled:opacity-40">Tolak</button>
                                 </div>
                               </div>
                             ))}
@@ -433,8 +438,8 @@ export default function TenantsPage() {
                 <td className="px-5 py-3 align-top">
                   {r.kind === 'pendaftaran' && r.pendaftaran ? (
                     <div className="flex flex-wrap gap-1">
-                      <button onClick={() => verifikasiPendaftaran(r.pendaftaran!, 'dp_diterima', null)} className="rounded bg-green-600 px-2 py-1 text-xs text-white">Terima</button>
-                      <button onClick={() => { setRejectCatatan(''); setRejectDaftar(r.pendaftaran!) }} className="rounded bg-red-600 px-2 py-1 text-xs text-white">Tolak</button>
+                      <button onClick={() => verifikasiPendaftaran(r.pendaftaran!, 'dp_diterima', null)} disabled={isViewer} className="rounded bg-green-600 px-2 py-1 text-xs text-white disabled:cursor-not-allowed disabled:opacity-40">Terima</button>
+                      <button onClick={() => { setRejectCatatan(''); setRejectDaftar(r.pendaftaran!) }} disabled={isViewer} className="rounded bg-red-600 px-2 py-1 text-xs text-white disabled:cursor-not-allowed disabled:opacity-40">Tolak</button>
                     </div>
                   ) : (
                     <div className="flex flex-wrap gap-1">
@@ -442,7 +447,7 @@ export default function TenantsPage() {
                         <button onClick={() => setStrukTarget(r)} className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700 hover:bg-slate-200">Struk</button>
                       )}
                       <Link href={`/dankelola/tenants/${r.detailId}`} className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700 hover:bg-slate-200">Detail</Link>
-                      <button onClick={() => hapus(r.detailId!)} className="rounded bg-red-50 px-2 py-1 text-xs text-red-600 hover:bg-red-100">Hapus</button>
+                      <button onClick={() => hapus(r.detailId!)} disabled={isViewer} className="rounded bg-red-50 px-2 py-1 text-xs text-red-600 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40">Hapus</button>
                     </div>
                   )}
                 </td>
@@ -607,7 +612,8 @@ export default function TenantsPage() {
           <button
             type="button"
             onClick={() => void tolakPendaftaran()}
-            className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+            disabled={isViewer}
+            className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Tolak Pendaftaran
           </button>

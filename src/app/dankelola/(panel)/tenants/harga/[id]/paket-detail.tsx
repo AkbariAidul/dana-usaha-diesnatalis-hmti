@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { ArrowDown, ArrowUp, Pencil, Trash2 } from 'lucide-react'
@@ -11,6 +11,7 @@ import type { KategoriSewa, KategoriPilihan, KategoriBundleDiscount, HargaDasar,
 import { periodeDariTanggal } from '@/lib/types'
 import { formatRupiah, formatDate, todayISO } from '@/lib/utils'
 import { useConfirm } from '@/components/confirm-dialog'
+import { useIsViewer } from '@/lib/dashboard-user'
 
 type Master = { kategori: KategoriSewa[]; hargaDasar: HargaDasar[]; periode: PeriodeHarga[] }
 
@@ -34,6 +35,13 @@ export default function PaketDetail({
   const id = idProp ?? routeId
   const confirm = useConfirm()
   const isNew = create || id === 'new'
+  const isViewer = useIsViewer()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!isViewer || readOnly) return
+    router.replace(isNew ? '/dankelola/tenants/harga' : `/dankelola/tenants/harga/${id}`)
+  }, [id, isNew, isViewer, readOnly, router])
 
   const [paket, setPaket] = useState<KategoriSewa | null>(null)
   const [hargaDasar, setHargaDasar] = useState<HargaDasar[]>([])
@@ -391,6 +399,7 @@ export default function PaketDetail({
     }
   }
 
+  if (isViewer && !readOnly) return <PageSkeleton />
   if (loading) return <PageSkeleton />
   if (!paket && !isNew) {
     return (
@@ -464,9 +473,15 @@ export default function PaketDetail({
         </div>
         <div className="flex justify-end gap-2">
           {readOnly ? (
-            <Link href={`/dankelola/tenants/harga/${paket?.id ?? id}/edit`} className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">
-              Edit
-            </Link>
+            isViewer ? (
+              <Link href="/dankelola/tenants/harga" className="rounded-xl px-4 py-2 text-sm text-slate-600 hover:bg-slate-100">
+                Kembali
+              </Link>
+            ) : (
+              <Link href={`/dankelola/tenants/harga/${paket?.id ?? id}/edit`} className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">
+                Edit
+              </Link>
+            )
           ) : (
             <>
               <Link href="/dankelola/tenants/harga" className="rounded-xl px-4 py-2 text-sm text-slate-600 hover:bg-slate-100">

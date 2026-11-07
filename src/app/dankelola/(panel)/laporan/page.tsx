@@ -6,6 +6,7 @@ import { STATUS_LABEL } from '@/lib/types'
 import { formatDate, formatRupiah } from '@/lib/utils'
 import { getJSON } from '../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
+import { exportReportPdf, exportReportXlsx, type ReportPayload } from '@/lib/report-export'
 import { PageSkeleton } from '../ui'
 
 type JenisLaporan = 'tenant' | 'merchandise' | 'ticket'
@@ -48,16 +49,6 @@ const JENIS_LABEL: Record<JenisLaporan, string> = {
   ticket: 'Ticket',
 }
 
-function downloadCsv(nama: string, header: string[], rows: Array<Array<string | number>>) {
-  const csv = [header, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
-  const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }))
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${nama}-${new Date().toISOString().slice(0, 10)}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
-}
-
 function StatCard({ label, value, color = 'text-slate-900' }: { label: string; value: string; color?: string }) {
   return (
     <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm shadow-slate-200/40">
@@ -82,6 +73,7 @@ export default function LaporanPage() {
   const [kasir, setKasir] = useState<KasirTransaksi[]>([])
   const [tickets, setTickets] = useState<PesananTiket[]>([])
   const [loading, setLoading] = useState(true)
+  const [exporting, setExporting] = useState<'xlsx' | 'pdf' | null>(null)
 
   const load = useCallback(async () => {
     const [tenantData, preorderData, kasirData, ticketData] = await Promise.all([
@@ -126,42 +118,98 @@ export default function LaporanPage() {
     return { pendapatan, tiketLunas, menunggu, pesanan: ticketValid.length }
   }, [ticketValid])
 
-  function exportCsv() {
+  function buildReport(): ReportPayload {
     if (jenis === 'tenant') {
-      downloadCsv(
-        'laporan-tenant',
-        ['Kode', 'Nama Usaha', 'Kategori', 'Jenis', 'Asal', 'Lokasi', 'Harga', 'DP', 'Dibayar', 'Sisa', 'Status', 'Tgl Daftar'],
-        tenantAktif.map((t) => [
-          t.kode_stand, t.nama_usaha, t.kategori_sewa?.nama ?? '', t.jenis_usaha, t.asal, t.lokasi,
-          t.harga_akhir, t.dp_wajib, t.sudah_dibayar, t.harga_akhir - t.sudah_dibayar, STATUS_LABEL[t.status], t.tgl_daftar,
-        ]),
-      )
-      return
+      return {
+        title: 'Laporan Tenant',
+        filename: 'laporan-tenant',
+        summary: [
+          { label: 'Tenant Aktif', value: String(tenantAktif.length) },
+          { label: 'Total Tagihan', value: formatRupiah(tenantStats.tagihan) },
+          { label: 'Total Masuk', value: formatRupiah(tenantStats.masuk) },
+          { label: 'Piutang', value: formatRupiah(tenantStats.piutang) },
+        ],
+        sheets: [{
+          name: 'Tenant',
+          headers: ['Kode', 'Nama Usaha', 'Kategori', 'Jenis', 'Asal', 'Lokasi', 'Harga', 'DP', 'Dibayar', 'Sisa', 'Status', 'Tgl Daftar'],
+          widths: [1, 2.2, 1.4, 0.9, 0.9, 1.6, 1.1, 1, 1.1, 1.1, 1.2, 1.1],
+          currencyCols: [6, 7, 8, 9],
+          rows: tenantAktif.map((t) => [
+            t.kode_stand, t.nama_usaha, t.kategori_sewa?.nama ?? '', t.jenis_usaha, t.asal, t.lokasi,
+            t.harga_akhir, t.dp_wajib, t.sudah_dibayar, t.harga_akhir - t.sudah_dibayar, STATUS_LABEL[t.status], formatDate(t.tgl_daftar),
+          ]),
+        }],
+      }
     }
 
     if (jenis === 'merchandise') {
-      downloadCsv(
-        'laporan-merchandise',
-        ['Sumber', 'Kode', 'Nama', 'Produk', 'Qty', 'Total', 'Dibayar', 'Status', 'Tanggal'],
-        [
-          ...preorderValid.map((p) => [
-            'Preorder', p.no_po, p.nama_pemesan, '', '', p.total, p.sudah_dibayar, PREORDER_STATUS[p.status] ?? p.status, p.created_at,
-          ]),
-          ...kasir.map((k) => [
-            'Kasir', k.id.slice(0, 8), k.dicatat_oleh, k.produk, k.qty, k.total, k.total, 'Lunas', k.tanggal,
-          ]),
+      return {
+        title: 'Laporan Merchandise',
+        filename: 'laporan-merchandise',
+        summary: [
+          { label: 'Nilai Preorder', value: formatRupiah(merchStats.poTotal) },
+          { label: 'Preorder Dibayar', value: formatRupiah(merchStats.poMasuk) },
+          { label: 'Penjualan Kasir', value: formatRupiah(merchStats.kasirTotal) },
+          { label: 'Estimasi Laba Preorder', value: formatRupiah(merchStats.labaPo) },
         ],
-      )
-      return
+        sheets: [
+          {
+            name: 'Preorder',
+            headers: ['No PO', 'Nama', 'Tipe', 'Total', 'Dibayar', 'Laba', 'Status', 'Tanggal'],
+            widths: [1.2, 2, 1.1, 1.2, 1.2, 1.2, 1.3, 1.2],
+            currencyCols: [3, 4, 5],
+            rows: preorderValid.map((p) => [
+              p.no_po, p.nama_pemesan, p.tipe_pemesan, Number(p.total), Number(p.sudah_dibayar), Number(p.keuntungan), PREORDER_STATUS[p.status] ?? p.status, formatDate(p.created_at),
+            ]),
+          },
+          {
+            name: 'Kasir',
+            headers: ['Tanggal', 'Produk', 'Qty', 'Total', 'Diskon', 'Metode', 'Dicatat Oleh'],
+            widths: [1.2, 2.4, 0.7, 1.2, 1.1, 1, 1.4],
+            currencyCols: [3, 4],
+            rows: kasir.map((k) => [
+              formatDate(k.tanggal), k.produk, k.qty, Number(k.total), Number(k.diskon), k.metode, k.dicatat_oleh,
+            ]),
+          },
+        ],
+      }
     }
 
-    downloadCsv(
-      'laporan-ticket',
-      ['No Pesanan', 'Nama', 'Kontak', 'Tipe', 'Periode', 'Jumlah', 'Total', 'Status', 'Tanggal'],
-      ticketValid.map((t) => [
-        t.no_pesanan, t.nama_pembeli, t.kontak, t.tiket_nama ?? '', t.periode_nama ?? '', t.jumlah, t.total, t.status, t.created_at,
-      ]),
-    )
+    return {
+      title: 'Laporan Ticket',
+      filename: 'laporan-ticket',
+      summary: [
+        { label: 'Pesanan Valid', value: String(ticketStats.pesanan) },
+        { label: 'Tiket Lunas', value: String(ticketStats.tiketLunas) },
+        { label: 'Pendapatan Lunas', value: formatRupiah(ticketStats.pendapatan) },
+        { label: 'Menunggu Verifikasi', value: formatRupiah(ticketStats.menunggu) },
+      ],
+      sheets: [{
+        name: 'Ticket',
+        headers: ['No Pesanan', 'Nama', 'Kontak', 'Tipe', 'Periode', 'Jumlah', 'Total', 'Status', 'Tanggal'],
+        widths: [1.3, 1.8, 1.2, 1.2, 1.2, 0.8, 1.1, 1.2, 1.2],
+        currencyCols: [6],
+        rows: ticketValid.map((t) => [
+          t.no_pesanan, t.nama_pembeli, t.kontak, t.tiket_nama ?? '', t.periode_nama ?? '', t.jumlah, t.total,
+          t.status === 'lunas' ? 'Lunas' : t.status === 'menunggu_verifikasi' ? 'Menunggu' : t.status,
+          formatDate(t.created_at),
+        ]),
+      }],
+    }
+  }
+
+  async function exportReport(format: 'xlsx' | 'pdf') {
+    setExporting(format)
+    try {
+      const report = buildReport()
+      if (format === 'xlsx') await exportReportXlsx(report)
+      else await exportReportPdf(report)
+      toast.success(`Export ${format.toUpperCase()} berhasil`)
+    } catch (e) {
+      toast.error(`Gagal export ${format.toUpperCase()}: ${(e as Error).message}`)
+    } finally {
+      setExporting(null)
+    }
   }
 
   if (loading) return <PageSkeleton />
@@ -183,8 +231,11 @@ export default function LaporanPage() {
             <option value="merchandise">Laporan Merchandise</option>
             <option value="ticket">Laporan Ticket</option>
           </select>
-          <button onClick={exportCsv} className="rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-primary-700">
-            Export CSV
+          <button onClick={() => void exportReport('xlsx')} disabled={exporting !== null} className="rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">
+            {exporting === 'xlsx' ? 'Menyiapkan...' : 'Export Excel'}
+          </button>
+          <button onClick={() => void exportReport('pdf')} disabled={exporting !== null} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:border-primary-200 hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-50">
+            {exporting === 'pdf' ? 'Menyiapkan...' : 'Export PDF'}
           </button>
         </div>
       </div>

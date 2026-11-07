@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 import { QrCode, X } from 'lucide-react'
 import { QrScanner } from '@/components/qr-scanner'
+import { useIsViewer } from '@/lib/dashboard-user'
 import { beep } from '@/lib/beep'
 import { formatDateTime, formatRupiah } from '@/lib/utils'
 
@@ -115,12 +116,14 @@ function statusTenantClass(status: string) {
 }
 
 export default function ScanPage() {
+  const isViewer = useIsViewer()
   const [manual, setManual] = useState('')
   const [payload, setPayload] = useState('')
   const [result, setResult] = useState<Result | null>(null)
   const [loading, setLoading] = useState(false)
 
   async function lookup(value: string, action: 'lookup' | 'confirm' = 'lookup') {
+    if (isViewer) return
     if (!value.trim()) return
     setPayload(value.trim())
     setLoading(true)
@@ -168,18 +171,23 @@ export default function ScanPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm">
           <h2 className="mb-3 font-semibold text-slate-900">Kamera</h2>
-          <QrScanner onScan={(value) => void lookup(value)} paused={!!result} />
+          {isViewer ? (
+            <p className="rounded-xl bg-amber-50 px-3 py-4 text-sm text-amber-800">Mode lihat saja: kamera scan dinonaktifkan.</p>
+          ) : (
+            <QrScanner onScan={(value) => void lookup(value)} paused={!!result} />
+          )}
         </div>
 
         <div className="space-y-4">
           <form onSubmit={submitManual} className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm">
             <h2 className="mb-3 font-semibold text-slate-900">Input Manual</h2>
             <div className="flex gap-2">
-              <input className={input} placeholder="Kode QR / kode tampil / isi QR" value={manual} onChange={(e) => setManual(e.target.value)} />
-              <button type="submit" disabled={loading || !manual.trim()} className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+              <input disabled={isViewer} className={`${input} disabled:bg-slate-50 disabled:text-slate-400`} placeholder="Kode QR / kode tampil / isi QR" value={manual} onChange={(e) => setManual(e.target.value)} />
+              <button type="submit" disabled={isViewer || loading || !manual.trim()} className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50">
                 Cek
               </button>
             </div>
+            {isViewer && <p className="mt-2 text-xs text-amber-700">Mode lihat saja: input manual dan scan QR tidak bisa dipakai.</p>}
           </form>
         </div>
       </div>

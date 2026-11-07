@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { DataError } from '@/components/data-error'
 import { getJSON, sendJSON } from '../../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
+import { useIsViewer } from '@/lib/dashboard-user'
 import { PageSkeleton } from '../../ui'
 import type { KategoriPilihan, Tenant } from '@/lib/types'
 import { formatRupiah } from '@/lib/utils'
@@ -27,6 +28,7 @@ function kunci(nama: string) {
 }
 
 export default function PeralatanPage() {
+  const isViewer = useIsViewer()
   const [tenants, setTenants] = useState<Tenant[]>([])
   const [pilihan, setPilihan] = useState<KategoriPilihan[]>([])
   const [modalMap, setModalMap] = useState<ModalMap>({})
@@ -103,6 +105,7 @@ export default function PeralatanPage() {
   }, [tenants, pilihan, modalMap, draft])
 
   async function simpanModal(item: VendorItem) {
+    if (isViewer) return
     const modal = Math.max(0, Number(draft[item.key] ?? 0) || 0)
     setSavingKey(item.key)
     try {
@@ -190,8 +193,8 @@ export default function PeralatanPage() {
                     onChange={(e) => setDraft((prev) => ({ ...prev, [item.key]: e.target.value }))}
                     onBlur={() => void simpanModal(item)}
                     onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
-                    disabled={savingKey === item.key}
-                    className="w-28 rounded-lg border border-slate-200 px-2 py-1 text-right text-sm tabular-nums focus:border-primary-400 focus:outline-none disabled:bg-slate-50"
+                    disabled={isViewer || savingKey === item.key}
+                    className="w-28 rounded-lg border border-slate-200 px-2 py-1 text-right text-sm tabular-nums focus:border-primary-400 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
                     placeholder="0"
                   />
                 </td>
@@ -217,7 +220,10 @@ export default function PeralatanPage() {
       </div>
 
       <p className="text-xs text-slate-500">
-        Modal otomatis tersimpan saat kolom modal selesai diisi. Data item diambil dari pilihan paket pada pendaftaran tenant yang sudah diterima.
+        {isViewer
+          ? 'Mode lihat saja: kolom modal tidak bisa diubah.'
+          : 'Modal otomatis tersimpan saat kolom modal selesai diisi.'}{' '}
+        Data item diambil dari pilihan paket pada pendaftaran tenant yang sudah diterima.
       </p>
     </div>
   )

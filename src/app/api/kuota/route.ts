@@ -1,14 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-
-type KuotaItem = {
-  id: string
-  nama_lokasi: string
-  total: number
-  terisi: number
-  sisa: number
-  koordinat: string
-}
+import { createAuditLog } from '@/lib/queries'
 
 export async function GET() {
   try {
@@ -42,6 +34,7 @@ export async function POST(request: Request) {
       .single()
     
     if (error) throw error
+    await createAuditLog({ aksi: 'CREATE_KUOTA', target_type: 'kuota_stand', target_id: data.id, data_baru: data })
     return NextResponse.json(data, { status: 201 })
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })
@@ -50,15 +43,23 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const { id, terisi } = await request.json()
+    const body = await request.json()
+    const { id, terisi } = body
+    const { data: current } = await supabaseAdmin
+      .from('kuota_stand')
+      .select('total')
+      .eq('id', id)
+      .maybeSingle()
+    const total = Number(body.total ?? current?.total ?? 0)
     const { data, error } = await supabaseAdmin
       .from('kuota_stand')
-      .update({ terisi, sisa: (await request.json()).total - terisi })
+      .update({ terisi, sisa: Math.max(0, total - Number(terisi)) })
       .eq('id', id)
       .select()
       .single()
     
     if (error) throw error
+    await createAuditLog({ aksi: 'UPDATE_KUOTA', target_type: 'kuota_stand', target_id: id, data_baru: data })
     return NextResponse.json(data)
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })

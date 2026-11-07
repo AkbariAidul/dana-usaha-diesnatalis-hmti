@@ -26,6 +26,14 @@ const PUBLIC_API: Array<{ method: string; pattern: RegExp }> = [
   { method: 'POST', pattern: /^\/api\/upload$/ },
 ]
 
+const VIEWER_ALLOWED_WRITE = new Set(['/api/audit/page'])
+
+const VIEWER_BLOCKED_PAGES: Array<{ pattern: RegExp; redirectTo: string }> = [
+  { pattern: /^\/dankelola\/tenants\/harga\/new$/, redirectTo: '/dankelola/tenants/harga' },
+  { pattern: /^\/dankelola\/tenants\/harga\/[^/]+\/edit$/, redirectTo: '/dankelola/tenants/harga' },
+  { pattern: /^\/dankelola\/tenants\/pembayaran$/, redirectTo: '/dankelola/tenants/harga' },
+]
+
 function isPublicApi(method: string, pathname: string) {
   return PUBLIC_API.some((entry) => entry.method === method && entry.pattern.test(pathname))
 }
@@ -48,7 +56,11 @@ export function middleware(request: NextRequest) {
     if (!hasSession(request)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    if (request.cookies.get('dashboard_role')?.value === 'viewer' && !['GET', 'HEAD', 'OPTIONS'].includes(request.method)) {
+    if (
+      request.cookies.get('dashboard_role')?.value === 'viewer' &&
+      !['GET', 'HEAD', 'OPTIONS'].includes(request.method) &&
+      !VIEWER_ALLOWED_WRITE.has(pathname)
+    ) {
       return NextResponse.json({ error: 'Mode lihat saja: perubahan data tidak diizinkan' }, { status: 403 })
     }
     return NextResponse.next()
@@ -58,6 +70,11 @@ export function middleware(request: NextRequest) {
 
   if (pathname.startsWith('/dankelola') && !hasSession(request)) {
     return NextResponse.redirect(new URL('/dankelola/login', request.url))
+  }
+
+  if (pathname.startsWith('/dankelola') && request.cookies.get('dashboard_role')?.value === 'viewer') {
+    const blocked = VIEWER_BLOCKED_PAGES.find((entry) => entry.pattern.test(pathname))
+    if (blocked) return NextResponse.redirect(new URL(blocked.redirectTo, request.url))
   }
 
   return NextResponse.next()

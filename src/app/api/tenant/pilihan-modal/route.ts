@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getPilihanModal, savePilihanModal } from '@/lib/peralatan'
+import { createAuditLog } from '@/lib/queries'
 
 export async function GET() {
   try {
@@ -20,6 +21,7 @@ export async function POST(request: Request) {
     const map = await getPilihanModal()
     map[nama] = Math.round(modal)
     await savePilihanModal(map)
+    await createAuditLog({ aksi: 'UPDATE_MODAL_PILIHAN', target_type: 'kategori_pilihan', target_id: nama, data_baru: { nama, modal: Math.round(modal) } })
     return NextResponse.json(map)
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })

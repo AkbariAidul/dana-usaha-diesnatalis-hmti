@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { normalizeDashboardUserName } from '@/lib/auth'
+import { createAuditLog } from '@/lib/queries'
 
 export async function GET() {
   try {
@@ -72,6 +73,7 @@ export async function POST(request: Request) {
       aksi: 'checkin',
       dicatat_oleh: dicatat_oleh || 'Admin',
     })
+    await createAuditLog({ aksi: 'CHECKIN_TIKET', target_type: 'tiket_issued', target_id: id, data_baru: data })
     
     return NextResponse.json(data)
   } catch (err: unknown) {

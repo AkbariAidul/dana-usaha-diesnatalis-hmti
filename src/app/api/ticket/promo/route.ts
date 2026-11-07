@@ -1,15 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-
-type Promo = {
-  id: string
-  kode: string
-  deskripsi: string
-  diskon: number
-  kuota: number
-  terpakai: number
-  aktif: boolean
-}
+import { createAuditLog } from '@/lib/queries'
 
 export async function GET() {
   try {
@@ -54,6 +45,7 @@ export async function POST(request: Request) {
       .single()
     
     if (error) throw error
+    await createAuditLog({ aksi: 'CREATE_PROMO', target_type: 'promo_diskon', target_id: data.id, data_baru: data })
     return NextResponse.json(data, { status: 201 })
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })
@@ -73,6 +65,7 @@ export async function PATCH(request: Request) {
       .single()
     
     if (error) throw error
+    await createAuditLog({ aksi: 'UPDATE_PROMO', target_type: 'promo_diskon', target_id: id, data_baru: data })
     return NextResponse.json(data)
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })

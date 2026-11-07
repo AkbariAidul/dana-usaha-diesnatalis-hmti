@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { kirimNotifTerverifikasi } from '@/lib/notifikasi-tiket'
+import { createAuditLog } from '@/lib/queries'
 
 export async function POST(request: Request) {
   try {
@@ -25,6 +26,7 @@ export async function POST(request: Request) {
       .single()
 
     if (error) throw error
+    await createAuditLog({ aksi: 'VERIFIKASI_TIKET', target_type: 'pesanan_tiket', target_id: id, data_baru: data })
 
     // If approved, create ticket issued (idempotent)
     if (status === 'lunas') {

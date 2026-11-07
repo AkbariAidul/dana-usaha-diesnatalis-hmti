@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { createAuditLog } from '@/lib/queries'
 
 export async function GET() {
   try {
@@ -25,6 +26,7 @@ export async function POST(request: Request) {
     for (const [key, value] of entries) {
       await supabaseAdmin.from('pengaturan_umum').upsert({ key, value: value as string }, { onConflict: 'key' })
     }
+    await createAuditLog({ aksi: 'UPDATE_PENGATURAN_QRIS', target_type: 'pengaturan_umum', target_id: 'qris', data_baru: { keys: entries.map(([key]) => key) } })
     return NextResponse.json({ success: true })
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { kirimNotifPoTerverifikasi } from '@/lib/notifikasi-po'
 import { buatQrPayload } from '@/lib/link-token'
+import { createAuditLog } from '@/lib/queries'
 
 export async function GET() {
   try {
@@ -84,6 +85,7 @@ export async function POST(request: Request) {
       .single()
     
     if (error) throw error
+    await createAuditLog({ aksi: 'CREATE_PREORDER', target_type: 'merch_po', target_id: data.id, data_baru: data })
     return NextResponse.json(data, { status: 201 })
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })
@@ -142,6 +144,7 @@ export async function PATCH(request: Request) {
       .single()
 
     if (error) throw error
+    await createAuditLog({ aksi: 'UPDATE_PREORDER', target_type: 'merch_po', target_id: id, data_baru: data })
 
     // Fetch items for notification
     const { data: poItems } = await supabaseAdmin

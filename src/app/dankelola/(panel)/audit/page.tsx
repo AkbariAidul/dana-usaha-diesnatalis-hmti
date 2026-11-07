@@ -35,6 +35,7 @@ function formatWaktu(value: string) {
 
 function targetLabel(row: AuditRow) {
   if (!row.target_type && !row.target_id) return '-'
+  if (row.target_type === 'page' && row.target_id) return row.target_id
   return row.target_id ? `${row.target_type ?? 'target'} · ${row.target_id.slice(0, 8)}` : row.target_type ?? '-'
 }
 

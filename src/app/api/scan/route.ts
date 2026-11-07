@@ -5,6 +5,7 @@ import { parseQrPayload } from '@/lib/link-token'
 import { kirimNotifCheckin } from '@/lib/notifikasi-tiket'
 import { kirimNotifPoDiambil } from '@/lib/notifikasi-po'
 import { kirimNotifTenantCheckin } from '@/lib/notifikasi-tenant'
+import { createAuditLog } from '@/lib/queries'
 import type { DashboardUser } from '@/lib/auth'
 
 async function getSessionUser(): Promise<DashboardUser | null> {
@@ -60,6 +61,7 @@ export async function POST(request: Request) {
             .update({ venue_checked_in_at: new Date().toISOString(), venue_checked_in_by: oleh })
             .eq('id', tenant.id)
           if (error) throw error
+          await createAuditLog({ aksi: 'CHECKIN_TENANT', target_type: 'tenants', target_id: tenant.id, data_baru: { venue_checked_in_by: oleh } })
           after(() =>
             kirimNotifTenantCheckin(request, {
               ...tenant,
@@ -106,6 +108,7 @@ export async function POST(request: Request) {
           .update({ picked_up_at: pickedUpAt, picked_up_by: oleh })
           .eq('id', po.id)
         if (error) throw error
+        await createAuditLog({ aksi: 'PICKUP_PO', target_type: 'merch_po', target_id: po.id, data_baru: { picked_up_by: oleh } })
 
         after(() =>
           kirimNotifPoDiambil(request, {
@@ -194,6 +197,7 @@ export async function POST(request: Request) {
         aksi: 'checkin',
         dicatat_oleh: oleh,
       })
+      await createAuditLog({ aksi: 'CHECKIN_TIKET', target_type: 'tiket_issued', target_id: tiket.id, data_baru: { digunakan_oleh: oleh } })
 
       if (pesanan) {
         after(() =>

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getPeralatanMeta, savePeralatanMeta, getKomposisiPeralatan, saveKomposisiPeralatan } from '@/lib/peralatan'
+import { createAuditLog } from '@/lib/queries'
 
 type Item = { id: string; nama: string; jenis: string; jumlah: number; status: string } & Record<string, unknown>
 
@@ -55,6 +56,12 @@ export async function POST(request: Request) {
       vendor: body.vendor || '',
     }
     await savePeralatanMeta(meta)
+    await createAuditLog({
+      aksi: body.id ? 'UPDATE_PERALATAN' : 'CREATE_PERALATAN',
+      target_type: 'peralatan',
+      target_id: item.id,
+      data_baru: withMeta(item, meta),
+    })
     return NextResponse.json(withMeta(item, meta), { status: 201 })
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })
@@ -82,6 +89,7 @@ export async function PATCH(request: Request) {
       }
       await savePeralatanMeta(meta)
     }
+    await createAuditLog({ aksi: 'UPDATE_PERALATAN', target_type: 'peralatan', target_id: body.id, data_baru: withMeta(data as Item, meta) })
     return NextResponse.json(withMeta(data as Item, meta))
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })
@@ -107,6 +115,7 @@ export async function DELETE(request: Request) {
       }
     }
     if (changed) await saveKomposisiPeralatan(komposisi)
+    await createAuditLog({ aksi: 'DELETE_PERALATAN', target_type: 'peralatan', target_id: id })
 
     return NextResponse.json({ success: true })
   } catch (err: unknown) {

@@ -107,42 +107,165 @@ async function storageUsage() {
   }
 }
 
+type VercelDeployment = {
+  uid?: string
+  id?: string
+  name?: string
+  url?: string
+  state?: string
+  target?: string | null
+  created?: number
+  createdAt?: number
+  buildingAt?: number
+  readyAt?: number
+  ready?: number
+  readySubstate?: string
+  source?: string
+  alias?: string[]
+  regions?: string[]
+  inspectorUrl?: string
+  creator?: { username?: string; email?: string }
+  meta?: Record<string, string>
+}
+
+type VercelProject = {
+  id?: string
+  name?: string
+  framework?: string | null
+  createdAt?: number
+  nodeVersion?: string
+  rootDirectory?: string | null
+  buildCommand?: string | null
+  devCommand?: string | null
+  installCommand?: string | null
+  outputDirectory?: string | null
+}
+
+type VercelDeploymentsResponse = { deployments?: VercelDeployment[] }
+
+async function vercelJson<T>(path: string, token: string, params: URLSearchParams): Promise<T | null> {
+  try {
+    const res = await fetch(`https://api.vercel.com${path}?${params}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    })
+    if (!res.ok) return null
+    return await res.json() as T
+  } catch {
+    return null
+  }
+}
+
+function iso(value?: number) {
+  return value ? new Date(value).toISOString() : null
+}
+
+function vercelCommit(meta: Record<string, string> | undefined) {
+  if (!meta) return null
+  const provider =
+    meta.githubCommitRef !== undefined ? 'GitHub'
+    : meta.gitlabCommitRef !== undefined ? 'GitLab'
+    : meta.bitbucketCommitRef !== undefined ? 'Bitbucket'
+    : null
+  const prefix =
+    provider === 'GitHub' ? 'github'
+    : provider === 'GitLab' ? 'gitlab'
+    : provider === 'Bitbucket' ? 'bitbucket'
+    : null
+  if (!provider || !prefix) return null
+  return {
+    provider,
+    branch: meta[`${prefix}CommitRef`] ?? null,
+    sha: meta[`${prefix}CommitSha`] ?? null,
+    message: meta[`${prefix}CommitMessage`] ?? null,
+    author: meta[`${prefix}CommitAuthorName`] ?? null,
+    authorLogin: meta[`${prefix}CommitAuthorLogin`] ?? null,
+    repo: meta[`${prefix}CommitRepo`] ?? null,
+    org: meta[`${prefix}CommitOrg`] ?? null,
+  }
+}
+
+function mapDeployment(deployment: VercelDeployment | null, detail: VercelDeployment | null) {
+  if (!deployment && !detail) return null
+  const merged = { ...deployment, ...detail }
+  const created = merged.created ?? merged.createdAt
+  const readyAt = merged.readyAt ?? (merged.ready && merged.ready > 1 ? merged.ready : null)
+  const commit = vercelCommit(merged.meta)
+  return {
+    id: merged.uid ?? merged.id ?? null,
+    name: merged.name ?? null,
+    state: merged.state ?? (merged.ready ? 'READY' : 'BUILDING'),
+    target: merged.target ?? null,
+    url: merged.url ? `https://${merged.url}` : null,
+    inspectorUrl: merged.inspectorUrl ?? null,
+    createdAt: iso(created),
+    buildingAt: iso(merged.buildingAt),
+    readyAt: iso(readyAt ?? undefined),
+    durationSeconds: created && readyAt ? Math.max(0, Math.round((readyAt - created) / 1000)) : null,
+    readySubstate: merged.readySubstate ?? null,
+    source: merged.source ?? null,
+    aliases: merged.alias ?? [],
+    regions: merged.regions ?? [],
+    creator: merged.creator ?? null,
+    commit,
+    meta: merged.meta ?? null,
+  }
+}
+
 async function vercelStatus() {
   const token = process.env.VERCEL_TOKEN
   const projectId = process.env.VERCEL_PROJECT_ID
   const teamId = process.env.VERCEL_TEAM_ID
   const dashboardUrl = 'https://vercel.com/dashboard'
+  const usageUrl = 'https://vercel.com/dashboard/usage'
 
   if (!token || !projectId) {
-    return { configured: false, dashboardUrl, usageUrl: 'https://vercel.com/dashboard/usage', latest: null }
+    return { configured: false, dashboardUrl, usageUrl, project: null, latest: null, recent: [] }
   }
 
   try {
-    const params = new URLSearchParams({ projectId, limit: '1' })
+    const params = new URLSearchParams({ projectId, limit: '5' })
     if (teamId) params.set('teamId', teamId)
-    const res = await fetch(`https://api.vercel.com/v6/deployments?${params}`, {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: 'no-store',
-    })
-    if (!res.ok) throw new Error(`Vercel API ${res.status}`)
-    const data = await res.json()
-    const deployment = data.deployments?.[0]
+    const data = await vercelJson<VercelDeploymentsResponse>('/v6/deployments', token, params)
+    if (!data) throw new Error('Vercel API tidak bisa diakses')
+    const deployments = data.deployments ?? []
+    const deployment = deployments[0]
+
+    const projectParams = new URLSearchParams()
+    if (teamId) projectParams.set('teamId', teamId)
+    const detailParams = new URLSearchParams()
+    if (teamId) detailParams.set('teamId', teamId)
+
+    const [detail, project] = await Promise.all([
+      deployment?.uid
+        ? vercelJson<VercelDeployment>(`/v13/deployments/${deployment.uid}`, token, detailParams)
+        : Promise.resolve(null),
+      vercelJson<VercelProject>(`/v9/projects/${projectId}`, token, projectParams),
+    ])
+
     return {
       configured: true,
       dashboardUrl,
-      usageUrl: 'https://vercel.com/dashboard/usage',
-      latest: deployment
+      usageUrl,
+      project: project
         ? {
-            id: deployment.uid ?? deployment.id ?? null,
-            state: deployment.state ?? (deployment.ready ? 'READY' : 'BUILDING'),
-            target: deployment.target ?? null,
-            url: deployment.url ? `https://${deployment.url}` : null,
-            createdAt: deployment.createdAt ? new Date(deployment.createdAt).toISOString() : null,
+            id: project.id ?? null,
+            name: project.name ?? null,
+            framework: project.framework ?? null,
+            createdAt: iso(project.createdAt),
+            nodeVersion: project.nodeVersion ?? null,
+            rootDirectory: project.rootDirectory ?? null,
+            buildCommand: project.buildCommand ?? null,
+            devCommand: project.devCommand ?? null,
+            installCommand: project.installCommand ?? null,
+            outputDirectory: project.outputDirectory ?? null,
           }
         : null,
+      latest: mapDeployment(deployment ?? null, detail),
+      recent: deployments.slice(1).map((item) => mapDeployment(item, null)),
     }
   } catch (error) {
-    return { configured: true, dashboardUrl, usageUrl: 'https://vercel.com/dashboard/usage', latest: null, error: String(error) }
+    return { configured: true, dashboardUrl, usageUrl, project: null, latest: null, recent: [], error: String(error) }
   }
 }
 
