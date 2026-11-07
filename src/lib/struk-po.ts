@@ -418,6 +418,7 @@ type StrukTenant = {
   nama_usaha: string
   kontak: string
   harga_akhir: number
+  base_harga: number
   sudah_dibayar: number | null
   status: string
   tgl_daftar: string
@@ -442,6 +443,7 @@ export async function buatStrukTenantPdf(
   qrUrl?: string
 ): Promise<Buffer> {
   const total = Number(tenant.harga_akhir)
+  const baseHarga = Number(tenant.base_harga ?? 0)
   const dibayar = Number(tenant.sudah_dibayar ?? 0)
   const sisa = Math.max(0, total - dibayar)
   const addonTotal = addon.reduce((sum, item) => sum + Number(item.subtotal), 0)
@@ -461,10 +463,10 @@ export async function buatStrukTenantPdf(
     lines: [
       {
         nama: `${tenant.kategori} (Tempat)`,
-        detail: 'Paket tenant',
+        detail: `Sewa tempat · ${jumlahTenant} tenant`,
         qty: jumlahTenant,
-        harga_satuan: Math.round(paketSubtotal / jumlahTenant),
-        subtotal: paketSubtotal,
+        harga_satuan: Math.round(baseHarga / jumlahTenant),
+        subtotal: baseHarga,
       },
       ...addon.map((item) => ({
         nama: item.nama,

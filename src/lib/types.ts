@@ -93,6 +93,7 @@ export interface Tenant {
   tgl_acara: string | null
   status: 'daftar' | 'dp' | 'cicil' | 'lunas' | 'batal' | 'menunggak'
   keterangan: string | null
+  base_harga?: number
   addon?: TenantAddon[] | null
   kategori_sewa?: { kode: string; nama: string }
   venue_checked_in_at?: string | null

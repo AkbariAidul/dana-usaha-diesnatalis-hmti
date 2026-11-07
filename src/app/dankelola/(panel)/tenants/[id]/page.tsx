@@ -95,19 +95,25 @@ export default function TenantDetailPage() {
             ))}
           </dl>
 
-          {tenant.addon && tenant.addon.length > 0 && (
-            <div className="mt-4 border-t border-slate-100 pt-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Item Disewa</p>
-              <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                {tenant.addon.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
-                    <span className="font-medium text-slate-800">{item.nama}</span>
-                    <span className="shrink-0 text-xs text-slate-500">{item.qty} unit · {formatRupiah(Number(item.subtotal))}</span>
-                  </div>
-                ))}
+          <div className="mt-4 border-t border-slate-100 pt-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Rincian Harga</p>
+            <div className="mt-2 space-y-1.5 text-sm">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Sewa Tempat · {tenant.kategori_sewa?.nama ?? '-'}</span>
+                <span className="font-medium">{formatRupiah(tenant.base_harga ?? tenant.harga_akhir)}</span>
+              </div>
+              {tenant.addon && tenant.addon.length > 0 && tenant.addon.map((item) => (
+                <div key={item.id} className="flex justify-between">
+                  <span className="text-slate-500">{item.nama} · {item.qty} unit</span>
+                  <span className="font-medium">{formatRupiah(Number(item.subtotal))}</span>
+                </div>
+              ))}
+              <div className="flex justify-between border-t border-slate-100 pt-1.5 mt-1.5">
+                <span className="font-semibold text-slate-900">Total Tagihan</span>
+                <span className="font-bold text-primary-600">{formatRupiah(tenant.harga_akhir)}</span>
               </div>
             </div>
-          )}
+          </div>
         </div>
 
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">

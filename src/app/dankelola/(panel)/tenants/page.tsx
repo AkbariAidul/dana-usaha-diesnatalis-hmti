@@ -39,6 +39,7 @@ type Row = {
   kontak: string
   kategori: string
   kategoriId: string
+  baseHarga: number
   harga: number
   dibayar: number
   sisa: number
@@ -190,6 +191,7 @@ export default function TenantsPage() {
         kontak: p.kontak,
         kategori: kategoriNama(p.kategori_sewa_id),
         kategoriId: p.kategori_sewa_id,
+        baseHarga: Number(p.harga_akhir),
         harga: Number(p.harga_akhir),
         dibayar: 0,
         sisa: Number(p.harga_akhir),
@@ -214,6 +216,7 @@ export default function TenantsPage() {
         kontak: t.kontak,
         kategori: t.kategori_sewa?.nama ?? kategoriNama(t.kategori_sewa_id),
         kategoriId: t.kategori_sewa_id,
+        baseHarga: Number(t.base_harga ?? t.harga_akhir),
         harga,
         dibayar,
         sisa: Math.max(0, harga - dibayar),
@@ -525,7 +528,7 @@ export default function TenantsPage() {
                   <tr>
                     <td className="px-3 py-2">{strukTarget.kategori} (Tempat)</td>
                     <td className="px-3 py-2 text-center">{strukTarget.jumlahTenant}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{formatRupiah(strukPaketSubtotal)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatRupiah(strukTarget.baseHarga)}</td>
                   </tr>
                   {(strukTarget.addon ?? []).map((item) => (
                     <tr key={item.id}>

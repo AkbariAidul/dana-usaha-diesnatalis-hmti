@@ -39,6 +39,7 @@ export async function GET(request: Request) {
           nama_usaha: tenant.nama_usaha,
           kontak: tenant.kontak,
           harga_akhir: Number(tenant.harga_akhir),
+          base_harga: Number(tenant.base_harga ?? tenant.harga_akhir),
           sudah_dibayar: Number(tenant.sudah_dibayar ?? 0),
           status: tenant.status,
           tgl_daftar: tenant.tgl_daftar,

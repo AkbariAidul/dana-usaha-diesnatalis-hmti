@@ -38,6 +38,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
       let tenantId = existing?.id as string | undefined
       if (!tenantId) {
+        // Ambil harga dasar sewa tempat dari kategori & periode yang dipilih
+        const [{ data: hargaRows }] = await Promise.all([
+          supabaseAdmin.from('harga_dasar')
+            .select('harga')
+            .eq('kategori_sewa_id', data.kategori_sewa_id)
+            .eq('periode', data.periode_daftar)
+            .limit(1),
+        ])
+        const baseHargaPerTenant = Number((hargaRows?.[0]?.harga as number | undefined) || data.harga_akhir)
+        const jumlahTenant = Number(data.jumlah_tenant ?? 1)
+
         const tenantData = {
           kode_stand: data.kode_pendaftaran,
           nama_usaha: data.nama_usaha,
@@ -49,8 +60,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           lokasi: data.lokasi,
           periode_daftar: data.periode_daftar,
           harga_akhir: Number(data.harga_akhir),
+          base_harga: Math.round(baseHargaPerTenant * jumlahTenant),
           dp_wajib: Number(data.dp_wajib),
-          jumlah_tenant: Number(data.jumlah_tenant ?? 1),
+          jumlah_tenant: jumlahTenant,
           sudah_dibayar: 0,
           tgl_daftar: data.tgl_daftar,
           tgl_acara: data.tgl_acara,

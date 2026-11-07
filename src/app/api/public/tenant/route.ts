@@ -12,6 +12,7 @@ export async function GET() {
     const { data, error } = await supabaseAdmin
       .from('pendaftaran_tenant_pub')
       .select('*')
+      .neq('status', 'dp_diterima')
       .order('created_at', { ascending: false })
     if (error) throw error
     return NextResponse.json(data ?? [])
