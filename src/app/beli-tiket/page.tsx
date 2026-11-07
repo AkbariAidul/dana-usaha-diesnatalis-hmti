@@ -102,8 +102,8 @@ export default function BeliTiketPublik() {
   const [preview, setPreview] = useState('')
   const [uploading, setUploading] = useState(false)
   const [qr, setQr] = useState('')
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
   const turnstileRef = useRef<TurnstileHandle>(null)
+  const turnstileLock = useRef(false)
   const [step, setStep] = useState(1)
   const nominalBayar = Number(pesanan?.total || 0)
 
@@ -179,10 +179,26 @@ export default function BeliTiketPublik() {
       return
     }
     try {
+      let token = turnstileRef.current?.getToken() ?? null
+      if (TURNSTILE_ENABLED && !token) {
+        if (turnstileLock.current) return
+        turnstileLock.current = true
+        const id = toast.loading('Menunggu verifikasi Cloudflare…')
+        try {
+          token = await turnstileRef.current?.waitForToken() ?? null
+        } finally {
+          toast.dismiss(id)
+          turnstileLock.current = false
+        }
+        if (!token) {
+          toast.error('Verifikasi Cloudflare belum selesai. Coba lagi.')
+          return
+        }
+      }
       const res = await sendJSON('/api/public/tiket', 'POST', {
         ...form,
         jumlah: Math.max(1, Number(form.jumlah) || 1),
-        turnstile_token: turnstileToken,
+        turnstile_token: token,
       })
       setPesanan(
         res as {
@@ -576,14 +592,14 @@ export default function BeliTiketPublik() {
                           </div>
                         </dl>
 
-                        <Turnstile ref={turnstileRef} onToken={setTurnstileToken} />
+                        <Turnstile ref={turnstileRef} />
                         <button
                           type="button"
                           onClick={beli}
-                          disabled={!form.nama_pembeli || !form.kontak || !form.jumlah || !tipe.buka || (TURNSTILE_ENABLED && !turnstileToken)}
+                          disabled={!form.nama_pembeli || !form.kontak || !form.jumlah || !tipe.buka}
                           className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-600/20 transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none"
                         >
-                          {!tipe.buka ? 'Tiket Ditutup' : TURNSTILE_ENABLED && !turnstileToken ? 'Memuat verifikasi…' : 'Buat Pesanan'}
+                          {tipe.buka ? 'Buat Pesanan' : 'Tiket Ditutup'}
                           {tipe.buka && <ArrowRight className="h-4 w-4" />}
                         </button>
                         <p className="text-center text-[11px] leading-relaxed text-slate-400">

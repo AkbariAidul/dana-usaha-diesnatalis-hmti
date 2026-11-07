@@ -1,6 +1,5 @@
 'use client'
 
-import Script from 'next/script'
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react'
 
 type TurnstileApi = {
@@ -9,7 +8,13 @@ type TurnstileApi = {
   reset: (id: string) => void
 }
 
-export type TurnstileHandle = { reset: () => void }
+export type TurnstileHandle = {
+  reset: () => void
+  getToken: () => string | null
+  waitForToken: (timeoutMs?: number) => Promise<string | null>
+}
+
+const noop = () => {}
 
 declare global {
   interface Window {
@@ -17,20 +22,50 @@ declare global {
   }
 }
 
-export const Turnstile = forwardRef<TurnstileHandle, { onToken: (token: string | null) => void; className?: string }>(
+export const Turnstile = forwardRef<TurnstileHandle, { onToken?: (token: string | null) => void; className?: string }>(
   function Turnstile({ onToken, className }, ref) {
     const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
     const container = useRef<HTMLDivElement>(null)
     const widget = useRef<string | null>(null)
-    const callback = useRef(onToken)
-    callback.current = onToken
+    const token = useRef<string | null>(null)
+    const waiters = useRef<Array<(value: string | null) => void>>([])
+    const callback = useRef(onToken ?? noop)
+    callback.current = onToken ?? noop
 
-    const resetWidget = useCallback(() => {
-      callback.current(null)
-      if (widget.current && window.turnstile) window.turnstile.reset(widget.current)
+    const settle = useCallback((value: string | null) => {
+      token.current = value
+      callback.current(value)
+      const pending = waiters.current
+      waiters.current = []
+      pending.forEach((resolve) => resolve(value))
     }, [])
 
-    useImperativeHandle(ref, () => ({ reset: resetWidget }), [resetWidget])
+    const resetWidget = useCallback(() => {
+      settle(null)
+      if (widget.current && window.turnstile) window.turnstile.reset(widget.current)
+    }, [settle])
+
+    const waitForToken = useCallback((timeoutMs = 15000) => {
+      if (!siteKey) return Promise.resolve('')
+      if (token.current) return Promise.resolve(token.current)
+      container.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      return new Promise<string | null>((resolve) => {
+        let timer = 0
+        const waiter = (value: string | null) => {
+          window.clearTimeout(timer)
+          resolve(value)
+        }
+        timer = window.setTimeout(() => {
+          waiters.current = waiters.current.filter((item) => item !== waiter)
+          resolve(null)
+        }, timeoutMs)
+        waiters.current.push(waiter)
+      })
+    }, [siteKey])
+
+    const getToken = useCallback(() => token.current, [])
+
+    useImperativeHandle(ref, () => ({ getToken, reset: resetWidget, waitForToken }), [getToken, resetWidget, waitForToken])
 
     useEffect(() => {
       if (!siteKey) return
@@ -39,12 +74,12 @@ export const Turnstile = forwardRef<TurnstileHandle, { onToken: (token: string |
         try {
           widget.current = window.turnstile.render(container.current, {
             sitekey: siteKey,
-            callback: (token: string) => callback.current(token),
+            callback: (value: string) => settle(value),
             'expired-callback': resetWidget,
-            'error-callback': () => callback.current(null),
+            'error-callback': () => settle(null),
           })
         } catch {
-          callback.current(null)
+          settle(null)
         }
         window.clearInterval(timer)
       }, 200)
@@ -54,15 +89,10 @@ export const Turnstile = forwardRef<TurnstileHandle, { onToken: (token: string |
         if (widget.current && window.turnstile) window.turnstile.remove(widget.current)
         widget.current = null
       }
-    }, [resetWidget, siteKey])
+    }, [resetWidget, settle, siteKey])
 
     if (!siteKey) return null
 
-    return (
-      <div className={className}>
-        <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" strategy="afterInteractive" />
-        <div ref={container} />
-      </div>
-    )
+    return <div ref={container} className={className} />
   },
 )

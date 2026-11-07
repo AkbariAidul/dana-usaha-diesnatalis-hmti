@@ -63,8 +63,8 @@ export default function DaftarTenantPublik() {
   const [preview, setPreview] = useState('')
   const [uploading, setUploading] = useState(false)
   const [qr, setQr] = useState('')
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
   const turnstileRef = useRef<TurnstileHandle>(null)
+  const turnstileLock = useRef(false)
 
   useEffect(() => {
     Promise.all([
@@ -207,13 +207,29 @@ export default function DaftarTenantPublik() {
     if (!periode) return toast.error('Tanggal daftar di luar periode open tenant')
     if (sisaSlot === 0) return toast.error('Slot kategori ini sudah habis')
     try {
+      let token = turnstileRef.current?.getToken() ?? null
+      if (TURNSTILE_ENABLED && !token) {
+        if (turnstileLock.current) return
+        turnstileLock.current = true
+        const id = toast.loading('Menunggu verifikasi Cloudflare…')
+        try {
+          token = await turnstileRef.current?.waitForToken() ?? null
+        } finally {
+          toast.dismiss(id)
+          turnstileLock.current = false
+        }
+        if (!token) {
+          toast.error('Verifikasi Cloudflare belum selesai. Coba lagi.')
+          return
+        }
+      }
       const res = await sendJSON('/api/public/tenant', 'POST', {
         ...form,
         jumlah_tenant: jumlahTenant,
         addon: addonTerpilih.map(({ item, qty }) => ({ id: item.id, qty })),
         pilihan: Object.entries(pilihanQty).map(([id, qty]) => ({ id, qty: Math.max(1, Number(qty) || 1) })),
         periode_daftar: periode,
-        turnstile_token: turnstileToken,
+        turnstile_token: token,
       })
       const created = res as typeof pendaftaran
       setPendaftaran(created)
@@ -434,8 +450,8 @@ export default function DaftarTenantPublik() {
                 </div>
               </div>
               <div className="flex flex-col items-end gap-3 md:col-span-4 sm:flex-row sm:justify-end">
-                <Turnstile ref={turnstileRef} onToken={setTurnstileToken} />
-                <button onClick={daftar} disabled={!periode || !form.nama_usaha || !form.kontak || !form.kategori_sewa_id || sisaSlot === 0 || (TURNSTILE_ENABLED && !turnstileToken)} className="rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50">{TURNSTILE_ENABLED && !turnstileToken ? 'Memuat verifikasi…' : 'Lanjut ke Pembayaran'}</button>
+                <Turnstile ref={turnstileRef} />
+                <button onClick={daftar} disabled={!periode || !form.nama_usaha || !form.kontak || !form.kategori_sewa_id || sisaSlot === 0} className="rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50">Lanjut ke Pembayaran</button>
               </div>
             </div>
           </div>

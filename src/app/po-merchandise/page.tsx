@@ -106,8 +106,8 @@ export default function PoMerchandisePage() {
   const [uploading, setUploading] = useState(false)
   const [nominalBayar, setNominalBayar] = useState('')
   const [pengurusOpen, setPengurusOpen] = useState(false)
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
   const turnstileRef = useRef<TurnstileHandle>(null)
+  const turnstileLock = useRef(false)
 
   useEffect(() => {
     Promise.all([
@@ -222,12 +222,28 @@ export default function PoMerchandisePage() {
   async function pesan() {
     if (!validasiPemesan()) return
     try {
+      let token = turnstileRef.current?.getToken() ?? null
+      if (TURNSTILE_ENABLED && !token) {
+        if (turnstileLock.current) return
+        turnstileLock.current = true
+        const id = toast.loading('Menunggu verifikasi Cloudflare…')
+        try {
+          token = await turnstileRef.current?.waitForToken() ?? null
+        } finally {
+          toast.dismiss(id)
+          turnstileLock.current = false
+        }
+        if (!token) {
+          toast.error('Verifikasi Cloudflare belum selesai. Coba lagi.')
+          return
+        }
+      }
       const res = await fetch('/api/public/po', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
-          turnstile_token: turnstileToken,
+          turnstile_token: token,
           items: keranjang.map((item) => ({
             merchandise_id: item.produk.id,
             varian_id: item.varian?.id ?? null,
@@ -634,13 +650,9 @@ export default function PoMerchandisePage() {
               </div>
 
               <div className="mt-4 flex flex-col items-end gap-3 sm:flex-row sm:justify-end">
-                <Turnstile ref={turnstileRef} onToken={setTurnstileToken} />
-                <button
-                  onClick={pesan}
-                  disabled={TURNSTILE_ENABLED && !turnstileToken}
-                  className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {TURNSTILE_ENABLED && !turnstileToken ? 'Memuat verifikasi…' : 'Buat Pesanan'}
+                <Turnstile ref={turnstileRef} />
+                <button onClick={pesan} className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-medium text-white">
+                  Buat Pesanan
                 </button>
               </div>
             </div>

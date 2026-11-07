@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Poppins } from "next/font/google";
 import { Toaster } from "sonner";
 import { ConfirmProvider } from "@/components/confirm-dialog";
@@ -27,8 +28,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <link rel="icon" href="/favicon.png" type="image/png" />
         <link rel="shortcut icon" href="/favicon.png" type="image/png" />
+        <link rel="preconnect" href="https://challenges.cloudflare.com" crossOrigin="anonymous" />
       </head>
       <body className="font-sans antialiased">
+        <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" strategy="afterInteractive" />
         <ConfirmProvider>
           <PublicVisitorTracker />
           {children}
