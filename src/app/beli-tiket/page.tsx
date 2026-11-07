@@ -1,11 +1,11 @@
 ﻿'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { PublicBreadcrumb, PublicNavbar } from '@/components/public-navbar'
 import { PoStepper } from '@/components/po-stepper'
-import { Turnstile } from '@/components/turnstile'
+import { Turnstile, type TurnstileHandle } from '@/components/turnstile'
 import { getJSON, sendJSON } from '@/app/dankelola/api'
 import { buatQrisDinamis } from '@/lib/qris'
 import { formatRupiah } from '@/lib/utils'
@@ -42,6 +42,8 @@ const langkahBreadcrumb = ['Pilih Tiket', 'Pembayaran', 'Menunggu Verifikasi']
 
 const input =
   'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm shadow-slate-200/40 outline-none transition placeholder:text-slate-400 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10'
+
+const TURNSTILE_ENABLED = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
 function formatTanggal(value: string) {
   return new Date(`${value}T00:00:00`).toLocaleDateString('id-ID', {
@@ -101,6 +103,7 @@ export default function BeliTiketPublik() {
   const [uploading, setUploading] = useState(false)
   const [qr, setQr] = useState('')
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
+  const turnstileRef = useRef<TurnstileHandle>(null)
   const [step, setStep] = useState(1)
   const nominalBayar = Number(pesanan?.total || 0)
 
@@ -194,6 +197,7 @@ export default function BeliTiketPublik() {
       setStep(2)
       toast.success('Pesanan dibuat, silakan bayar')
     } catch (e: unknown) {
+      turnstileRef.current?.reset()
       toast.error((e as Error).message)
     }
   }
@@ -572,14 +576,14 @@ export default function BeliTiketPublik() {
                           </div>
                         </dl>
 
-                        <Turnstile onToken={setTurnstileToken} />
+                        <Turnstile ref={turnstileRef} onToken={setTurnstileToken} />
                         <button
                           type="button"
                           onClick={beli}
-                          disabled={!form.nama_pembeli || !form.kontak || !form.jumlah || !tipe.buka}
+                          disabled={!form.nama_pembeli || !form.kontak || !form.jumlah || !tipe.buka || (TURNSTILE_ENABLED && !turnstileToken)}
                           className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-600/20 transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none"
                         >
-                          {tipe.buka ? 'Buat Pesanan' : 'Tiket Ditutup'}
+                          {!tipe.buka ? 'Tiket Ditutup' : TURNSTILE_ENABLED && !turnstileToken ? 'Memuat verifikasi…' : 'Buat Pesanan'}
                           {tipe.buka && <ArrowRight className="h-4 w-4" />}
                         </button>
                         <p className="text-center text-[11px] leading-relaxed text-slate-400">

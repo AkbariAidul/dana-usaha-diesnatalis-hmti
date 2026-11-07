@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { hitungTerjual } from '@/lib/merch-po'
 import { signRef } from '@/lib/link-token'
 import { hitungDiskon } from '@/lib/merch-diskon'
-import { verifyTurnstile } from '@/lib/turnstile'
+import { turnstileFailure, verifyTurnstile } from '@/lib/turnstile'
 
 type ItemBody = {
   merchandise_id: string
@@ -15,9 +15,6 @@ type Varian = { id: string; nama: string }
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    if (!(await verifyTurnstile(body.turnstile_token, request.headers))) {
-      return NextResponse.json({ error: 'Verifikasi keamanan gagal, coba lagi' }, { status: 400 })
-    }
     const tipe = body.tipe_pemesan === 'Pengurus Himpunan' ? 'Pengurus Himpunan' : 'Umum'
     const items: ItemBody[] = Array.isArray(body.items) ? body.items : []
     if (items.length === 0) {
@@ -123,6 +120,12 @@ export async function POST(request: Request) {
       return n > m ? n : m
     }, 0)
     const noPo = `PO-${String(max + 1).padStart(4, '0')}`
+
+    const turnstile = await verifyTurnstile(body.turnstile_token, request.headers)
+    if (!turnstile.ok) {
+      const failure = turnstileFailure(turnstile.reason)
+      return NextResponse.json({ error: failure.error }, { status: failure.status })
+    }
 
     const { data: po, error } = await supabaseAdmin
       .from('merch_po')

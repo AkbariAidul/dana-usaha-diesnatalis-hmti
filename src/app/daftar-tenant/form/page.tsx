@@ -1,12 +1,12 @@
 ﻿'use client'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Upload } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { PublicBreadcrumb, PublicNavbar } from '@/components/public-navbar'
 import { PoStepper } from '@/components/po-stepper'
-import { Turnstile } from '@/components/turnstile'
+import { Turnstile, type TurnstileHandle } from '@/components/turnstile'
 import { getJSON, sendJSON } from '@/app/dankelola/api'
 import {
   periodeDariTanggal,
@@ -26,6 +26,7 @@ import QRCode from 'qrcode'
 
 const langkahBreadcrumb = ['Form Pendaftaran', 'Pembayaran', 'Bukti Terkirim']
 const STEP = [{ label: 'Pilih Paket' }, { label: 'Form Pendaftaran' }, { label: 'Pembayaran & QR' }]
+const TURNSTILE_ENABLED = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
 type Katalog = {
   kategori: KategoriSewa[]
@@ -63,6 +64,7 @@ export default function DaftarTenantPublik() {
   const [uploading, setUploading] = useState(false)
   const [qr, setQr] = useState('')
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
+  const turnstileRef = useRef<TurnstileHandle>(null)
 
   useEffect(() => {
     Promise.all([
@@ -218,7 +220,10 @@ export default function DaftarTenantPublik() {
       setNominalNyicil(String(Math.ceil(Number(created?.harga_akhir ?? 0) / 2)))
       setStep(2)
       toast.success('Pendaftaran berhasil, pilih metode pembayaran')
-    } catch (e: unknown) { toast.error((e as Error).message) }
+    } catch (e: unknown) {
+      turnstileRef.current?.reset()
+      toast.error((e as Error).message)
+    }
   }
 
   function pilihBukti(next: File | null) {
@@ -429,8 +434,8 @@ export default function DaftarTenantPublik() {
                 </div>
               </div>
               <div className="flex flex-col items-end gap-3 md:col-span-4 sm:flex-row sm:justify-end">
-                <Turnstile onToken={setTurnstileToken} />
-                <button onClick={daftar} disabled={!periode || !form.nama_usaha || !form.kontak || !form.kategori_sewa_id || sisaSlot === 0} className="rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50">Lanjut ke Pembayaran</button>
+                <Turnstile ref={turnstileRef} onToken={setTurnstileToken} />
+                <button onClick={daftar} disabled={!periode || !form.nama_usaha || !form.kontak || !form.kategori_sewa_id || sisaSlot === 0 || (TURNSTILE_ENABLED && !turnstileToken)} className="rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50">{TURNSTILE_ENABLED && !turnstileToken ? 'Memuat verifikasi…' : 'Lanjut ke Pembayaran'}</button>
               </div>
             </div>
           </div>

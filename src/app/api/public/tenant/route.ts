@@ -5,7 +5,7 @@ import { periodeDariTanggal, type TenantAddon } from '@/lib/types'
 import { getPeralatanMeta } from '@/lib/peralatan'
 import { todayISO } from '@/lib/utils'
 import { signRef } from '@/lib/link-token'
-import { verifyTurnstile } from '@/lib/turnstile'
+import { turnstileFailure, verifyTurnstile } from '@/lib/turnstile'
 
 export async function GET() {
   try {
@@ -23,9 +23,6 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    if (!(await verifyTurnstile(body.turnstile_token, request.headers))) {
-      return NextResponse.json({ error: 'Verifikasi keamanan gagal, coba lagi' }, { status: 400 })
-    }
     const pilihanBody = body.pilihan
     const dataBody: Record<string, unknown> = {}
     for (const key of ['nama_usaha', 'kontak', 'email', 'alamat', 'deskripsi_usaha', 'kategori_sewa_id', 'jenis_usaha']) {
@@ -161,6 +158,11 @@ export async function POST(request: Request) {
       kode_pendaftaran: kode,
       status: 'menunggu_verifikasi',
       sudah_dibayar: 0,
+    }
+    const turnstile = await verifyTurnstile(body.turnstile_token, request.headers)
+    if (!turnstile.ok) {
+      const failure = turnstileFailure(turnstile.reason)
+      return NextResponse.json({ error: failure.error }, { status: failure.status })
     }
     const { data, error } = await supabaseAdmin.from('pendaftaran_tenant_pub').insert(payload).select().single()
     if (error) throw error

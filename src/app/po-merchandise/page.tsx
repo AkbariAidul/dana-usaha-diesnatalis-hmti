@@ -1,13 +1,13 @@
 ﻿'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import QRCode from 'qrcode'
 import { toast } from 'sonner'
 import { Check, ChevronDown, Clock, Shirt, Trash2, Plus, Minus } from 'lucide-react'
 import { PublicNavbar } from '@/components/public-navbar'
 import { PoStepper } from '@/components/po-stepper'
-import { Turnstile } from '@/components/turnstile'
+import { Turnstile, type TurnstileHandle } from '@/components/turnstile'
 import { getJSON } from '@/app/dankelola/api'
 import { formatDate, formatRupiah } from '@/lib/utils'
 import { buatQrisDinamis } from '@/lib/qris'
@@ -43,6 +43,7 @@ type Pesanan = {
 }
 
 const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
+const TURNSTILE_ENABLED = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
 function BuktiUpload({
   file,
@@ -106,6 +107,7 @@ export default function PoMerchandisePage() {
   const [nominalBayar, setNominalBayar] = useState('')
   const [pengurusOpen, setPengurusOpen] = useState(false)
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
+  const turnstileRef = useRef<TurnstileHandle>(null)
 
   useEffect(() => {
     Promise.all([
@@ -239,6 +241,7 @@ export default function PoMerchandisePage() {
       setStep(4)
       toast.success('Pesanan PO dibuat, silakan bayar')
     } catch (e) {
+      turnstileRef.current?.reset()
       toast.error((e as Error).message)
     }
   }
@@ -631,9 +634,13 @@ export default function PoMerchandisePage() {
               </div>
 
               <div className="mt-4 flex flex-col items-end gap-3 sm:flex-row sm:justify-end">
-                <Turnstile onToken={setTurnstileToken} />
-                <button onClick={pesan} className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-medium text-white">
-                  Buat Pesanan
+                <Turnstile ref={turnstileRef} onToken={setTurnstileToken} />
+                <button
+                  onClick={pesan}
+                  disabled={TURNSTILE_ENABLED && !turnstileToken}
+                  className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {TURNSTILE_ENABLED && !turnstileToken ? 'Memuat verifikasi…' : 'Buat Pesanan'}
                 </button>
               </div>
             </div>

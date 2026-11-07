@@ -2,14 +2,11 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getTicketKatalog } from '@/lib/queries'
 import { signRef } from '@/lib/link-token'
-import { verifyTurnstile } from '@/lib/turnstile'
+import { turnstileFailure, verifyTurnstile } from '@/lib/turnstile'
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    if (!(await verifyTurnstile(body.turnstile_token, request.headers))) {
-      return NextResponse.json({ error: 'Verifikasi keamanan gagal, coba lagi' }, { status: 400 })
-    }
     if (!body.nama_pembeli || !body.kontak) throw new Error('Nama dan kontak wajib diisi')
 
     const tipe = (await getTicketKatalog()).find((t) => t.id === body.tiket_tipe_id)
@@ -29,6 +26,11 @@ export async function POST(request: Request) {
     const existing = await supabaseAdmin.from('pesanan_tiket').select('no_pesanan')
     const max = (existing.data||[]).reduce((m:number,p:{ no_pesanan: string })=>{const n=Number(/(\d+)$/.exec(p.no_pesanan)?.[1]??0);return n>m?n:m},0)
     const no = `TK-${String(max+1).padStart(4,'0')}`
+    const turnstile = await verifyTurnstile(body.turnstile_token, request.headers)
+    if (!turnstile.ok) {
+      const failure = turnstileFailure(turnstile.reason)
+      return NextResponse.json({ error: failure.error }, { status: failure.status })
+    }
     const { data, error } = await supabaseAdmin.from('pesanan_tiket').insert({
       no_pesanan: no,
       nama_pembeli: body.nama_pembeli,
