@@ -189,31 +189,35 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const [checkinStats, setCheckinStats] = useState<{ terpakai: number; total: number } | null>(null)
   const breadcrumbs = getBreadcrumbs(pathname)
 
+  // ponytail: load each badge independently — one failing API must not poison every other badge.
   const loadBadges = useCallback(async () => {
+    async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
+      try { return await fn() } catch { return fallback }
+    }
     const [tipe, checkin, merchandise, pengurus, preorder, kasir, master, tenants] = await Promise.all([
-      getJSON<{ terjual: number | null }[]>('/api/ticket'),
-      getJSON<{ status: string }[]>('/api/ticket/checkin'),
-      getJSON<unknown[]>('/api/merchandise'),
-      getJSON<unknown[]>('/api/pengurus'),
-      getJSON<{ status: string }[]>('/api/merchandise/preorder'),
-      getJSON<{ terjual: number; total: number }>('/api/merchandise/kasir?ringkasan=1'),
-      getJSON<{ kategori: { kode: string }[] }>('/api/master'),
-      getJSON<Tenant[]>('/api/tenants'),
+      safe(() => getJSON<{ terjual: number | null }[]>('/api/ticket'), []),
+      safe(() => getJSON<{ status: string }[]>('/api/ticket/checkin'), []),
+      safe(() => getJSON<unknown[]>('/api/merchandise'), []),
+      safe(() => getJSON<unknown[]>('/api/pengurus'), []),
+      safe(() => getJSON<{ status: string }[]>('/api/merchandise/preorder'), []),
+      safe(() => getJSON<{ terjual: number; total: number }>('/api/merchandise/kasir?ringkasan=1'), { terjual: 0, total: 0 }),
+      safe(() => getJSON<{ kategori: { kode: string }[] }>('/api/master'), { kategori: [] }),
+      safe(() => getJSON<Tenant[]>('/api/tenants'), []),
     ])
-    const tenantAktif = tenants.filter((t) => t.status !== 'batal')
-    setTiketTerjual(tipe.reduce((sum, t) => sum + Number(t.terjual ?? 0), 0))
+    const tenantAktif = (tenants ?? []).filter((t) => t.status !== 'batal')
+    setTiketTerjual(((tipe ?? []) as Array<{ terjual?: number | null }>).reduce((sum, t) => sum + Number(t.terjual ?? 0), 0))
     setTenantCount(tenantAktif.length)
-    setVendorItemCount(new Set(tenantAktif.flatMap((t) => (t.addon ?? []).map((a) => a.nama.trim().toLowerCase())).filter(Boolean)).size)
-    setTipeCount(tipe.length)
-    setProdukCount(merchandise.length)
-    setPaketCount((master.kategori ?? []).filter((k) => /^KT-\d+$/.test(k.kode) && k.kode !== 'KT-03').length)
-    setPengurusCount(pengurus.length)
-    setPreorderCount(preorder.length)
-    setPreorderLunasCount(preorder.filter((po) => po.status === 'lunas').length)
-    setKasirStats({ terjual: kasir.terjual, total: kasir.total })
+    setVendorItemCount(new Set(tenantAktif.flatMap((t) => ((t.addon ?? []) as Array<{ nama?: string }>).map((a) => (a.nama ?? '').trim().toLowerCase())).filter(Boolean)).size)
+    setTipeCount((tipe ?? []).length)
+    setProdukCount((merchandise ?? []).length)
+    setPaketCount(((master?.kategori ?? []) as Array<{ kode?: string }>).filter((k) => k.kode && /^KT-\d+$/.test(k.kode) && k.kode !== 'KT-03').length)
+    setPengurusCount((pengurus ?? []).length)
+    setPreorderCount((preorder ?? []).length)
+    setPreorderLunasCount(((preorder ?? []) as Array<{ status?: string }>).filter((po) => po.status === 'lunas').length)
+    setKasirStats(kasir ?? { terjual: 0, total: 0 })
     setCheckinStats({
-      terpakai: checkin.filter((t) => t.status === 'terpakai').length,
-      total: checkin.length,
+      terpakai: (((checkin ?? []) as Array<{ status?: string }>)).filter((t) => t.status === 'terpakai').length,
+      total: (checkin ?? []).length,
     })
   }, [])
   const welcomeCopy = welcome ? WELCOME_COPY[welcome.role](welcome.name) : null
