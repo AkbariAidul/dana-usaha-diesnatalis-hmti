@@ -24,6 +24,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ['sharp'],
   outputFileTracingIncludes: {
     '/api/public/struk': ['./public/logo-dies-struk.png'],
     '/api/merchandise/preorder/struk': ['./public/logo-dies-struk.png'],

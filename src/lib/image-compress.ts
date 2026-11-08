@@ -1,5 +1,3 @@
-import sharp from 'sharp'
-
 const MAX_DIM = 1920
 const WEBP_QUALITY = 82
 
@@ -8,6 +6,10 @@ const WEBP_QUALITY = 82
  * Returns { buffer, mimeType }.
  */
 export async function compressToWebp(buffer: Buffer): Promise<{ buffer: Buffer; mimeType: string }> {
+  // ponytail: sharp di-load lazy. Import statis di top-level membuat modul ini
+  // (dan semua route yang meng-import queries) crash saat load di Vercel karena
+  // binary native sharp gagal di-trace Turbopack.
+  const { default: sharp } = await import('sharp')
   const { width = 0, height = 0 } = await sharp(buffer).metadata()
   const resized =
     width > MAX_DIM || height > MAX_DIM
