@@ -584,7 +584,7 @@ export default function DaftarTenantPublik() {
           <div className="rounded-2xl border border-slate-200/70 bg-white p-10 text-center shadow-sm shadow-slate-200/40 space-y-3">
             <h2 className="text-xl font-semibold text-slate-900">Bukti Terkirim</h2>
             <p className="text-slate-500">Pendaftaran kamu sedang menunggu verifikasi oleh panitia Dana Usaha. Simpan link berikut untuk melihat riwayat pembayaran dan QR masuk venue.</p>
-            <p className="rounded-xl bg-green-50 p-3 text-xs text-green-800">Di halaman riwayat juga tersedia tombol gabung Grup WhatsApp tenant setelah pembayaran tervalidasi mencapai 80%.</p>
+            <p className="rounded-xl bg-green-50 p-3 text-xs text-green-800">Di halaman riwayat juga tersedia tombol gabung Grup WhatsApp tenant setelah pembayaran pertama (min. 50%) tervalidasi.</p>
             {pendaftaran?.t && (
               <Link href={`/lacak/${pendaftaran.kode_pendaftaran}?t=${encodeURIComponent(pendaftaran.t)}`} className="inline-flex rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-medium text-white">
                 Buka Riwayat Tenant

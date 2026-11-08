@@ -64,7 +64,7 @@ export default function PengaturanTenantPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Pengaturan Tenant</h1>
-        <p className="mt-1 text-sm text-slate-500">Atur grup WhatsApp tenant. Tombol gabung grup muncul di halaman lacak tenant setelah pembayaran mencapai 80%.</p>
+        <p className="mt-1 text-sm text-slate-500">Atur grup WhatsApp tenant. Tombol gabung grup muncul di halaman lacak tenant setelah pembayaran pertama (min. 50%) tervalidasi.</p>
       </div>
       <form onSubmit={submit} className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40 space-y-4 max-w-2xl">
         <div>

@@ -38,9 +38,10 @@ export async function GET(request: Request) {
         .reduce((s, p) => s + Number(p.nominal ?? 0), 0)
       const hargaAkhir = Number(tenant?.harga_akhir ?? daftar?.harga_akhir ?? 0)
       const eligible = !!tenant && hargaAkhir > 0 && totalValid >= hargaAkhir * 0.8
+      const waEligible = !!tenant && hargaAkhir > 0 && totalValid >= hargaAkhir * 0.5
 
       let waGroup: { nama: string } | null = null
-      if (eligible) {
+      if (waEligible) {
         const [{ data: nama }, { data: link }] = await Promise.all([
           supabaseAdmin.from('pengaturan_umum').select('value').eq('key', 'wa_group_nama').maybeSingle(),
           supabaseAdmin.from('pengaturan_umum').select('value').eq('key', 'wa_group_link').maybeSingle(),

@@ -67,7 +67,7 @@ export function pesanTenantMenungguVerifikasi(request: Request, tenant: TenantNo
     'Status: Menunggu verifikasi admin.',
     '',
     'QR masuk venue aktif setelah total pembayaran tervalidasi mencapai 80%.',
-    'Setelah itu, tombol gabung grup WhatsApp tenant juga muncul di halaman riwayat.',
+    'Tombol gabung grup WhatsApp tenant muncul setelah pembayaran pertama (min. 50%) tervalidasi.',
     '',
     PENUTUP,
   ].join('\n')
@@ -85,9 +85,9 @@ export function pesanTenantTerverifikasi(request: Request, tenant: TenantNotif) 
     lunas
       ? 'Status: LUNAS. QR masuk venue sudah bisa diakses dari link riwayat tenant.'
       : `Status: pembayaran diterima. Sisa ${formatRupiah(Math.max(0, total - sudah))}. Silakan lanjutkan pembayaran berikutnya sampai lunas.`,
-    total > 0 && sudah >= total * 0.8
+    total > 0 && sudah >= total * 0.5
       ? 'Tombol gabung grup WhatsApp tenant sudah aktif di halaman riwayat.'
-      : 'Tombol gabung grup WhatsApp tenant muncul di halaman riwayat setelah pembayaran mencapai 80%.',
+      : 'Tombol gabung grup WhatsApp tenant muncul di halaman riwayat setelah pembayaran pertama (min. 50%) tervalidasi.',
     '',
     PENUTUP,
   ].join('\n')

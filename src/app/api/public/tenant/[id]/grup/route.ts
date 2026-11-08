@@ -24,8 +24,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       .eq('validated', true)
     const totalValid = (bayar ?? []).reduce((s, p) => s + Number(p.nominal ?? 0), 0)
     const harga = Number(tenant.harga_akhir ?? 0)
-    if (!(harga > 0 && totalValid >= harga * 0.8)) {
-      return NextResponse.json({ error: 'Grup tersedia setelah pembayaran mencapai 80%' }, { status: 403 })
+    if (!(harga > 0 && totalValid >= harga * 0.5)) {
+      return NextResponse.json({ error: 'Grup tersedia setelah pembayaran pertama (min. 50%) tervalidasi' }, { status: 403 })
     }
 
     const url = String(link?.value ?? '').trim()
