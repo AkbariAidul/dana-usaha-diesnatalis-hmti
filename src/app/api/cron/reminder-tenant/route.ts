@@ -28,6 +28,7 @@ export async function GET(request: Request) {
     const acara = await getAcara()
     if (!acara) return NextResponse.json({ sent: 0, skipped: 'no_acara' })
 
+    const preview = new URL(request.url).searchParams.get('preview') === '1'
     const batasPelunasan = acara.batas_pelunasan ? String(acara.batas_pelunasan) : null
     const hariBatas = batasPelunasan ? diffHari(batasPelunasan) : null
 
@@ -56,6 +57,38 @@ export async function GET(request: Request) {
       }))
       .filter((tenant) => tenant.harga > 0 && tenant.total < tenant.harga && String(tenant.kontak || '').trim())
 
+    type PesanTenant = { kode_stand: string; nama_usaha: string; kontak: string; pesan: string }
+    const messages: PesanTenant[] = []
+
+    if (preview) {
+      for (const tenant of belumLunas) {
+        messages.push({
+          kode_stand: String(tenant.kode_stand),
+          nama_usaha: String(tenant.nama_usaha),
+          kontak: String(tenant.kontak),
+          pesan: pesanReminderTenant(
+            request,
+            {
+              kode_stand: String(tenant.kode_stand),
+              nama_usaha: String(tenant.nama_usaha),
+              kontak: String(tenant.kontak),
+              harga_akhir: tenant.harga,
+              sudah_dibayar: tenant.total,
+            },
+            batasPelunasan ?? '',
+            hariBatas ?? 0,
+          ),
+        })
+      }
+      return NextResponse.json({
+        preview: true,
+        hariBatas,
+        belumLunas: belumLunas.length,
+        sentTenant: 0,
+        messages,
+      })
+    }
+
     // Reminder harian per penyewa: mulai H-5 batas pembayaran sampai lunas.
     let sentTenant = 0
     if (batasPelunasan && hariBatas !== null && hariBatas <= 5) {
@@ -68,23 +101,27 @@ export async function GET(request: Request) {
 
       for (const tenant of belumLunas) {
         if (sudahKirim.has(String(tenant.id))) continue
-        const ok = await kirimWhatsApp(
-          String(tenant.kontak),
-          pesanReminderTenant(
-            request,
-            {
-              kode_stand: String(tenant.kode_stand),
-              nama_usaha: String(tenant.nama_usaha),
-              kontak: String(tenant.kontak),
-              harga_akhir: tenant.harga,
-              sudah_dibayar: tenant.total,
-            },
-            batasPelunasan,
-            hariBatas,
-          ),
+        const pesan = pesanReminderTenant(
+          request,
+          {
+            kode_stand: String(tenant.kode_stand),
+            nama_usaha: String(tenant.nama_usaha),
+            kontak: String(tenant.kontak),
+            harga_akhir: tenant.harga,
+            sudah_dibayar: tenant.total,
+          },
+          batasPelunasan,
+          hariBatas,
         )
+        const ok = await kirimWhatsApp(String(tenant.kontak), pesan)
         if (ok) {
           sentTenant++
+          messages.push({
+            kode_stand: String(tenant.kode_stand),
+            nama_usaha: String(tenant.nama_usaha),
+            kontak: String(tenant.kontak),
+            pesan,
+          })
           await supabaseAdmin
             .from('tenant_reminder_log')
             .upsert({ tenant_id: tenant.id, tanggal: today }, { onConflict: 'tenant_id,tanggal' })
@@ -96,6 +133,7 @@ export async function GET(request: Request) {
       hariBatas,
       belumLunas: belumLunas.length,
       sentTenant,
+      messages,
     })
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })
