@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { kirimWhatsApp } from '@/lib/notifikasi-tiket'
 import { pesanReminderTenant } from '@/lib/notifikasi-tenant'
 import { getAcara } from '@/lib/queries'
-import { formatDate, formatRupiah, todayISO } from '@/lib/utils'
+import { todayISO } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,7 +30,6 @@ export async function GET(request: Request) {
 
     const batasPelunasan = acara.batas_pelunasan ? String(acara.batas_pelunasan) : null
     const hariBatas = batasPelunasan ? diffHari(batasPelunasan) : null
-    const hariAcara = acara.tanggal_acara ? diffHari(acara.tanggal_acara) : null
 
     const [{ data: tenants }, { data: pembayaran }] = await Promise.all([
       supabaseAdmin
@@ -59,7 +58,7 @@ export async function GET(request: Request) {
 
     // Reminder harian per penyewa: mulai H-5 batas pembayaran sampai lunas.
     let sentTenant = 0
-    if (batasPelunasan && hariBatas !== null && hariBatas <= 5 && (hariAcara === null || hariAcara >= 0)) {
+    if (batasPelunasan && hariBatas !== null && hariBatas <= 5) {
       const today = todayISO()
       const { data: logs } = await supabaseAdmin
         .from('tenant_reminder_log')
@@ -93,53 +92,10 @@ export async function GET(request: Request) {
       }
     }
 
-    // Ringkasan ke grup admin: H-1..H-5 sebelum tanggal acara.
-    let sentGroup = 0
-    const targets = (process.env.FONNTE_GROUP_TENANT || '')
-      .split(',')
-      .map((target) => target.trim())
-      .filter(Boolean)
-    if (targets.length > 0 && hariAcara !== null && hariAcara >= 1 && hariAcara <= 5) {
-      const belumLayak = belumLunas
-        .map((tenant) => ({
-          kode: String(tenant.kode_stand),
-          nama: String(tenant.nama_usaha),
-          persen: tenant.harga > 0 ? (tenant.total / tenant.harga) * 100 : 0,
-          kurang: Math.max(0, Math.ceil(tenant.harga * 0.8) - tenant.total),
-        }))
-        .filter((tenant) => tenant.persen < 80)
-        .sort((a, b) => a.persen - b.persen)
-
-      if (belumLayak.length > 0) {
-        const message = [
-          '*Pengingat Pembayaran Tenant*',
-          '',
-          `Persiapan tenant: ${formatDate(acara.tanggal_acara)} (H-${hariAcara})`,
-          '',
-          'Tenant yang pembayarannya belum mencapai 80%:',
-          ...belumLayak.map((tenant, index) =>
-            `${index + 1}. ${tenant.nama} (${tenant.kode}) — ${tenant.persen.toFixed(0)}% · kurang ${formatRupiah(tenant.kurang)}`,
-          ),
-          '',
-          'QR registrasi tenant hanya aktif jika pembayaran tervalidasi minimal 80% dari total sewa.',
-          'Segera selesaikan pembayaran agar bisa mendapatkan QR untuk registrasi saat persiapan tenant.',
-          '',
-          'Hormat Kami,',
-          'Panitia Danus In4Days XI',
-        ].join('\n')
-
-        for (const target of targets) {
-          if (await kirimWhatsApp(target, message)) sentGroup++
-        }
-      }
-    }
-
     return NextResponse.json({
       hariBatas,
-      hariAcara,
       belumLunas: belumLunas.length,
       sentTenant,
-      sentGroup,
     })
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })
