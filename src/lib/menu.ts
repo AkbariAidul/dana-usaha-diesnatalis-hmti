@@ -95,5 +95,6 @@ export function getMenuForRole(role: string): MenuGroup[] {
       (g) => g.key === 'ringkasan' || g.key === 'scan' || g.key === 'laporan-pelihat',
     )
   }
-  return menuConfig
+  // Menu LAPORAN khusus viewer; pengelola sudah punya Laporan di dalam grup UMUM.
+  return menuConfig.filter((g) => g.key !== 'laporan-pelihat')
 }
