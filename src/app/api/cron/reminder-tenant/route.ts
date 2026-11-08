@@ -22,13 +22,26 @@ function diffHari(target: string) {
 }
 
 export async function GET(request: Request) {
+  const params = new URL(request.url).searchParams
+
+  if (params.get('debug') === '1') {
+    return NextResponse.json({
+      ok: true,
+      commit: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
+      hasCronSecret: Boolean(process.env.CRON_SECRET),
+      cronSecretLength: process.env.CRON_SECRET?.length ?? 0,
+      hasFonnte: Boolean(process.env.FONTE_TOKEN),
+      nodeEnv: process.env.NODE_ENV,
+    })
+  }
+
   if (!auth(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
     const acara = await getAcara()
     if (!acara) return NextResponse.json({ sent: 0, skipped: 'no_acara' })
 
-    const preview = new URL(request.url).searchParams.get('preview') === '1'
+    const preview = params.get('preview') === '1'
     const batasPelunasan = acara.batas_pelunasan ? String(acara.batas_pelunasan) : null
     const hariBatas = batasPelunasan ? diffHari(batasPelunasan) : null
 
