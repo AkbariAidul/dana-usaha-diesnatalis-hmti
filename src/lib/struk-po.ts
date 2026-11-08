@@ -25,7 +25,7 @@ const PAGE_H = 841.89
 const MARGIN = 36
 const CONTENT_W = PAGE_W - MARGIN * 2
 const QR_SIZE = 64
-const COL_X = [MARGIN, 62, 252, 336, 374, 450, PAGE_W - MARGIN] as const
+const COL_X = [MARGIN, 56, 186, 330, 366, 440, PAGE_W - MARGIN] as const
 const COL_W = COL_X.slice(1).map((x, i) => x - COL_X[i])
 
 const UNGU = rgb(124 / 255, 58 / 255, 237 / 255)
@@ -244,7 +244,7 @@ async function buatInvoicePdf({
     const rowTop = y - index * 18
     const baseline = rowTop - 12
     t(row[0], MARGIN, baseline, font, 8, GRAY)
-    t(potong(row[1], bold, 9, 220), 84, baseline, bold, 9, DARK)
+    t(potong(row[1], bold, 9, 210), 104, baseline, bold, 9, DARK)
     tRight(row[2], 330, baseline, font, 8, GRAY)
     tRight(potong(row[3], bold, 9, 160), PAGE_W - MARGIN, baseline, bold, 9, DARK)
     page.drawLine({
@@ -424,6 +424,7 @@ type StrukTenant = {
   tgl_daftar: string
   kategori: string
   jumlah_tenant: number
+  jenis_usaha_qty?: { fnb?: number; nonFnb?: number } | null
 }
 
 const STATUS_TENANT: Record<string, string> = {
@@ -447,8 +448,18 @@ export async function buatStrukTenantPdf(
   const baseHarga = Number(tenant.base_harga || Math.max(0, total - addon.reduce((s, i) => s + Number(i.subtotal ?? 0), 0)))
   const dibayar = Number(tenant.sudah_dibayar ?? 0)
   const sisa = Math.max(0, total - dibayar)
-  const addonTotal = addon.reduce((sum, item) => sum + Number(item.subtotal), 0)
   const jumlahTenant = Math.max(1, Number(tenant.jumlah_tenant || 1))
+  const qtyJenis = tenant.jenis_usaha_qty
+  const fnb = Math.max(0, Number(qtyJenis?.fnb ?? 0))
+  const nonFnb = Math.max(0, Number(qtyJenis?.nonFnb ?? 0))
+  const rincianJenis =
+    fnb > 0 && nonFnb > 0
+      ? `F&B ${fnb} + Non-F&B ${nonFnb}`
+      : nonFnb > 0
+        ? `Non-F&B ${nonFnb}`
+        : fnb > 0
+          ? `F&B ${fnb}`
+          : `${jumlahTenant} tenant`
 
   return buatInvoicePdf({
     jenis: 'INVOICE TENANT',
@@ -458,12 +469,12 @@ export async function buatStrukTenantPdf(
       ['Nama', tenant.nama_usaha, 'No. Invoice', tenant.kode_stand],
       ['Kontak', tenant.kontak, 'Tanggal', waktu(tenant.tgl_daftar)],
       ['Kategori', tenant.kategori, 'Status', STATUS_TENANT[tenant.status] ?? tenant.status.replace(/_/g, ' ')],
-      ['Jumlah Tenant', String(jumlahTenant), 'Sisa Tagihan', rupiah(sisa)],
+      ['Jumlah Tenant', `${jumlahTenant} (${rincianJenis})`, 'Sisa Tagihan', rupiah(sisa)],
     ],
     lines: [
       {
         nama: `${tenant.kategori} (Tempat)`,
-        detail: `Sewa tempat · ${jumlahTenant} tenant`,
+        detail: `Sewa tempat - ${rincianJenis}`,
         qty: jumlahTenant,
         harga_satuan: Math.round(baseHarga / jumlahTenant),
         subtotal: baseHarga,

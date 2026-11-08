@@ -39,13 +39,13 @@ export async function GET(request: Request) {
       const hargaAkhir = Number(tenant?.harga_akhir ?? daftar?.harga_akhir ?? 0)
       const eligible = !!tenant && hargaAkhir > 0 && totalValid >= hargaAkhir * 0.8
 
-      let waGroup: { nama: string; link: string } | null = null
+      let waGroup: { nama: string } | null = null
       if (eligible) {
         const [{ data: nama }, { data: link }] = await Promise.all([
           supabaseAdmin.from('pengaturan_umum').select('value').eq('key', 'wa_group_nama').maybeSingle(),
           supabaseAdmin.from('pengaturan_umum').select('value').eq('key', 'wa_group_link').maybeSingle(),
         ])
-        if (link?.value) waGroup = { nama: nama?.value ?? '', link: link.value }
+        if (link?.value) waGroup = { nama: nama?.value ?? '' }
       }
 
       return NextResponse.json({

@@ -45,6 +45,7 @@ export async function GET(request: Request) {
           tgl_daftar: tenant.tgl_daftar,
           kategori: kategori?.nama ?? '-',
           jumlah_tenant: Number(tenant.jumlah_tenant ?? 1),
+          jenis_usaha_qty: tenant.jenis_usaha_qty ?? null,
         },
         addon.map((item: { nama: string; qty: number; harga_satuan: number; subtotal: number }) => ({
           nama: item.nama,

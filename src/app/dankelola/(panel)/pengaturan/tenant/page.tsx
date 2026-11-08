@@ -75,6 +75,7 @@ export default function PengaturanTenantPage() {
           <label className="mb-1 block text-sm font-medium text-slate-700">Link Undangan Grup</label>
           <input className={input} value={form.wa_group_link} disabled={isViewer} onChange={(e) => update({ wa_group_link: e.target.value })} placeholder="https://chat.whatsapp.com/..." />
           <p className="mt-1 text-xs text-slate-400">Tempel link undangan grup WhatsApp (diawali https://chat.whatsapp.com/).</p>
+          <p className="mt-1 text-xs text-amber-600">Tips keamanan: aktifkan &quot;Setujui anggota baru&quot; di pengaturan grup WhatsApp dan reset link undangan berkala. Link yang sudah tersebar tidak bisa dibatasi lewat aplikasi ini.</p>
         </div>
         {!isViewer && (
           <div className="flex justify-end">

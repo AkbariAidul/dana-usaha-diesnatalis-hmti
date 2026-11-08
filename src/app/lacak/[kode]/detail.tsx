@@ -8,6 +8,7 @@ import { PublicBreadcrumb, PublicNavbar } from '@/components/public-navbar'
 import { QrImage } from '@/components/qr-image'
 import { buatQrisDinamis, buatQrisTanpaNominal } from '@/lib/qris'
 import { formatDate, formatDateTime, formatRupiah } from '@/lib/utils'
+import { labelJenisUsaha } from '@/lib/tenant'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 
 type Pembayaran = {
@@ -43,6 +44,8 @@ type DaftarTenant = {
   jumlah_tenant: number | null
   addon: TenantItem[] | null
   pembayaran_tipe?: string | null
+  jenis_usaha?: string | null
+  jenis_usaha_qty?: { fnb?: number; nonFnb?: number } | null
 }
 
 type Tenant = {
@@ -58,6 +61,8 @@ type Tenant = {
   venue_checked_in_by: string | null
   jumlah_tenant: number
   addon: TenantItem[] | null
+  jenis_usaha?: string | null
+  jenis_usaha_qty?: { fnb?: number; nonFnb?: number } | null
 }
 
 type PesananTiket = {
@@ -128,7 +133,7 @@ type Cicilan = {
 }
 
 type StatusResponse =
-  | { tipe: 'tenant'; kode: string; daftar: DaftarTenant | null; tenant: Tenant | null; kategori: string | null; pembayaran: Pembayaran[]; totalValid: number; eligible: boolean; qr: string | null; waGroup: { nama: string; link: string } | null }
+  | { tipe: 'tenant'; kode: string; daftar: DaftarTenant | null; tenant: Tenant | null; kategori: string | null; pembayaran: Pembayaran[]; totalValid: number; eligible: boolean; qr: string | null; waGroup: { nama: string } | null }
   | { tipe: 'tiket'; kode: string; pesanan: PesananTiket; tiket: TiketIssued[] }
   | { tipe: 'po'; kode: string; po: MerchPo; items: MerchItem[]; cicilan: Cicilan[]; qr: string | null }
 
@@ -474,6 +479,7 @@ function TenantView({ data, token, reload }: { data: Extract<StatusResponse, { t
   const kekurangan80 = Math.max(0, target80 - totalValid)
   const nominalAwal = Math.max(1, sisa)
   const nyicil = daftar?.pembayaran_tipe === 'nyicil'
+  const jenisLabel = labelJenisUsaha(tenant?.jenis_usaha ?? daftar?.jenis_usaha, tenant?.jenis_usaha_qty ?? daftar?.jenis_usaha_qty)
   const [qrisPayload, setQrisPayload] = useState('')
 
   useEffect(() => {
@@ -531,7 +537,10 @@ function TenantView({ data, token, reload }: { data: Extract<StatusResponse, { t
             </thead>
             <tbody className="divide-y divide-slate-100">
               <tr>
-                <td className="py-2">{kategori ?? 'Paket tenant'} (Tempat)</td>
+                <td className="py-2">
+                  <p>{kategori ?? 'Paket tenant'} (Tempat)</p>
+                  <p className="text-xs text-slate-500">{jenisLabel}</p>
+                </td>
                 <td className="py-2 text-center">{jumlahTenant}</td>
                 <td className="py-2 text-right font-medium">{formatRupiah(paketSubtotal)}</td>
               </tr>
@@ -597,9 +606,9 @@ function TenantView({ data, token, reload }: { data: Extract<StatusResponse, { t
           ) : (
             <p className="mt-3 text-sm text-slate-500">Tunjukkan QR ini ke petugas saat masuk area venue.</p>
           )}
-          {waGroup?.link && (
+          {waGroup && (
             <a
-              href={waGroup.link}
+              href={`/api/public/tenant/${encodeURIComponent(tenant.kode_stand)}/grup?t=${encodeURIComponent(token)}`}
               target="_blank"
               rel="noopener noreferrer"
               className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700"
