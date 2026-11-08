@@ -63,6 +63,7 @@ export default function DaftarTenantPublik() {
   const [preview, setPreview] = useState('')
   const [uploading, setUploading] = useState(false)
   const [qr, setQr] = useState('')
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null)
   const turnstileRef = useRef<TurnstileHandle>(null)
   const turnstileLock = useRef(false)
   const submittingTenant = useRef(false)
@@ -375,7 +376,16 @@ export default function DaftarTenantPublik() {
                         <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-sm">
                           <input type="checkbox" checked={checked} onChange={(e) => togglePilihan(item.id, e.target.checked)} className="h-4 w-4 shrink-0 rounded border-slate-300 text-primary-600 focus:ring-primary-500" />
                           {item.gambar_url && (
-                            <img src={item.gambar_url} alt={item.nama} className="h-7 w-7 shrink-0 rounded-md border border-slate-200 object-cover" />
+                            <img
+                              src={item.gambar_url}
+                              alt={item.nama}
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                setFotoPreview(item.gambar_url || null)
+                              }}
+                              className="h-7 w-7 shrink-0 cursor-zoom-in rounded-md border border-slate-200 object-cover"
+                            />
                           )}
                           <span className="truncate font-medium text-slate-800">{item.nama}</span>
                           <span className="shrink-0 text-xs text-slate-500">{Number(item.harga) > 0 ? formatRupiah(Number(item.harga)) : 'Gratis'}</span>
@@ -595,6 +605,13 @@ export default function DaftarTenantPublik() {
           </div>
         )}
       </main>
+
+      {fotoPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setFotoPreview(null)}>
+          <img src={fotoPreview} alt="Preview foto item" className="max-h-[85vh] max-w-full rounded-xl bg-white object-contain shadow-2xl" />
+          <button type="button" onClick={() => setFotoPreview(null)} className="absolute right-4 top-4 rounded-full bg-white/90 px-3 py-1.5 text-sm font-medium text-slate-700">Tutup</button>
+        </div>
+      )}
     </div>
   )
 }

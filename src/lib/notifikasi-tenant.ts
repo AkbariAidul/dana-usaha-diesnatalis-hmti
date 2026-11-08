@@ -58,6 +58,30 @@ function detailTenant(tenant: TenantNotif, link: string) {
   return lines.join('\n')
 }
 
+function progressPembayaran(tenant: TenantNotif) {
+  const total = Number(tenant.harga_akhir ?? 0)
+  if (!(total > 0)) return []
+  const sudah = Math.max(0, Number(tenant.sudah_dibayar ?? 0))
+  const persen = Math.min(100, Math.round((sudah / total) * 100))
+  const sisaGrup = Math.max(0, Math.ceil(total * 0.5) - sudah)
+  const sisaQr = Math.max(0, Math.ceil(total * 0.8) - sudah)
+  const sisaLunas = Math.max(0, total - sudah)
+  const lines = [`Progress pembayaran tervalidasi: ${persen}% (${formatRupiah(sudah)} dari ${formatRupiah(total)}).`]
+  lines.push(
+    sisaGrup > 0
+      ? `Kurang ${formatRupiah(sisaGrup)} lagi untuk membuka tombol grup WhatsApp tenant (min. 50%).`
+      : 'Tombol grup WhatsApp tenant sudah aktif di halaman riwayat.',
+  )
+  lines.push(
+    sisaQr > 0
+      ? `Kurang ${formatRupiah(sisaQr)} lagi untuk mencapai 80% dan membuka QR registrasi tenant.`
+      : 'QR registrasi tenant sudah aktif.',
+  )
+  if (sisaLunas > 0) lines.push(`Kurang ${formatRupiah(sisaLunas)} lagi untuk lunas 100%.`)
+  else lines.push('Pembayaran sudah lunas 100%.')
+  return lines
+}
+
 export function pesanTenantMenungguVerifikasi(request: Request, tenant: TenantNotif) {
   const link = linkTenant(request, kodeTenant(tenant))
   return [
@@ -66,8 +90,8 @@ export function pesanTenantMenungguVerifikasi(request: Request, tenant: TenantNo
     detailTenant(tenant, link),
     'Status: Menunggu verifikasi admin.',
     '',
-    'QR masuk venue aktif setelah total pembayaran tervalidasi mencapai 80%.',
-    'Tombol gabung grup WhatsApp tenant muncul setelah pembayaran pertama (min. 50%) tervalidasi.',
+    ...progressPembayaran(tenant),
+    'Bukti pembayaran terbaru akan dihitung setelah admin memverifikasi.',
     '',
     PENUTUP,
   ].join('\n')
@@ -85,9 +109,8 @@ export function pesanTenantTerverifikasi(request: Request, tenant: TenantNotif) 
     lunas
       ? 'Status: LUNAS. QR masuk venue sudah bisa diakses dari link riwayat tenant.'
       : `Status: pembayaran diterima. Sisa ${formatRupiah(Math.max(0, total - sudah))}. Silakan lanjutkan pembayaran berikutnya sampai lunas.`,
-    total > 0 && sudah >= total * 0.5
-      ? 'Tombol gabung grup WhatsApp tenant sudah aktif di halaman riwayat.'
-      : 'Tombol gabung grup WhatsApp tenant muncul di halaman riwayat setelah pembayaran pertama (min. 50%) tervalidasi.',
+    '',
+    ...progressPembayaran(tenant),
     '',
     PENUTUP,
   ].join('\n')
