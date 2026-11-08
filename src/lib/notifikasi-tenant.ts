@@ -1,5 +1,5 @@
 import { signRef } from './link-token'
-import { formatRupiah } from './utils'
+import { formatDate, formatRupiah } from './utils'
 import { baseUrl, kirimWhatsApp } from './notifikasi-tiket'
 import { labelJenisUsaha } from './tenant'
 
@@ -111,6 +111,28 @@ export function pesanTenantTerverifikasi(request: Request, tenant: TenantNotif) 
       : `Status: pembayaran diterima. Sisa ${formatRupiah(Math.max(0, total - sudah))}. Silakan lanjutkan pembayaran berikutnya sampai lunas.`,
     '',
     ...progressPembayaran(tenant),
+    '',
+    PENUTUP,
+  ].join('\n')
+}
+
+export function pesanReminderTenant(
+  request: Request,
+  tenant: TenantNotif,
+  batasPelunasan: string,
+  hari: number,
+) {
+  const link = linkTenant(request, kodeTenant(tenant))
+  const waktu = hari > 0 ? `H-${hari}` : hari === 0 ? 'hari ini' : 'sudah lewat'
+  return [
+    `Halo ${tenant.nama_usaha}, ini pengingat pembayaran tenant ${kodeTenant(tenant)}.`,
+    '',
+    `Batas pembayaran: ${formatDate(batasPelunasan)} (${waktu}).`,
+    '',
+    ...progressPembayaran(tenant),
+    '',
+    `Cek riwayat & bayar: ${link}`,
+    'Pembayaran tetap bisa dilakukan setelah batas pembayaran sampai lunas.',
     '',
     PENUTUP,
   ].join('\n')

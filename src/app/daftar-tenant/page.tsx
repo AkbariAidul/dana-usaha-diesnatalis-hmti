@@ -104,6 +104,11 @@ export default function InfoTenantPage() {
   const kategori = useMemo(() => kategoriTenant(katalog.kategori), [katalog.kategori])
   const activeKode = periodeDariTanggal(todayISO(), katalog.periode)
   const activePeriod = katalog.periode.find((p) => p.kode === activeKode)
+  const hariIni = todayISO()
+  const periodeTerakhir = katalog.periode.length
+    ? katalog.periode.reduce((max, p) => (p.tanggal_selesai > max ? p.tanggal_selesai : max), katalog.periode[0].tanggal_selesai)
+    : ''
+  const pendaftaranTutup = katalog.periode.length > 0 && !activePeriod && hariIni > periodeTerakhir
 
   const hargaMap = useMemo(() => {
     const map = new Map<string, number>()
@@ -327,12 +332,12 @@ export default function InfoTenantPage() {
                             <span className="inline-flex w-full items-center justify-center rounded-xl bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-400 sm:w-auto">
                               Slot Habis
                             </span>
-                          ) : bisaDaftar ? (
+                          ) : bisaDaftar || pendaftaranTutup ? (
                             <Link
                               href={`/daftar-tenant/form?kategori=${k.id}`}
                               className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-primary-700 sm:w-auto"
                             >
-                              Pilih
+                              {pendaftaranTutup ? 'Lihat Info' : 'Pilih'}
                               <ArrowRight className="h-3.5 w-3.5" />
                             </Link>
                           ) : (

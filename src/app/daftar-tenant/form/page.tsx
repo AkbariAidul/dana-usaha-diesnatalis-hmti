@@ -64,6 +64,7 @@ export default function DaftarTenantPublik() {
   const [uploading, setUploading] = useState(false)
   const [qr, setQr] = useState('')
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
+  const [bannerDibuka, setBannerDibuka] = useState(true)
   const turnstileRef = useRef<TurnstileHandle>(null)
   const turnstileLock = useRef(false)
   const submittingTenant = useRef(false)
@@ -91,6 +92,12 @@ export default function DaftarTenantPublik() {
   }, [])
 
   const periode = periodeDariTanggal(todayISO(), periods)
+  const hariIni = todayISO()
+  const periodePertama = periods.length ? periods.reduce((min, p) => (p.tanggal_mulai < min ? p.tanggal_mulai : min), periods[0].tanggal_mulai) : ''
+  const periodeTerakhir = periods.length ? periods.reduce((max, p) => (p.tanggal_selesai > max ? p.tanggal_selesai : max), periods[0].tanggal_selesai) : ''
+  const pendaftaranTutup = periods.length > 0 && !periode && hariIni > periodeTerakhir
+  const pendaftaranBelumBuka = periods.length > 0 && !periode && hariIni < periodePertama
+  const infoPeriode = pendaftaranTutup || pendaftaranBelumBuka
   const addons = useMemo(() => peralatan.filter((p) => Number(p.harga_sewa) > 0), [peralatan])
   const selectedKategori = kategori.find((k) => k.id === form.kategori_sewa_id)
   const paketPilihan = useMemo(
@@ -325,6 +332,13 @@ export default function DaftarTenantPublik() {
               <p className="text-sm text-slate-500">Isi data usaha dan jumlah tenant. Paket terpilih: <span className="font-medium text-slate-700">{selectedKategori?.nama ?? '-'}</span></p>
             </div>
             <div className="grid gap-3 p-4 sm:p-5 md:grid-cols-4">
+              {infoPeriode && (
+                <div className="rounded-xl bg-rose-50 p-3 text-xs text-rose-700 md:col-span-4">
+                  {pendaftaranTutup
+                    ? `Pendaftaran tenant sudah ditutup sejak ${formatDate(periodeTerakhir)}.`
+                    : `Pendaftaran tenant dibuka mulai ${formatDate(periodePertama)}.`}
+                </div>
+              )}
               <div className="md:col-span-2"><label className="mb-1 block text-sm font-medium">Nama Usaha</label><input className={input} placeholder="cth: Kopi Senja" value={form.nama_usaha} onChange={e=>setForm({...form,nama_usaha:e.target.value})}/></div>
               <div><label className="mb-1 block text-sm font-medium">Kontak WA</label><input className={input} type="tel" inputMode="numeric" pattern="[0-9]*" placeholder="08xxxxxxxxxx" value={form.kontak} onChange={e=>setForm({...form,kontak:e.target.value.replace(/\D/g,'')})}/></div>
               <div><label className="mb-1 block text-sm font-medium">Email (opsional)</label><input className={input} type="email" placeholder="nama@email.com" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></div>
@@ -610,6 +624,23 @@ export default function DaftarTenantPublik() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setFotoPreview(null)}>
           <img src={fotoPreview} alt="Preview foto item" className="max-h-[85vh] max-w-full rounded-xl bg-white object-contain shadow-2xl" />
           <button type="button" onClick={() => setFotoPreview(null)} className="absolute right-4 top-4 rounded-full bg-white/90 px-3 py-1.5 text-sm font-medium text-slate-700">Tutup</button>
+        </div>
+      )}
+
+      {infoPeriode && bannerDibuka && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setBannerDibuka(false)}>
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 text-lg font-bold text-rose-600">!</div>
+            <h2 className="text-lg font-semibold text-slate-900">
+              {pendaftaranTutup ? 'Pendaftaran Tenant Telah Ditutup' : 'Pendaftaran Tenant Belum Dibuka'}
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-slate-500">
+              {pendaftaranTutup
+                ? `Periode pendaftaran tenant sudah berakhir pada ${formatDate(periodeTerakhir)}. Pendaftaran baru tidak dapat diproses, tetapi kamu masih bisa melihat halaman ini untuk informasi.`
+                : `Pendaftaran tenant akan dibuka pada ${formatDate(periodePertama)}. Silakan kembali pada tanggal tersebut untuk mendaftar.`}
+            </p>
+            <button type="button" onClick={() => setBannerDibuka(false)} className="mt-5 w-full rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-medium text-white">Mengerti</button>
+          </div>
         </div>
       )}
     </div>
