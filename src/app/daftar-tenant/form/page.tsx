@@ -472,7 +472,7 @@ export default function DaftarTenantPublik() {
                   {acara?.tanggal_acara && <p>Tanggal Acara: {formatDate(acara.tanggal_acara)}</p>}
                   {acara?.batas_pelunasan && <p>Batas pembayaran: {formatDate(acara.batas_pelunasan)}</p>}
                 </div>
-                <div className="text-right">
+                <div className="ml-auto w-full text-right sm:w-auto">
                   <div className="space-y-0.5 text-xs text-slate-500">
                     {jumlahFnb > 0 && <p>F&B × {jumlahFnb}: {formatRupiah(hargaFnb * jumlahFnb)}</p>}
                     {jumlahNonFnb > 0 && <p>Non-F&B × {jumlahNonFnb}: {formatRupiah(hargaNonFnb * jumlahNonFnb)}</p>}
