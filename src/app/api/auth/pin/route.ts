@@ -3,6 +3,7 @@ import { findActiveUserByPIN } from '@/lib/dashboard-users'
 import { createAuditLog } from '@/lib/queries'
 import { rateLimit, clientIp } from '@/lib/rate-limit'
 import { signSession, SESSION_COOKIE, SESSION_MAX_AGE } from '@/lib/session'
+import { turnstileFailure, verifyTurnstile } from '@/lib/turnstile'
 
 export async function POST(request: Request) {
   const ip = clientIp(request.headers)
@@ -12,6 +13,11 @@ export async function POST(request: Request) {
 
   const body = await request.json()
   const pin = String(body.pin ?? '')
+  const turnstile = await verifyTurnstile(body.turnstile_token, request.headers)
+  if (!turnstile.ok) {
+    const failure = turnstileFailure(turnstile.reason)
+    return NextResponse.json({ error: failure.error }, { status: failure.status })
+  }
   if (!process.env.DASHBOARD_SESSION_SECRET && process.env.NODE_ENV === 'production') {
     return NextResponse.json({ error: 'DASHBOARD_SESSION_SECRET belum diset' }, { status: 500 })
   }

@@ -1,27 +1,38 @@
 ﻿'use client'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { ArrowRight, Globe, Lock } from 'lucide-react'
+import { Turnstile, type TurnstileHandle } from '@/components/turnstile'
+
+const TURNSTILE_ENABLED = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
 export default function LoginPage() {
   const [pin, setPin] = useState('')
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const turnstileRef = useRef<TurnstileHandle>(null)
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
+    if (TURNSTILE_ENABLED && !turnstileToken) {
+      toast.error('Selesaikan verifikasi keamanan dulu')
+      turnstileRef.current?.reset()
+      return
+    }
     setLoading(true)
     try {
       const res = await fetch('/api/auth/pin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin }),
+        body: JSON.stringify({ pin, turnstile_token: turnstileToken }),
       })
       if (!res.ok) {
-        toast.error('PIN salah')
+        const err = await res.json().catch(() => null)
+        toast.error(err?.error || 'PIN salah')
         return
       }
       const data = await res.json()
@@ -76,12 +87,15 @@ export default function LoginPage() {
             </div>
           </div>
 
+          {TURNSTILE_ENABLED && (
+            <Turnstile ref={turnstileRef} onToken={setTurnstileToken} />
+          )}
           <button
             type="submit"
-            disabled={loading}
-            className="group flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 py-3 text-sm font-medium text-white transition-colors hover:bg-primary-700 disabled:opacity-60"
+            disabled={loading || (TURNSTILE_ENABLED && !turnstileToken)}
+            className="group flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 py-3 text-sm font-medium text-white transition-colors hover:bg-primary-700 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {loading ? 'Memverifikasi...' : 'Masuk'}
+            {loading ? 'Memverifikasi...' : TURNSTILE_ENABLED && !turnstileToken ? 'Memuat verifikasi…' : 'Masuk'}
             {!loading && <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />}
           </button>
         </form>
