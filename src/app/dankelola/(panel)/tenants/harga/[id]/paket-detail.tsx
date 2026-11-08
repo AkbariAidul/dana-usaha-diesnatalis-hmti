@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -61,6 +61,15 @@ export default function PaketDetail({
   const [pilihanGambarFile, setPilihanGambarFile] = useState<File | null>(null)
   const [pilihanGambarPreview, setPilihanGambarPreview] = useState<string | null>(null)
   const [savingBundle, setSavingBundle] = useState(false)
+  const reorderTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingReorder = useRef<{ kategori_sewa_id: string; ids: string[] } | null>(null)
+
+  useEffect(() => () => {
+    if (reorderTimer.current) clearTimeout(reorderTimer.current)
+    if (pendingReorder.current) {
+      void sendJSON('/api/tenant/pilihan', 'PATCH', pendingReorder.current).catch(() => {})
+    }
+  }, [])
 
   useEffect(() => {
     if (isNew) return
@@ -320,25 +329,25 @@ export default function PaketDetail({
     }
   }
 
-  async function movePilihan(p: KategoriPilihan, arah: -1 | 1) {
+  function movePilihan(p: KategoriPilihan, arah: -1 | 1) {
     if (!paket || readOnly) return
     const index = paketPilihan.findIndex((item) => item.id === p.id)
     const target = index + arah
     if (index < 0 || target < 0 || target >= paketPilihan.length) return
     const next = [...paketPilihan]
     ;[next[index], next[target]] = [next[target], next[index]]
-    try {
-      await Promise.all(next.map((item, i) => sendJSON('/api/tenant/pilihan', 'POST', {
-        id: item.id,
-        kategori_sewa_id: paket.id,
-        nama: item.nama,
-        harga: Number(item.harga),
-        urutan: i,
-      })))
-      await reloadPilihan()
-    } catch (e) {
-      toast.error((e as Error).message)
-    }
+    setPilihanList((prev) => [...prev.filter((item) => item.kategori_sewa_id !== paket.id), ...next])
+    pendingReorder.current = { kategori_sewa_id: paket.id, ids: next.map((item) => item.id) }
+    if (reorderTimer.current) clearTimeout(reorderTimer.current)
+    reorderTimer.current = setTimeout(() => {
+      const payload = pendingReorder.current
+      pendingReorder.current = null
+      if (!payload) return
+      void sendJSON('/api/tenant/pilihan', 'PATCH', payload).catch((e) => {
+        toast.error((e as Error).message)
+        void reloadPilihan()
+      })
+    }, 200)
   }
 
   async function hapusPilihan(p: KategoriPilihan) {
@@ -348,12 +357,14 @@ export default function PaketDetail({
       confirmText: 'Hapus',
     })
     if (!ok) return
+    const prev = pilihanList
+    setPilihanList((list) => list.filter((item) => item.id !== p.id))
+    if (pilihanForm.id === p.id) resetPilihanForm()
     try {
       await sendJSON('/api/tenant/pilihan', 'DELETE', { id: p.id })
-      if (pilihanForm.id === p.id) resetPilihanForm()
-      await reloadPilihan()
       toast.success('Pilihan paket dihapus')
     } catch (e) {
+      setPilihanList(prev)
       toast.error((e as Error).message)
     }
   }

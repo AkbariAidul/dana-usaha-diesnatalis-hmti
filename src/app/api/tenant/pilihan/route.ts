@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getKategoriPilihan, upsertKategoriPilihan, deleteKategoriPilihan, createAuditLog } from '@/lib/queries'
+import { getKategoriPilihan, upsertKategoriPilihan, deleteKategoriPilihan, reorderKategoriPilihan, createAuditLog } from '@/lib/queries'
 
 export async function GET(request: Request) {
   try {
@@ -39,6 +39,24 @@ export async function POST(request: Request) {
       data_baru: data,
     })
     return NextResponse.json(data)
+  } catch (err: unknown) {
+    return NextResponse.json({ error: String(err) }, { status: 500 })
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json()
+    const ids: string[] = Array.isArray(body.ids) ? body.ids.map((id: unknown) => String(id)) : []
+    if (!body.kategori_sewa_id || ids.length === 0) throw new Error('Data urutan tidak valid')
+    await reorderKategoriPilihan(ids)
+    await createAuditLog({
+      aksi: 'REORDER_TENANT_PILIHAN',
+      target_type: 'kategori_pilihan',
+      target_id: body.kategori_sewa_id,
+      data_baru: { ids },
+    })
+    return NextResponse.json({ success: true })
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })
   }

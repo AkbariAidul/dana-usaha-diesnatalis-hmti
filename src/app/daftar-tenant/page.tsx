@@ -233,7 +233,7 @@ export default function InfoTenantPage() {
                   const habis = sisa === 0
                   const bisaDaftar = !!activePeriod && hargaTersedia(k.id)
                   return (
-                    <article key={k.id} className={`overflow-hidden rounded-2xl border bg-white shadow-sm shadow-slate-200/40 ${habis ? 'border-slate-200 opacity-75' : 'border-slate-200/70'}`}>
+                    <article key={k.id} className={`overflow-hidden rounded-2xl border bg-white shadow-sm shadow-slate-200/40 ${habis ? 'border-rose-200/70' : 'border-slate-200/70'}`}>
                       <div className="grid gap-3 p-3.5 sm:grid-cols-[88px_minmax(0,1fr)_auto] sm:items-center">
                         <div className="aspect-[4/5] w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
                           {k.thumbnail_url ? (
@@ -328,16 +328,32 @@ export default function InfoTenantPage() {
                         </div>
 
                         <div className="sm:pl-2">
-                          {habis ? (
-                            <span className="inline-flex w-full items-center justify-center rounded-xl bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-400 sm:w-auto">
-                              Slot Habis
-                            </span>
-                          ) : bisaDaftar || pendaftaranTutup ? (
+                          {pendaftaranTutup ? (
                             <Link
                               href={`/daftar-tenant/form?kategori=${k.id}`}
                               className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-primary-700 sm:w-auto"
                             >
-                              {pendaftaranTutup ? 'Lihat Info' : 'Pilih'}
+                              Lihat Info
+                              <ArrowRight className="h-3.5 w-3.5" />
+                            </Link>
+                          ) : !activePeriod ? (
+                            <span className="inline-flex w-full cursor-not-allowed items-center justify-center rounded-xl bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-400 sm:w-auto">
+                              Belum Dibuka
+                            </span>
+                          ) : habis ? (
+                            <Link
+                              href={`/daftar-tenant/form?kategori=${k.id}`}
+                              className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-rose-700 sm:w-auto"
+                            >
+                              Daftar Tunggu
+                              <ArrowRight className="h-3.5 w-3.5" />
+                            </Link>
+                          ) : bisaDaftar ? (
+                            <Link
+                              href={`/daftar-tenant/form?kategori=${k.id}`}
+                              className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-primary-700 sm:w-auto"
+                            >
+                              Pilih
                               <ArrowRight className="h-3.5 w-3.5" />
                             </Link>
                           ) : (

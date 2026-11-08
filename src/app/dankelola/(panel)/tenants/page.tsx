@@ -58,6 +58,35 @@ type Row = {
 
 type Proof = { url: string; label: string }
 
+type Waitlist = {
+  id: string
+  kategori_sewa_id: string
+  nama_usaha: string
+  kontak: string
+  email: string | null
+  jumlah_tenant: number
+  jenis_usaha: string | null
+  jenis_usaha_qty: { fnb?: number; nonFnb?: number } | null
+  addon: TenantAddon[] | null
+  harga_akhir: number
+  status: 'menunggu' | 'dihubungi' | 'selesai' | 'batal'
+  created_at: string
+}
+
+const STATUS_WAITLIST: Record<Waitlist['status'], { label: string; className: string }> = {
+  menunggu: { label: 'Menunggu', className: 'bg-amber-100 text-amber-800' },
+  dihubungi: { label: 'Dihubungi', className: 'bg-blue-100 text-blue-800' },
+  selesai: { label: 'Selesai', className: 'bg-emerald-100 text-emerald-800' },
+  batal: { label: 'Batal', className: 'bg-slate-100 text-slate-500' },
+}
+
+function waHref(kontak: string) {
+  const digits = kontak.replace(/\D/g, '')
+  if (!digits) return null
+  const nomor = digits.startsWith('0') ? `62${digits.slice(1)}` : digits.startsWith('62') ? digits : `62${digits}`
+  return `https://wa.me/${nomor}`
+}
+
 function isImageUrl(url: string) {
   return /\.(png|jpe?g|webp|gif)(\?|$)/i.test(url)
 }
@@ -83,6 +112,7 @@ export default function TenantsPage() {
   const [pendaftaran, setPendaftaran] = useState<Pendaftaran[]>([])
   const [pembayaran, setPembayaran] = useState<Pembayaran[]>([])
   const [kategori, setKategori] = useState<KategoriSewa[]>([])
+  const [waitlist, setWaitlist] = useState<Waitlist[]>([])
   const [loading, setLoading] = useState(true)
   const [q, setQ] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
@@ -96,14 +126,15 @@ export default function TenantsPage() {
   const [qrPreview, setQrPreview] = useState<string | null>(null)
 
   async function load() {
-    const [t, m, d, p] = await Promise.all([
+    const [t, m, d, p, w] = await Promise.all([
       getJSON<Tenant[]>('/api/tenants'),
       getJSON<{ kategori: KategoriSewa[] }>('/api/master'),
       getJSON<Pendaftaran[]>('/api/public/tenant'),
       getJSON<Pembayaran[]>('/api/pembayaran'),
+      getJSON<Waitlist[]>('/api/tenant/waitlist').catch(() => []),
     ])
     setTenants(t); setKategori(kategoriTenant(m.kategori || [], true))
-    setPendaftaran(d); setPembayaran(p)
+    setPendaftaran(d); setPembayaran(p); setWaitlist(w)
   }
 
   useEffect(() => {
@@ -177,6 +208,19 @@ export default function TenantsPage() {
     }
   }
 
+  async function ubahStatusWaitlist(item: Waitlist, status: Waitlist['status']) {
+    if (isViewer) return
+    const prev = waitlist
+    setWaitlist((list) => list.map((w) => (w.id === item.id ? { ...w, status } : w)))
+    try {
+      await sendJSON(`/api/tenant/waitlist/${item.id}`, 'PATCH', { status })
+      toast.success('Status daftar tunggu diperbarui')
+    } catch (err) {
+      setWaitlist(prev)
+      toast.error((err as Error).message)
+    }
+  }
+
   const kategoriNama = (id: string) => kategori.find((k) => k.id === id)?.nama ?? '-'
   const pendingBayar = pembayaran.filter((p) => !p.validated)
 
@@ -233,6 +277,17 @@ export default function TenantsPage() {
       }
     }),
   ]
+
+  const terpakaiKategori = rows.reduce<Record<string, number>>((acc, r) => {
+    if (r.status === 'ditolak' || r.status === 'batal') return acc
+    acc[r.kategoriId] = (acc[r.kategoriId] ?? 0) + r.jumlahTenant
+    return acc
+  }, {})
+  const sisaKategori = (id: string) => {
+    const slot = Number(kategori.find((k) => k.id === id)?.slot_tenant ?? 0)
+    return slot > 0 ? Math.max(0, slot - (terpakaiKategori[id] ?? 0)) : null
+  }
+  const waitlistMenunggu = waitlist.filter((w) => w.status === 'menunggu').length
 
   const menunggu = pendaftaran.filter((p) => p.status === 'menunggu_verifikasi').length
   const ditolak = pendaftaran.filter((p) => p.status === 'ditolak').length
@@ -296,7 +351,7 @@ export default function TenantsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <p className="text-sm text-slate-500">Tenant Aktif</p>
           <p className="text-3xl font-bold text-primary-600">{tenants.length}</p>
@@ -310,10 +365,94 @@ export default function TenantsPage() {
           <p className="text-3xl font-bold text-blue-600">{pendingBayar.length}</p>
         </div>
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+          <p className="text-sm text-slate-500">Daftar Tunggu</p>
+          <p className="text-3xl font-bold text-rose-600">{waitlistMenunggu}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <p className="text-sm text-slate-500">Ditolak</p>
           <p className="text-3xl font-bold text-red-600">{ditolak}</p>
         </div>
       </div>
+
+      {waitlist.length > 0 && (
+        <div className="overflow-x-auto rounded-2xl border border-rose-200/70 bg-white shadow-sm shadow-slate-200/40">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-3">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">Daftar Tunggu Tenant</h2>
+              <p className="text-xs text-slate-500">Pendaftar saat slot paket penuh. Baris hijau berarti slot sudah tersedia.</p>
+            </div>
+            <span className="rounded-full bg-rose-100 px-2.5 py-1 text-xs font-medium text-rose-700">{waitlistMenunggu} menunggu</span>
+          </div>
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-left text-xs text-slate-500">
+              <tr>
+                <th className="px-5 py-3">Tanggal</th>
+                <th className="px-5 py-3">Paket</th>
+                <th className="px-5 py-3">Usaha</th>
+                <th className="px-5 py-3 text-center">Jumlah</th>
+                <th className="px-5 py-3 text-right">Estimasi</th>
+                <th className="px-5 py-3">Status</th>
+                <th className="px-5 py-3">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100/80">
+              {waitlist.map((w) => {
+                const sisa = sisaKategori(w.kategori_sewa_id)
+                const tersedia = sisa !== null && sisa > 0
+                const st = STATUS_WAITLIST[w.status]
+                const href = waHref(w.kontak)
+                return (
+                  <tr key={w.id} className={tersedia ? 'bg-emerald-50/60' : 'hover:bg-slate-50'}>
+                    <td className="px-5 py-3 align-top text-xs text-slate-500">{formatDate(w.created_at)}</td>
+                    <td className="px-5 py-3 align-top">
+                      <div className="font-medium text-slate-800">{kategoriNama(w.kategori_sewa_id)}</div>
+                      {tersedia && <div className="text-[11px] font-medium text-emerald-700">Slot tersedia: {sisa}</div>}
+                    </td>
+                    <td className="px-5 py-3 align-top">
+                      <div className="font-medium">{w.nama_usaha}</div>
+                      <div className="text-xs text-slate-500">{w.kontak}</div>
+                      {w.jenis_usaha_qty && (w.jenis_usaha_qty.fnb || w.jenis_usaha_qty.nonFnb) ? (
+                        <div className="text-[11px] text-slate-400">
+                          F&B {w.jenis_usaha_qty.fnb ?? 0} · Non-F&B {w.jenis_usaha_qty.nonFnb ?? 0}
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className="px-5 py-3 align-top text-center tabular-nums">{w.jumlah_tenant}</td>
+                    <td className="px-5 py-3 align-top text-right tabular-nums">{formatRupiah(Number(w.harga_akhir))}</td>
+                    <td className="px-5 py-3 align-top">
+                      <span className={`inline-block rounded px-2 py-0.5 text-xs ${st.className}`}>{st.label}</span>
+                    </td>
+                    <td className="px-5 py-3 align-top">
+                      <div className="flex flex-wrap gap-1">
+                        {href && (
+                          <a href={href} target="_blank" rel="noopener noreferrer" className="rounded bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100">
+                            WA
+                          </a>
+                        )}
+                        {w.status === 'menunggu' && (
+                          <button onClick={() => ubahStatusWaitlist(w, 'dihubungi')} disabled={isViewer} className="rounded bg-blue-50 px-2 py-1 text-xs text-blue-700 hover:bg-blue-100 disabled:opacity-40">
+                            Hubungi
+                          </button>
+                        )}
+                        {(w.status === 'menunggu' || w.status === 'dihubungi') && (
+                          <>
+                            <button onClick={() => ubahStatusWaitlist(w, 'selesai')} disabled={isViewer} className="rounded bg-green-50 px-2 py-1 text-xs text-green-700 hover:bg-green-100 disabled:opacity-40">
+                              Selesai
+                            </button>
+                            <button onClick={() => ubahStatusWaitlist(w, 'batal')} disabled={isViewer} className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-600 hover:bg-slate-200 disabled:opacity-40">
+                              Batal
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
         <table className="w-full text-sm">

@@ -65,6 +65,7 @@ export default function DaftarTenantPublik() {
   const [qr, setQr] = useState('')
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
   const [bannerDibuka, setBannerDibuka] = useState(true)
+  const [waitlist, setWaitlist] = useState<{ id: string; harga_akhir: number } | null>(null)
   const turnstileRef = useRef<TurnstileHandle>(null)
   const turnstileLock = useRef(false)
   const submittingTenant = useRef(false)
@@ -162,6 +163,9 @@ export default function DaftarTenantPublik() {
   const sisaSlot = selectedKategori && Number(selectedKategori.slot_tenant) > 0
     ? Math.max(0, Number(selectedKategori.slot_tenant) - Number(terpakai[selectedKategori.id] ?? 0))
     : null
+  const slotHabis = sisaSlot === 0
+  const modeWaitlist = slotHabis && !!periode
+  const maxTenant = sisaSlot !== null && sisaSlot > 0 ? sisaSlot : 99
   const totalTagihan = Number(pendaftaran?.harga_akhir ?? 0)
   const minimalPertama = Math.ceil(totalTagihan / 2)
   const nominalBayar = !pendaftaran
@@ -216,17 +220,16 @@ export default function DaftarTenantPublik() {
   }
 
   function rapikanJumlah(field: 'jumlah_fnb' | 'jumlah_nonfnb') {
-    const max = sisaSlot !== null ? Math.max(0, sisaSlot) : 99
-    const value = Math.max(0, Math.min(max, Number(form[field]) || 0))
+    const value = Math.max(0, Math.min(maxTenant, Number(form[field]) || 0))
     setForm((prev) => ({ ...prev, [field]: String(value) }))
   }
 
   async function daftar() {
     if (submittingTenant.current) return
     if (!periode) return toast.error('Tanggal daftar di luar periode open tenant')
-    if (sisaSlot === 0) return toast.error('Slot kategori ini sudah habis')
+    if (!modeWaitlist && sisaSlot === 0) return toast.error('Slot kategori ini sudah habis')
     if (jumlahTenant < 1) return toast.error('Isi minimal 1 tenant (F&B atau Non-F&B)')
-    if (sisaSlot !== null && jumlahTenant > sisaSlot) return toast.error(`Sisa slot hanya ${sisaSlot}`)
+    if (!modeWaitlist && sisaSlot !== null && jumlahTenant > sisaSlot) return toast.error(`Sisa slot hanya ${sisaSlot}`)
     submittingTenant.current = true
     try {
       let token = turnstileRef.current?.getToken() ?? null
@@ -245,7 +248,7 @@ export default function DaftarTenantPublik() {
           return
         }
       }
-      const res = await sendJSON('/api/public/tenant', 'POST', {
+      const payload = {
         nama_usaha: form.nama_usaha,
         kontak: form.kontak,
         email: form.email,
@@ -255,9 +258,15 @@ export default function DaftarTenantPublik() {
         jenis_usaha_qty: { fnb: jumlahFnb, nonFnb: jumlahNonFnb },
         addon: addonTerpilih.map(({ item, qty }) => ({ id: item.id, qty })),
         pilihan: Object.entries(pilihanQty).map(([id, qty]) => ({ id, qty: Math.max(1, Number(qty) || 1) })),
-        periode_daftar: periode,
         turnstile_token: token,
-      })
+      }
+      if (modeWaitlist) {
+        const created = await sendJSON('/api/public/tenant/waitlist', 'POST', payload) as { id: string; harga_akhir: number }
+        setWaitlist(created)
+        toast.success('Kamu masuk daftar tunggu. Kami hubungi via WhatsApp jika slot tersedia.')
+        return
+      }
+      const res = await sendJSON('/api/public/tenant', 'POST', { ...payload, periode_daftar: periode })
       const created = res as typeof pendaftaran
       setPendaftaran(created)
       setNominalNyicil(String(Math.ceil(Number(created?.harga_akhir ?? 0) / 2)))
@@ -323,14 +332,25 @@ export default function DaftarTenantPublik() {
             { label: langkahBreadcrumb[step - 1] ?? 'Form Pendaftaran' },
           ]}
         />
-        <PoStepper steps={STEP} currentStep={step === 1 ? 2 : 3} />
+        {!waitlist && <PoStepper steps={STEP} currentStep={step === 1 ? 2 : 3} />}
 
-        {step===1 && (
+        {step===1 && !waitlist && (
           <div className="rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
             <div className="border-b border-slate-100 p-4 sm:p-5">
               <h1 className="text-xl font-semibold text-slate-900">Form Pendaftaran Tenant</h1>
               <p className="text-sm text-slate-500">Isi data usaha dan jumlah tenant. Paket terpilih: <span className="font-medium text-slate-700">{selectedKategori?.nama ?? '-'}</span></p>
             </div>
+            {modeWaitlist && (
+              <div className="mx-4 mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-sm text-rose-700 sm:mx-5 sm:mt-5">
+                <p className="font-semibold">Slot paket ini sudah habis.</p>
+                <p className="mt-1 text-xs leading-relaxed text-rose-600">
+                  Kamu tetap bisa mengisi form untuk masuk daftar tunggu. Kami akan menghubungi via WhatsApp jika ada slot tersedia.
+                </p>
+                <Link href="/daftar-tenant#kategori" className="mt-2 inline-flex text-xs font-semibold text-rose-700 underline">
+                  Lihat paket lain
+                </Link>
+              </div>
+            )}
             <div className="grid gap-3 p-4 sm:p-5 md:grid-cols-4">
               {infoPeriode && (
                 <div className="rounded-xl bg-rose-50 p-3 text-xs text-rose-700 md:col-span-4">
@@ -349,11 +369,11 @@ export default function DaftarTenantPublik() {
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div>
                     <label className="mb-1 block text-sm font-medium">Jumlah Tenant F&B</label>
-                    <input type="number" inputMode="numeric" min={0} max={sisaSlot !== null ? Math.max(0, sisaSlot) : 99} className={input} value={form.jumlah_fnb} onChange={e=>setForm({...form, jumlah_fnb: e.target.value})} onBlur={()=>rapikanJumlah('jumlah_fnb')} />
+                    <input type="number" inputMode="numeric" min={0} max={maxTenant} className={input} value={form.jumlah_fnb} onChange={e=>setForm({...form, jumlah_fnb: e.target.value})} onBlur={()=>rapikanJumlah('jumlah_fnb')} />
                   </div>
                   <div>
                     <label className="mb-1 block text-sm font-medium">Jumlah Tenant Non-F&B</label>
-                    <input type="number" inputMode="numeric" min={0} max={sisaSlot !== null ? Math.max(0, sisaSlot) : 99} className={input} value={form.jumlah_nonfnb} onChange={e=>setForm({...form, jumlah_nonfnb: e.target.value})} onBlur={()=>rapikanJumlah('jumlah_nonfnb')} />
+                    <input type="number" inputMode="numeric" min={0} max={maxTenant} className={input} value={form.jumlah_nonfnb} onChange={e=>setForm({...form, jumlah_nonfnb: e.target.value})} onBlur={()=>rapikanJumlah('jumlah_nonfnb')} />
                   </div>
                   <div>
                     <label className="mb-1 block text-sm font-medium">Paket</label>
@@ -505,8 +525,30 @@ export default function DaftarTenantPublik() {
               </div>
               <div className="flex flex-col items-end gap-3 md:col-span-4 sm:flex-row sm:justify-end">
                 <Turnstile ref={turnstileRef} />
-                <button onClick={daftar} disabled={!periode || !form.nama_usaha || !form.kontak || !form.kategori_sewa_id || sisaSlot === 0 || jumlahTenant < 1 || submittingTenant.current} className="rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50">{submittingTenant.current ? 'Mengirim…' : 'Lanjut ke Pembayaran'}</button>
+                <button onClick={daftar} disabled={!periode || !form.nama_usaha || !form.kontak || !form.kategori_sewa_id || (!modeWaitlist && sisaSlot === 0) || jumlahTenant < 1 || submittingTenant.current} className={`rounded-xl px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50 ${modeWaitlist ? 'bg-rose-600 hover:bg-rose-700' : 'bg-primary-600'}`}>{submittingTenant.current ? 'Mengirim…' : modeWaitlist ? 'Masuk Daftar Tunggu' : 'Lanjut ke Pembayaran'}</button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {waitlist && (
+          <div className="rounded-2xl border border-rose-200/70 bg-white p-10 text-center shadow-sm shadow-slate-200/40 space-y-3">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 text-lg font-bold text-rose-600">✓</div>
+            <h2 className="text-xl font-semibold text-slate-900">Kamu Masuk Daftar Tunggu</h2>
+            <p className="text-slate-500">
+              Paket <span className="font-medium text-slate-700">{selectedKategori?.nama ?? '-'}</span> sedang penuh. Data kamu sudah kami simpan.
+              Kami akan menghubungi via WhatsApp jika ada slot tersedia.
+            </p>
+            <p className="rounded-xl bg-slate-50 p-3 text-xs text-slate-500">
+              Estimasi harga: <span className="font-semibold text-slate-700">{formatRupiah(waitlist.harga_akhir)}</span>
+            </p>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Link href="/daftar-tenant#kategori" className="inline-flex rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-medium text-white">
+                Lihat Paket Lain
+              </Link>
+              <Link href="/" className="inline-flex rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600">
+                Kembali ke Beranda
+              </Link>
             </div>
           </div>
         )}

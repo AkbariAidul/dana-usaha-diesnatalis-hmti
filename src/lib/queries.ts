@@ -79,6 +79,14 @@ export async function deleteKategoriPilihan(id: string) {
   if (error) throw error
 }
 
+export async function reorderKategoriPilihan(ids: string[]) {
+  const results = await Promise.all(
+    ids.map((id, urutan) => supabaseAdmin.from('kategori_pilihan').update({ urutan }).eq('id', id)),
+  )
+  const failed = results.find((r) => r.error)
+  if (failed?.error) throw failed.error
+}
+
 const KATEGORI_BUNDLE_FIELDS = ['kategori_sewa_id', 'jumlah_min', 'diskon_nominal', 'diskon_persen', 'urutan'] as const
 
 export async function getKategoriBundleDiscount(kategoriId?: string): Promise<KategoriBundleDiscount[]> {
