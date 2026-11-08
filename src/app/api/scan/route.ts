@@ -21,6 +21,10 @@ export async function POST(request: Request) {
     if (payload.startsWith('DN26|')) {
       const parsed = parseQrPayload(payload)
       if (!parsed) return NextResponse.json({ error: 'QR tidak valid' }, { status: 400 })
+      // Check QR expiry if present (0 = legacy QR, no expiry)
+      if (parsed.expiresAt > 0 && parsed.expiresAt < Math.floor(Date.now() / 1000)) {
+        return NextResponse.json({ error: 'QR sudah kedaluwarsa' }, { status: 410 })
+      }
 
       if (parsed.tipe === 'tenant') {
         const { data: tenant } = await supabaseAdmin

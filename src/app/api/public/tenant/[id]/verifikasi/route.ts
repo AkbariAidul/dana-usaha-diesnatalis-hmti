@@ -3,8 +3,14 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { createPembayaran, createAuditLog } from '@/lib/queries'
 import { todayISO } from '@/lib/utils'
 import { kirimNotifTenantDitolak, kirimNotifTenantTerverifikasi } from '@/lib/notifikasi-tenant'
+import { getSessionUser } from '@/lib/session-server'
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  // Security: hanya user yang login (bukan publik) yang bisa memverifikasi pendaftaran
+  const session = await getSessionUser()
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
   try {
     const { id } = await params
     const body = await request.json()
@@ -26,7 +32,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       .single()
 
     if (error) throw error
-    await createAuditLog({ aksi: status === 'ditolak' ? 'TOLAK_PENDAFTARAN' : 'VERIFIKASI_PENDAFTARAN', target_type: 'pendaftaran_tenant_pub', target_id: id, data_baru: { status, catatan_admin } })
+    await createAuditLog({ aksi: status === 'ditolak' ? 'TOLAK_PENDAFTARAN' : 'VERIFIKASI_PENDAFTARAN', target_type: 'pendaftaran_tenant_pub', target_id: id, data_baru: { status, catatan_admin }, user_name: session.name })
 
     // If approved, also create tenant in main table + catat DP dari bukti pendaftaran
     if (status === 'dp_diterima') {
@@ -136,6 +142,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 }
 
 export async function GET() {
+  const session = await getSessionUser()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   try {
     const { data, error } = await supabaseAdmin
       .from('pendaftaran_tenant_pub')

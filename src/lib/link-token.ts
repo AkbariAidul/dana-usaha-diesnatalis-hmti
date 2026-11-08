@@ -32,14 +32,24 @@ export function verifyRef(tipe: TipeLacak, kode: string, token: string | null) {
 }
 
 export function buatQrPayload(tipe: TipeLacak, kode: string) {
-  return `DN26|${tipe.toUpperCase()}|${kode.trim().toUpperCase()}|${signRef(tipe, kode)}`
+  // Timestamp expiry 30 hari dari sekarang (Unix epoch seconds)
+  const expiresAt = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60
+  return `DN26|${tipe.toUpperCase()}|${kode.trim().toUpperCase()}|${signRef(tipe, kode)}|${expiresAt}`
 }
 
-export function parseQrPayload(payload: string): { tipe: TipeLacak; kode: string } | null {
-  const [prefix, tipeRaw, kode, token] = payload.trim().split('|')
-  if (prefix !== 'DN26' || !tipeRaw || !kode || !token) return null
+export function parseQrPayload(payload: string): { tipe: TipeLacak; kode: string; expiresAt: number } | null {
+  const parts = payload.trim().split('|')
+  // Backward compat: old QRs have 4 parts (no expiry), new ones have 5
+  if ((parts.length !== 4 && parts.length !== 5) || parts[0] !== 'DN26' || !parts[1] || !parts[2] || !parts[3]) return null
+  const tipeRaw = parts[1]
+  const kode = parts[2]
+  const token = parts[3]
+  const expiresAtStr = parts[4] ?? ''
+  if (!['tenant', 'tiket', 'po'].includes(tipeRaw.toLowerCase())) return null
   const tipe = tipeRaw.toLowerCase() as TipeLacak
-  if (!['tenant', 'tiket', 'po'].includes(tipe)) return null
   if (!verifyRef(tipe, kode, token)) return null
-  return { tipe, kode: kode.toUpperCase() }
+  // Old-format QRs (no expiry field) are treated as never-expiring for backward compat
+  const expiresAt = expiresAtStr ? Number(expiresAtStr) : 0
+  if (expiresAtStr && (!Number.isFinite(expiresAt) || expiresAt <= 0)) return null
+  return { tipe, kode: kode.toUpperCase(), expiresAt }
 }

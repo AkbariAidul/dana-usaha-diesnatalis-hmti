@@ -38,24 +38,23 @@ export async function POST(request: Request) {
     }
 
     const declared = file.type.toLowerCase()
-    const ext = EXT[declared]
-    if (!ext) {
-      return NextResponse.json({ error: 'Format file harus jpg, png, atau webp' }, { status: 400 })
-    }
-    if (file.size > MAX_SIZE) {
+    // ponytail: read bytes FIRST, then determine extension from actual magic bytes,
+    // NOT from client-reported MIME type (which can be spoofed).
+    const bytes = Buffer.from(await file.arrayBuffer())
+    if (bytes.length > MAX_SIZE) {
       return NextResponse.json({ error: 'Ukuran file maksimal 5MB' }, { status: 400 })
     }
-
+    const detected = detectedMime(bytes)
+    if (!detected) {
+      return NextResponse.json({ error: 'Format file harus jpg, png, atau webp' }, { status: 400 })
+    }
+    const ext = EXT[detected]
     const safeName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
     const path = `${folder}/${safeName}`
-    const bytes = Buffer.from(await file.arrayBuffer())
-    if (detectedMime(bytes) !== declared) {
-      return NextResponse.json({ error: 'Isi file tidak sesuai format gambar' }, { status: 400 })
-    }
 
     const { error } = await supabaseAdmin.storage
       .from(BUCKET)
-      .upload(path, bytes, { contentType: declared, cacheControl: '31536000', upsert: false })
+      .upload(path, bytes, { contentType: detected, cacheControl: '31536000', upsert: false })
     if (error) throw error
 
     const { data } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(path)

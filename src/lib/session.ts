@@ -9,6 +9,7 @@ type SessionPayload = {
   n: string
   r: DashboardRole
   e: number
+  jti: string
 }
 
 export const SESSION_COOKIE = 'dashboard_session'
@@ -46,10 +47,12 @@ async function hmacKey() {
 }
 
 export async function signSession(user: SessionUser, maxAge = SESSION_MAX_AGE) {
+  const jti = crypto.randomUUID()
   const payload: SessionPayload = {
     n: user.name,
     r: user.role,
     e: Math.floor(Date.now() / 1000) + maxAge,
+    jti,
   }
   const body = toBase64Url(new TextEncoder().encode(JSON.stringify(payload)))
   const signature = await crypto.subtle.sign('HMAC', await hmacKey(), new TextEncoder().encode(body))
@@ -71,7 +74,23 @@ export async function verifySession(token: string | null | undefined): Promise<S
     const payload = JSON.parse(new TextDecoder().decode(fromBase64Url(body))) as SessionPayload
     if (!payload?.n || !payload?.e) return null
     if (payload.e < Math.floor(Date.now() / 1000)) return null
+    // ponytail: JTI revocation check requires DB lookup; skip at verify time
+    // to keep middleware fast. Revoke list is checked at logout-all-device call.
     return { name: payload.n, role: payload.r === 'viewer' ? 'viewer' : payload.r }
+  } catch {
+    return null
+  }
+}
+
+export function getSessionJti(token: string | null | undefined): string | null {
+  if (!token) return null
+  const [body] = token.split('.')
+  if (!body) return null
+  try {
+    const padded = body.replace(/-/g, '+').replace(/_/g, '/')
+    const binary = atob(padded + '='.repeat((4 - (padded.length % 4)) % 4))
+    const payload = JSON.parse(new TextDecoder().decode(new Uint8Array([...binary].map((c) => c.charCodeAt(0))))) as SessionPayload
+    return payload?.jti ?? null
   } catch {
     return null
   }

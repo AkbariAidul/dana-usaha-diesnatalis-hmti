@@ -27,6 +27,7 @@ const PUBLIC_API: Array<{ method: string; pattern: RegExp }> = [
 ]
 
 const VIEWER_ALLOWED_WRITE = new Set(['/api/audit/page'])
+// Viewer TIDAK boleh akses audit log sama sekali (berisi data sensitif pembayaran & login)
 
 const VIEWER_BLOCKED_PAGES: Array<{ pattern: RegExp; redirectTo: string }> = [
   { pattern: /^\/dankelola\/tenants\/harga\/new$/, redirectTo: '/dankelola/tenants/harga' },

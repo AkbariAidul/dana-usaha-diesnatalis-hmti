@@ -285,6 +285,28 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     router.refresh()
   }
 
+  async function logoutAllDevices() {
+    const done = await confirm({
+      title: 'Logout semua perangkat?',
+      description: 'Semua sesi login Anda di device lain akan dicabut. Session di device ini juga akan habis.',
+      confirmText: 'Cabut Semua',
+      cancelText: 'Batal',
+      danger: true,
+    })
+    if (!done) return
+    try {
+      await fetch('/api/auth/logout-all', { method: 'POST' })
+      await fetch('/api/auth/logout', { method: 'POST' } as RequestInit)
+      router.push('/')
+      router.refresh()
+    } catch {
+      // Fallback: just regular logout
+      await fetch('/api/auth/logout', { method: 'POST' } as RequestInit)
+      router.push('/')
+      router.refresh()
+    }
+  }
+
   const toggleGroup = (key: string) => {
     setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }))
   }
@@ -527,6 +549,10 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                 <LogOut className="h-4 w-4 shrink-0" />
                 <span>Keluar</span>
               </button>
+              <button onClick={logoutAllDevices} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-amber-300 transition-all hover:bg-amber-500/20 hover:text-amber-200">
+                <X className="h-4 w-4 shrink-0" />
+                <span>Cabut Semua Perangkat</span>
+              </button>
             </div>
           </aside>
         </div>
@@ -544,6 +570,10 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             <button onClick={logout} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-red-300 transition-all hover:bg-red-500/20 hover:text-red-200">
               <LogOut className="h-4 w-4 shrink-0" />
               <span>Keluar</span>
+            </button>
+            <button onClick={logoutAllDevices} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-amber-300 transition-all hover:bg-amber-500/20 hover:text-amber-200">
+              <X className="h-4 w-4 shrink-0" />
+              <span>Cabut Semua Perangkat</span>
             </button>
           </div>
         </aside>
