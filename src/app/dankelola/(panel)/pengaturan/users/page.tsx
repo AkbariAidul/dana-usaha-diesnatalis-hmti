@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Plus, Save, Trash2 } from 'lucide-react'
 import { getJSON, sendJSON } from '../../../api'
@@ -15,19 +15,30 @@ type DashboardUser = {
   owner?: boolean
 }
 
+/** Generate a random 6-digit PIN */
+function randomPin(): string {
+  return String(Math.floor(100000 + Math.random() * 900000))
+}
+
 export default function KelolaUserPage() {
   const [users, setUsers] = useState<DashboardUser[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [dirty, setDirty] = useState(false)
+  // Shows generated PIN right after adding a new user (one-time display)
+  const [newPin, setNewPin] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    const data = await getJSON<DashboardUser[]>('/api/dashboard-users')
+    setUsers(data)
+  }, [])
 
   useEffect(() => {
-    getJSON<DashboardUser[]>('/api/dashboard-users')
-      .then((data) => setUsers(data))
+    load()
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false))
-  }, [])
+  }, [load])
 
   function update(index: number, patch: Partial<DashboardUser>) {
     setUsers((list) => list.map((user, i) => (i === index ? { ...user, ...patch } : user)))
@@ -35,8 +46,10 @@ export default function KelolaUserPage() {
   }
 
   function addUser() {
-    setUsers((list) => [...list, { name: '', pin: '', role: 'pengelola', aktif: true }])
+    const pin = randomPin()
+    setUsers((list) => [...list, { name: '', pin, role: 'pengelola', aktif: true }])
     setDirty(true)
+    setNewPin(pin)
   }
 
   function removeUser(index: number) {
@@ -45,13 +58,25 @@ export default function KelolaUserPage() {
   }
 
   async function save() {
+    // Validate before sending
+    const hasEmptyName = users.some((u) => !u.name.trim())
+    if (hasEmptyName) {
+      toast.error('Semua nama user wajib diisi')
+      return
+    }
+    const hasDuplicate = new Set(users.map((u) => u.name.trim().toLowerCase())).size !== users.length
+    if (hasDuplicate) {
+      toast.error('Nama user tidak boleh sama')
+      return
+    }
+
     setSaving(true)
     try {
       await sendJSON('/api/dashboard-users', 'POST', { users })
       toast.success('Data user disimpan')
       setDirty(false)
-      const data = await getJSON<DashboardUser[]>('/api/dashboard-users')
-      setUsers(data)
+      setNewPin(null)
+      await load()
     } catch (e) {
       toast.error((e as Error).message)
     } finally {
@@ -74,6 +99,13 @@ export default function KelolaUserPage() {
 
   return (
     <div className="space-y-4">
+      {/* Show newly generated PIN once */}
+      {newPin && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          <strong>PIN baru telah dibuat:</strong> {newPin} · Simpan dengan aman dan bagikan ke pengguna. PIN tidak akan ditampilkan lagi.
+        </div>
+      )}
+
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Kelola User</h1>

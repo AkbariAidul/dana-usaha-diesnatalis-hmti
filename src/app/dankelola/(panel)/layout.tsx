@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronRight, Eye, Globe, LogOut, Menu, PartyPopper, X } from 'lucide-react'
 import { getJSON, prefetch } from '../api'
-import { menuConfig } from '@/lib/menu'
+import { menuConfig, getMenuForRole } from '@/lib/menu'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { useConfirm } from '@/components/confirm-dialog'
 import { OWNER_NAME, type DashboardRole, type DashboardUser } from '@/lib/auth'
@@ -172,6 +172,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const [open, setOpen] = useState(false)
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
   const currentUser = useDashboardUser()
+  // Viewer hanya lihat Ringkasan, Scan, dan Laporan
+  const menuGroups = getMenuForRole(currentUser?.role ?? 'pengelola')
   const lastAuditPath = useRef<string | null>(null)
   const [welcome, setWelcome] = useState<DashboardUser | null>(null)
   const [tiketTerjual, setTiketTerjual] = useState<number | null>(null)
@@ -313,7 +315,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
   const nav = (
     <nav className="flex flex-col gap-0.5 px-1.5" aria-label="Navigasi dashboard">
-      {menuConfig.map((group) => {
+      {menuGroups.map((group) => {
         const Icon = group.icon
         if (group.href && !group.children) {
           const active = isPathActive(pathname, group.href)

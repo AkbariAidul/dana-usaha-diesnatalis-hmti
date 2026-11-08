@@ -5,6 +5,7 @@ import {
   Briefcase,
   ShoppingCart,
   QrCode,
+  FileText,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -78,4 +79,21 @@ export const menuConfig: MenuGroup[] = [
       { label: 'Audit Log', href: '/dankelola/audit' },
     ],
   },
+  // Dedicated top-level menu for viewer role (replaces Umum → Laporan)
+  {
+    key: 'laporan-pelihat',
+    label: 'LAPORAN',
+    icon: FileText,
+    href: '/dankelola/laporan',
+  },
 ]
+
+/** Return filtered menu groups for a given role. Viewer only sees Ringkasan, Scan, and Laporan. */
+export function getMenuForRole(role: string): MenuGroup[] {
+  if (role === 'viewer') {
+    return menuConfig.filter(
+      (g) => g.key === 'ringkasan' || g.key === 'scan' || g.key === 'laporan-pelihat',
+    )
+  }
+  return menuConfig
+}
