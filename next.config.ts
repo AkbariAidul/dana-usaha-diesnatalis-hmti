@@ -23,9 +23,14 @@ const securityHeaders = [
   },
 ];
 
+const sharpFiles = ['./node_modules/sharp/**/*', './node_modules/@img/**/*'];
+
 const nextConfig: NextConfig = {
   serverExternalPackages: ['sharp'],
   outputFileTracingIncludes: {
+    '/api/upload': sharpFiles,
+    '/api/pembayaran': sharpFiles,
+    '/api/merchandise': sharpFiles,
     '/api/public/struk': ['./public/logo-dies-struk.png'],
     '/api/merchandise/preorder/struk': ['./public/logo-dies-struk.png'],
     '/api/ticket/struk': ['./public/logo-dies-struk.png'],

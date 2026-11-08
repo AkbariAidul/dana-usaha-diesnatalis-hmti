@@ -53,10 +53,10 @@ export async function POST(request: Request) {
 
     if (detected && detected.startsWith('image/')) {
       // Convert & compress all images to WebP automatically
-      const result = await compressToWebp(bytes)
+      const result = await compressToWebp(bytes, detected)
       uploadBytes = result.buffer
-      contentType = 'image/webp'
-      ext = 'webp'
+      contentType = result.mimeType
+      ext = result.mimeType === 'image/webp' ? 'webp' : (file.name.split('.').pop()?.toLowerCase() ?? 'bin')
     } else if (!detected) {
       // Non-image, keep original format but validate size
       ext = file.name.split('.').pop()?.toLowerCase() ?? 'bin'

@@ -38,10 +38,10 @@ export async function POST(request: Request) {
         let contentType = gambar.type.toLowerCase()
         let ext = gambar.name.split('.').pop()?.toLowerCase() ?? 'webp'
         if (isImage(raw)) {
-          const result = await compressToWebp(raw)
+          const result = await compressToWebp(raw, gambar.type.toLowerCase())
           uploadBytes = result.buffer
-          contentType = 'image/webp'
-          ext = 'webp'
+          contentType = result.mimeType
+          ext = result.mimeType === 'image/webp' ? 'webp' : (gambar.name.split('.').pop()?.toLowerCase() ?? 'bin')
         }
         const path = `merchandise/${Date.now()}.${ext}`
         await supabaseAdmin.storage.from('merchandise-images').upload(path, uploadBytes, { contentType })

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { ArrowLeft, CheckCircle2, Clock, Download, QrCode, Upload, X } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Clock, Download, MessageCircle, QrCode, Upload, X } from 'lucide-react'
 import { PublicBreadcrumb, PublicNavbar } from '@/components/public-navbar'
 import { QrImage } from '@/components/qr-image'
 import { buatQrisDinamis, buatQrisTanpaNominal } from '@/lib/qris'
@@ -128,7 +128,7 @@ type Cicilan = {
 }
 
 type StatusResponse =
-  | { tipe: 'tenant'; kode: string; daftar: DaftarTenant | null; tenant: Tenant | null; kategori: string | null; pembayaran: Pembayaran[]; totalValid: number; eligible: boolean; qr: string | null }
+  | { tipe: 'tenant'; kode: string; daftar: DaftarTenant | null; tenant: Tenant | null; kategori: string | null; pembayaran: Pembayaran[]; totalValid: number; eligible: boolean; qr: string | null; waGroup: { nama: string; link: string } | null }
   | { tipe: 'tiket'; kode: string; pesanan: PesananTiket; tiket: TiketIssued[] }
   | { tipe: 'po'; kode: string; po: MerchPo; items: MerchItem[]; cicilan: Cicilan[]; qr: string | null }
 
@@ -462,7 +462,7 @@ export function LacakDetail({ kode, token }: { kode: string; token: string }) {
 }
 
 function TenantView({ data, token, reload }: { data: Extract<StatusResponse, { tipe: 'tenant' }>; token: string; reload: () => void }) {
-  const { daftar, tenant, kategori, pembayaran, totalValid, qr } = data
+  const { daftar, tenant, kategori, pembayaran, totalValid, qr, waGroup } = data
   const harga = Number(tenant?.harga_akhir ?? daftar?.harga_akhir ?? 0)
   const sisa = Math.max(0, harga - totalValid)
   const progress = harga > 0 ? Math.min(100, Math.round((totalValid / harga) * 100)) : 0
@@ -596,6 +596,16 @@ function TenantView({ data, token, reload }: { data: Extract<StatusResponse, { t
             </p>
           ) : (
             <p className="mt-3 text-sm text-slate-500">Tunjukkan QR ini ke petugas saat masuk area venue.</p>
+          )}
+          {waGroup?.link && (
+            <a
+              href={waGroup.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700"
+            >
+              <MessageCircle className="h-4 w-4" /> Gabung {waGroup.nama || 'Grup WhatsApp'}
+            </a>
           )}
         </div>
       )}

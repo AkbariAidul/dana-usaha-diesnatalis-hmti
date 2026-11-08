@@ -347,10 +347,10 @@ export async function uploadBuktiBayar(file: File, tenantId: string): Promise<st
   let contentType = file.type.toLowerCase()
   let ext = file.name.split('.').pop()?.toLowerCase() ?? 'bin'
   if (isImage(raw)) {
-    const result = await compressToWebp(raw)
+    const result = await compressToWebp(raw, file.type.toLowerCase())
     uploadBytes = result.buffer as unknown as Buffer
-    contentType = 'image/webp'
-    ext = 'webp'
+    contentType = result.mimeType
+    ext = result.mimeType === 'image/webp' ? 'webp' : (file.name.split('.').pop()?.toLowerCase() ?? 'bin')
   }
   const path = `bukti-bayar/${tenantId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
   const { error } = await supabaseAdmin.storage
