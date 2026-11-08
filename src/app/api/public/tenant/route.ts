@@ -131,7 +131,7 @@ export async function POST(request: Request) {
           .filter((p: { id: string }) => p.id)
           .slice(0, 20)
       : []
-    let pilihanPerTenant = 0
+    let pilihanTotal = 0
     if (pilihanReq.length > 0) {
       const ids = pilihanReq.map((p: { id: string }) => p.id)
       const { data: items } = await supabaseAdmin
@@ -145,8 +145,8 @@ export async function POST(request: Request) {
           if (!item || item.kategori_sewa_id !== body.kategori_sewa_id) return null
           if (/^tempat\b/i.test(item.nama.trim())) return null
           const hargaSatuan = Number(item.harga)
-          const subtotal = hargaSatuan * req.qty * jumlahTenant
-          pilihanPerTenant += hargaSatuan * req.qty
+          const subtotal = hargaSatuan * req.qty
+          pilihanTotal += subtotal
           return {
             id: item.id,
             nama: item.nama,
@@ -160,8 +160,9 @@ export async function POST(request: Request) {
     }
     const lokasi = kategoriItem.kode === 'KT-02' ? 'Strategis 1' : 'Reguler'
     const subtotalPaket =
-      (Number(hargaFnbItem?.harga ?? 0) + pilihanPerTenant) * qtyFnb +
-      (Number(hargaNonFnbItem?.harga ?? 0) + pilihanPerTenant) * qtyNonFnb
+      Number(hargaFnbItem?.harga ?? 0) * qtyFnb +
+      Number(hargaNonFnbItem?.harga ?? 0) * qtyNonFnb +
+      pilihanTotal
     const bundle = [...bundles]
       .filter((b) => b.kategori_sewa_id === body.kategori_sewa_id && jumlahTenant >= Number(b.jumlah_min))
       .sort((a, b) => Number(b.jumlah_min) - Number(a.jumlah_min))[0]

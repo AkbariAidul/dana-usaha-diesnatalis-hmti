@@ -129,7 +129,7 @@ export default function DaftarTenantPublik() {
     return Number(hd?.harga ?? 0)
   }, [form.kategori_sewa_id, hargaDasar, periode])
 
-  const pilihanPerTenant = useMemo(() => {
+  const pilihanTotal = useMemo(() => {
     return Object.entries(pilihanQty).reduce((sum, [id, qty]) => {
       const item = pilihanTambahan.find((p) => p.id === id)
       return sum + Number(item?.harga ?? 0) * (Number(qty) || 1)
@@ -151,7 +151,7 @@ export default function DaftarTenantPublik() {
     .filter(({ qty }) => qty > 0)
   const addonTotal = addonTerpilih.reduce((sum, { item, qty }) => sum + Number(item.harga_sewa) * qty, 0)
   const subtotalPaket =
-    (hargaFnb + pilihanPerTenant) * jumlahFnb + (hargaNonFnb + pilihanPerTenant) * jumlahNonFnb
+    hargaFnb * jumlahFnb + hargaNonFnb * jumlahNonFnb + pilihanTotal
   const bundleAktif = [...paketBundles]
     .filter((b) => jumlahTenant >= Number(b.jumlah_min))
     .sort((a, b) => Number(b.jumlah_min) - Number(a.jumlah_min))[0] ?? null
@@ -368,7 +368,7 @@ export default function DaftarTenantPublik() {
 
                 <div>
                   <p className="text-sm font-medium text-slate-900">Pilih paket & item yang mau disewa</p>
-                  <p className="text-xs text-slate-500">Tempat wajib diambil sesuai jumlah tenant. Pilihan lain tercentang otomatis, hilangkan centang untuk item yang tidak diambil.</p>
+                  <p className="text-xs text-slate-500">Tempat wajib diambil sesuai jumlah tenant. Pilihan lain tercentang otomatis, hilangkan centang untuk item yang tidak diambil. Jumlah = total unit yang disewa.</p>
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary-200 bg-primary-50/50 px-3 py-2">
                   <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 text-sm">
@@ -493,7 +493,7 @@ export default function DaftarTenantPublik() {
                     {pilihanTerpilih.map((item) => {
                       const qty = Number(pilihanQty[item.id]) || 1
                       return (
-                        <p key={item.id}>{item.nama} × {qty * jumlahTenant}: {formatRupiah(Number(item.harga) * qty * jumlahTenant)}</p>
+                        <p key={item.id}>{item.nama} × {qty}: {formatRupiah(Number(item.harga) * qty)}</p>
                       )
                     })}
                     {addonTotal > 0 && <p>Item tambahan: {formatRupiah(addonTotal)}</p>}
