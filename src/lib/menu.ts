@@ -91,9 +91,8 @@ export const menuConfig: MenuGroup[] = [
 /** Return filtered menu groups for a given role. Viewer only sees Ringkasan, Scan, and Laporan. */
 export function getMenuForRole(role: string): MenuGroup[] {
   if (role === 'viewer') {
-    return menuConfig.filter(
-      (g) => g.key === 'ringkasan' || g.key === 'scan' || g.key === 'laporan-pelihat',
-    )
+    const allowed = new Set(['ringkasan', 'scan', 'tenant', 'merchandise', 'ticket', 'laporan-pelihat'])
+    return menuConfig.filter((g) => allowed.has(g.key))
   }
   // Menu LAPORAN khusus viewer; pengelola sudah punya Laporan di dalam grup UMUM.
   return menuConfig.filter((g) => g.key !== 'laporan-pelihat')
