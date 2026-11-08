@@ -26,6 +26,7 @@
     "react-dom": "^19.2.1",
     "react-hook-form": "^7.91.0",
     "recharts": "^3.10.1",
+    "sharp": "^0.35.5",
     "sonner": "^2.0.8",
     "tailwind-merge": "^3.7.0",
     "write-excel-file": "^2.3.10",
@@ -42,5 +43,8 @@
     "eslint-config-next": "^15.5.28",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "allowScripts": {
+    "unrs-resolver@1.12.2": true
   }
 }

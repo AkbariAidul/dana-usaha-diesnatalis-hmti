@@ -3,15 +3,12 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { createAuditLog } from '@/lib/queries'
 import { getSessionUser } from '@/lib/session-server'
 import { clientIp, rateLimit } from '@/lib/rate-limit'
+import { compressToWebp } from '@/lib/image-compress'
 
 const BUCKET = 'bukti'
 const MAX_SIZE = 5 * 1024 * 1024
-const EXT: Record<string, string> = {
-  'image/jpeg': 'jpg',
-  'image/png': 'png',
-  'image/webp': 'webp',
-}
 
+// Magic-byte detection for all common image formats
 function detectedMime(bytes: Buffer): string | null {
   if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg'
   if (
@@ -20,6 +17,12 @@ function detectedMime(bytes: Buffer): string | null {
     bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a
   ) return 'image/png'
   if (bytes.length >= 12 && bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WEBP') return 'image/webp'
+  // GIF
+  if (bytes.length >= 3 && bytes.toString('ascii', 0, 3) === 'GIF') return 'image/gif'
+  // BMP
+  if (bytes.length >= 2 && bytes[0] === 0x42 && bytes[1] === 0x4d) return 'image/bmp'
+  // SVG (text-based, detect header)
+  if (bytes.length >= 50 && bytes.toString('utf8', 0, 50).includes('<svg')) return 'image/svg+xml'
   return null
 }
 
@@ -37,24 +40,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'File wajib diupload' }, { status: 400 })
     }
 
-    const declared = file.type.toLowerCase()
-    // ponytail: read bytes FIRST, then determine extension from actual magic bytes,
-    // NOT from client-reported MIME type (which can be spoofed).
-    const bytes = Buffer.from(await file.arrayBuffer())
+    // Read raw bytes first (cast avoids ArrayBufferLike mismatch)
+    const bytes = Buffer.from(await file.arrayBuffer()) as unknown as Buffer
     if (bytes.length > MAX_SIZE) {
       return NextResponse.json({ error: 'Ukuran file maksimal 5MB' }, { status: 400 })
     }
+
     const detected = detectedMime(bytes)
-    if (!detected) {
-      return NextResponse.json({ error: 'Format file harus jpg, png, atau webp' }, { status: 400 })
+    let uploadBytes = bytes
+    let contentType = detected ?? file.type.toLowerCase()
+    let ext = 'bin'
+
+    if (detected && detected.startsWith('image/')) {
+      // Convert & compress all images to WebP automatically
+      const result = await compressToWebp(bytes)
+      uploadBytes = result.buffer
+      contentType = 'image/webp'
+      ext = 'webp'
+    } else if (!detected) {
+      // Non-image, keep original format but validate size
+      ext = file.name.split('.').pop()?.toLowerCase() ?? 'bin'
     }
-    const ext = EXT[detected]
+
     const safeName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
     const path = `${folder}/${safeName}`
 
     const { error } = await supabaseAdmin.storage
       .from(BUCKET)
-      .upload(path, bytes, { contentType: detected, cacheControl: '31536000', upsert: false })
+      .upload(path, uploadBytes, { contentType, cacheControl: '31536000', upsert: false })
     if (error) throw error
 
     const { data } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(path)

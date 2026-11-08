@@ -1,6 +1,17 @@
 import { NextResponse } from 'next/server'
 import { getMerchandise, upsertMerchandise, deleteMerchandise, createAuditLog } from '@/lib/queries'
 import { supabaseAdmin } from '@/lib/supabase'
+import { compressToWebp } from '@/lib/image-compress'
+
+// Magic-byte detection
+function isImage(bytes: Buffer): boolean {
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return true
+  if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return true
+  if (bytes.length >= 12 && bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WEBP') return true
+  if (bytes.length >= 3 && bytes.toString('ascii', 0, 3) === 'GIF') return true
+  if (bytes.length >= 2 && bytes[0] === 0x42 && bytes[1] === 0x4d) return true
+  return false
+}
 
 export async function GET() {
   try {
@@ -22,9 +33,18 @@ export async function POST(request: Request) {
       let gambarUrl: string | null = null
 
       if (gambar && gambar.size > 0) {
-        const ext = gambar.name.split('.').pop()
+        const raw = Buffer.from(await gambar.arrayBuffer()) as unknown as Buffer
+        let uploadBytes = raw
+        let contentType = gambar.type.toLowerCase()
+        let ext = gambar.name.split('.').pop()?.toLowerCase() ?? 'webp'
+        if (isImage(raw)) {
+          const result = await compressToWebp(raw)
+          uploadBytes = result.buffer
+          contentType = 'image/webp'
+          ext = 'webp'
+        }
         const path = `merchandise/${Date.now()}.${ext}`
-        await supabaseAdmin.storage.from('merchandise-images').upload(path, gambar, { contentType: gambar.type })
+        await supabaseAdmin.storage.from('merchandise-images').upload(path, uploadBytes, { contentType })
         const { data: urlData } = supabaseAdmin.storage.from('merchandise-images').getPublicUrl(path)
         gambarUrl = urlData.publicUrl
       }

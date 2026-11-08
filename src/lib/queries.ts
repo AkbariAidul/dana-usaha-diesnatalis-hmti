@@ -4,6 +4,7 @@ import { supabaseAdmin } from './supabase'
 import { getSessionUser } from './session-server'
 import { requestIp, requestLocation } from './request-meta'
 import { todayISO } from './utils'
+import { compressToWebp } from './image-compress'
 import type { Tenant, Pembayaran, KategoriSewa, KategoriPilihan, KategoriBundleDiscount, HargaDasar, FaktorHarga, Acara, Merchandise, MerchModalItem, Ticket, TicketPeriode, TicketKatalogItem, TicketBundleDiscount, TicketModalItem, PesananTiket, PeriodeHarga } from './types'
 
 // ─── Acara ───────────────────────────────────────────────────────────────────
@@ -330,12 +331,31 @@ export async function deletePembayaran(id: string, tenantId: string) {
   await syncTenantPaymentStatus(tenantId)
 }
 
+// Magic-byte detection for images
+function isImage(bytes: Buffer): boolean {
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return true
+  if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return true
+  if (bytes.length >= 12 && bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WEBP') return true
+  if (bytes.length >= 3 && bytes.toString('ascii', 0, 3) === 'GIF') return true
+  if (bytes.length >= 2 && bytes[0] === 0x42 && bytes[1] === 0x4d) return true
+  return false
+}
+
 export async function uploadBuktiBayar(file: File, tenantId: string): Promise<string> {
-  const ext = file.name.split('.').pop()?.toLowerCase() || 'bin'
+  const raw = Buffer.from(await file.arrayBuffer()) as unknown as Buffer
+  let uploadBytes: Buffer = raw
+  let contentType = file.type.toLowerCase()
+  let ext = file.name.split('.').pop()?.toLowerCase() ?? 'bin'
+  if (isImage(raw)) {
+    const result = await compressToWebp(raw)
+    uploadBytes = result.buffer as unknown as Buffer
+    contentType = 'image/webp'
+    ext = 'webp'
+  }
   const path = `bukti-bayar/${tenantId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
   const { error } = await supabaseAdmin.storage
     .from('bukti')
-    .upload(path, file, { contentType: file.type, cacheControl: '31536000' })
+    .upload(path, uploadBytes, { contentType, cacheControl: '31536000' })
   if (error) throw error
   const { data } = supabaseAdmin.storage.from('bukti').getPublicUrl(path)
   return data.publicUrl
