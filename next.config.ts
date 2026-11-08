@@ -14,7 +14,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https: blob:",
       "font-src 'self' https://fonts.gstatic.com",
-      "connect-src 'self' https://hagen.challenges.cloudflare.com https://brunhild.challenges.cloudflare.com https://*.alg13.dnstest.challenges.cloudflare.com https://*.mldsa44.dnstest.challenges.cloudflare.com https://dnstest.dev https://ca2.cloudflarecaptcha.com https://ca1.cloudflarecaptcha.com wss://wss.asseccf.com data:",
+      "connect-src 'self' data: https://challenges.cloudflare.com https://*.challenges.cloudflare.com https://ca1.cloudflarecaptcha.com https://ca2.cloudflarecaptcha.com",
       "frame-src https://challenges.cloudflare.com https://*.challenges.cloudflare.com",
       "object-src 'none'",
       "base-uri 'self'",
