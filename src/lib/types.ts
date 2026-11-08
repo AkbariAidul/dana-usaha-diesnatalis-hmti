@@ -80,7 +80,8 @@ export interface Tenant {
   kontak: string
   email: string | null
   kategori_sewa_id: string
-  jenis_usaha: 'F&B' | 'Non-F&B'
+  jenis_usaha: 'F&B' | 'Non-F&B' | 'Campuran'
+  jenis_usaha_qty?: { fnb: number; nonFnb: number } | null
   asal: 'Internal Kampus' | 'Eksternal'
   lokasi: 'Reguler' | 'Strategis 1' | 'Strategis 2'
   periode_daftar: 'early_bird' | 'reguler' | 'last_minute'

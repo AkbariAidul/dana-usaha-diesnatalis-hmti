@@ -1,6 +1,7 @@
 import { signRef } from './link-token'
 import { formatRupiah } from './utils'
 import { baseUrl, kirimWhatsApp } from './notifikasi-tiket'
+import { labelJenisUsaha } from './tenant'
 
 type AddonNotif = {
   nama: string
@@ -19,6 +20,7 @@ export type TenantNotif = {
   pembayaran_tipe?: string | null
   nominal_bayar?: number | null
   jumlah_tenant?: number | null
+  jenis_usaha_qty?: { fnb?: number; nonFnb?: number } | null
   addon?: AddonNotif[] | null
   catatan_admin?: string | null
 }
@@ -41,7 +43,7 @@ function detailTenant(tenant: TenantNotif, link: string) {
   const lines: string[] = [
     `Kode: ${kodeTenant(tenant)}`,
     `Usaha: ${tenant.nama_usaha}`,
-    `Jumlah tenant: ${Number(tenant.jumlah_tenant ?? 1)}`,
+    `Jumlah tenant: ${Number(tenant.jumlah_tenant ?? 1)}${tenant.jenis_usaha_qty ? ` (${labelJenisUsaha(null, tenant.jenis_usaha_qty)})` : ''}`,
     ...(addon.length > 0
       ? ['', 'Rincian item:', ...addon.map((item) => `  - ${item.nama} x${item.qty} = ${formatRupiah(item.subtotal)}`)]
       : []),

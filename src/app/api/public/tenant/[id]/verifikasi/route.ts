@@ -45,15 +45,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       let tenantId = existing?.id as string | undefined
       if (!tenantId) {
         // Ambil harga dasar sewa tempat dari kategori & periode yang dipilih
-        const [{ data: hargaRows }] = await Promise.all([
-          supabaseAdmin.from('harga_dasar')
-            .select('harga')
-            .eq('kategori_sewa_id', data.kategori_sewa_id)
-            .eq('periode', data.periode_daftar)
-            .limit(1),
-        ])
-        const baseHargaPerTenant = Number((hargaRows?.[0]?.harga as number | undefined) || data.harga_akhir)
+        const { data: hargaRows } = await supabaseAdmin
+          .from('harga_dasar')
+          .select('harga, jenis_usaha')
+          .eq('kategori_sewa_id', data.kategori_sewa_id)
+          .eq('periode', data.periode_daftar)
+        const byJenis = new Map(
+          (hargaRows ?? []).map((h: { harga: number; jenis_usaha: string }) => [h.jenis_usaha, Number(h.harga)]),
+        )
         const jumlahTenant = Number(data.jumlah_tenant ?? 1)
+        const qty = data.jenis_usaha_qty as { fnb?: number; nonFnb?: number } | null
+        const baseHargaTotal = qty
+          ? (byJenis.get('F&B') ?? 0) * Number(qty.fnb ?? 0) + (byJenis.get('Non-F&B') ?? 0) * Number(qty.nonFnb ?? 0)
+          : (byJenis.get(String(data.jenis_usaha)) ?? (hargaRows?.[0] ? Number(hargaRows[0].harga) : Number(data.harga_akhir))) * jumlahTenant
 
         const tenantData = {
           kode_stand: data.kode_pendaftaran,
@@ -62,11 +66,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           email: data.email,
           kategori_sewa_id: data.kategori_sewa_id,
           jenis_usaha: data.jenis_usaha,
+          jenis_usaha_qty: data.jenis_usaha_qty ?? null,
           asal: data.asal,
           lokasi: data.lokasi,
           periode_daftar: data.periode_daftar,
           harga_akhir: Number(data.harga_akhir),
-          base_harga: Math.round(baseHargaPerTenant * jumlahTenant),
+          base_harga: Math.round(baseHargaTotal),
           dp_wajib: Number(data.dp_wajib),
           jumlah_tenant: jumlahTenant,
           sudah_dibayar: 0,
@@ -75,13 +80,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           addon: data.addon ?? [],
           status: 'daftar',
         }
-        const { data: tenant, error: tenantError } = await supabaseAdmin
+        let inserted = await supabaseAdmin
           .from('tenants')
           .insert(tenantData)
           .select('id')
           .single()
-        if (tenantError) throw tenantError
-        tenantId = tenant.id
+        if (inserted.error && String(inserted.error.message).includes('jenis_usaha_qty')) {
+          // ponytail: kolom belum ada (migrasi 037 belum dijalankan). Tetap buat tenant.
+          const rest = { ...tenantData }
+          delete (rest as Record<string, unknown>).jenis_usaha_qty
+          inserted = await supabaseAdmin.from('tenants').insert(rest).select('id').single()
+        }
+        if (inserted.error) throw inserted.error
+        tenantId = inserted.data.id
       }
 
       if (tenantId) {

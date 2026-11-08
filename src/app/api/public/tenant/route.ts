@@ -41,14 +41,38 @@ export async function POST(request: Request) {
     if (!periode) {
       return NextResponse.json({ error: 'Tanggal daftar di luar periode open tenant' }, { status: 400 })
     }
-    const jenisUsaha = body.jenis_usaha === 'Non-F&B' ? 'Non-F&B' : 'F&B'
-    const jumlahTenant = Math.max(1, Math.min(99, Number(body.jumlah_tenant) || 1))
-    const hargaDasarItem = hargaDasar.find(
-      (h) => h.kategori_sewa_id === body.kategori_sewa_id && h.jenis_usaha === jenisUsaha && h.periode === periode
-    )
-    if (!hargaDasarItem) {
-      return NextResponse.json({ error: 'Harga untuk kategori, jenis usaha, dan periode ini belum diatur' }, { status: 400 })
+    const qtyRaw = body.jenis_usaha_qty as { fnb?: unknown; nonFnb?: unknown } | undefined
+    let qtyFnb: number
+    let qtyNonFnb: number
+    if (qtyRaw && (qtyRaw.fnb !== undefined || qtyRaw.nonFnb !== undefined)) {
+      qtyFnb = Math.max(0, Math.min(99, Number(qtyRaw.fnb) || 0))
+      qtyNonFnb = Math.max(0, Math.min(99, Number(qtyRaw.nonFnb) || 0))
+    } else {
+      // Kompatibilitas klien lama: satu jenis usaha + jumlah tenant.
+      const jumlah = Math.max(1, Math.min(99, Number(body.jumlah_tenant) || 1))
+      if (body.jenis_usaha === 'Non-F&B') {
+        qtyFnb = 0
+        qtyNonFnb = jumlah
+      } else {
+        qtyFnb = jumlah
+        qtyNonFnb = 0
+      }
     }
+    const jumlahTenant = qtyFnb + qtyNonFnb
+    if (jumlahTenant < 1) {
+      return NextResponse.json({ error: 'Jumlah tenant minimal 1' }, { status: 400 })
+    }
+    const hargaUntuk = (jenis: 'F&B' | 'Non-F&B') =>
+      hargaDasar.find((h) => h.kategori_sewa_id === body.kategori_sewa_id && h.jenis_usaha === jenis && h.periode === periode)
+    const hargaFnbItem = qtyFnb > 0 ? hargaUntuk('F&B') : null
+    const hargaNonFnbItem = qtyNonFnb > 0 ? hargaUntuk('Non-F&B') : null
+    if (qtyFnb > 0 && !hargaFnbItem) {
+      return NextResponse.json({ error: 'Harga F&B untuk kategori dan periode ini belum diatur' }, { status: 400 })
+    }
+    if (qtyNonFnb > 0 && !hargaNonFnbItem) {
+      return NextResponse.json({ error: 'Harga Non-F&B untuk kategori dan periode ini belum diatur' }, { status: 400 })
+    }
+    const jenisUsaha = qtyFnb > 0 && qtyNonFnb > 0 ? 'Campuran' : qtyFnb > 0 ? 'F&B' : 'Non-F&B'
     const kategoriItem = kategori.find((k) => k.id === body.kategori_sewa_id)
     if (!kategoriItem) {
       return NextResponse.json({ error: 'Kategori tidak ditemukan' }, { status: 400 })
@@ -129,7 +153,9 @@ export async function POST(request: Request) {
       addon = [...addon, ...pilihanAddon]
     }
     const lokasi = kategoriItem.kode === 'KT-02' ? 'Strategis 1' : 'Reguler'
-    const subtotalPaket = (Number(hargaDasarItem.harga) + pilihanPerTenant) * jumlahTenant
+    const subtotalPaket =
+      (Number(hargaFnbItem?.harga ?? 0) + pilihanPerTenant) * qtyFnb +
+      (Number(hargaNonFnbItem?.harga ?? 0) + pilihanPerTenant) * qtyNonFnb
     const bundle = [...bundles]
       .filter((b) => b.kategori_sewa_id === body.kategori_sewa_id && jumlahTenant >= Number(b.jumlah_min))
       .sort((a, b) => Number(b.jumlah_min) - Number(a.jumlah_min))[0]
@@ -147,6 +173,7 @@ export async function POST(request: Request) {
     const payload = {
       ...dataBody,
       jenis_usaha: jenisUsaha,
+      jenis_usaha_qty: { fnb: qtyFnb, nonFnb: qtyNonFnb },
       jumlah_tenant: jumlahTenant,
       asal: 'Internal Kampus',
       lokasi,
@@ -165,8 +192,15 @@ export async function POST(request: Request) {
       const failure = turnstileFailure(turnstile.reason)
       return NextResponse.json({ error: failure.error }, { status: failure.status })
     }
-    const { data, error } = await supabaseAdmin.from('pendaftaran_tenant_pub').insert(payload).select().single()
-    if (error) throw error
+    let inserted = await supabaseAdmin.from('pendaftaran_tenant_pub').insert(payload).select().single()
+    if (inserted.error && String(inserted.error.message).includes('jenis_usaha_qty')) {
+      // ponytail: kolom belum ada (migrasi 037 belum dijalankan). Tetap simpan pendaftaran.
+      const rest = { ...payload }
+      delete (rest as Record<string, unknown>).jenis_usaha_qty
+      inserted = await supabaseAdmin.from('pendaftaran_tenant_pub').insert(rest).select().single()
+    }
+    if (inserted.error) throw inserted.error
+    const data = inserted.data
     return NextResponse.json({ ...data, t: signRef('tenant', data.kode_pendaftaran) }, { status: 201 })
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })

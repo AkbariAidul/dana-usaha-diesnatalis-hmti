@@ -51,7 +51,7 @@ export default function DaftarTenantPublik() {
   const [step, setStep] = useState(1)
   const [form, setForm] = useState({
     nama_usaha: '', kontak: '', email: '', alamat: '', deskripsi_usaha: '',
-    kategori_sewa_id: '', jenis_usaha: 'F&B' as 'F&B' | 'Non-F&B', jumlah_tenant: '1',
+    kategori_sewa_id: '', jumlah_fnb: '1', jumlah_nonfnb: '0',
   })
   const [addonQty, setAddonQty] = useState<Record<string, number | ''>>({})
   const [addonOwn, setAddonOwn] = useState<Record<string, number | ''>>({})
@@ -109,11 +109,17 @@ export default function DaftarTenantPublik() {
     setPilihanQty(Object.fromEntries(pilihanTambahan.map((p) => [p.id, 1])))
   }, [pilihanTambahan])
 
-  const baseHarga = useMemo(() => {
+  const hargaFnb = useMemo(() => {
     if (!periode || !form.kategori_sewa_id) return 0
-    const hd = hargaDasar.find((h) => h.kategori_sewa_id === form.kategori_sewa_id && h.jenis_usaha === form.jenis_usaha && h.periode === periode)
+    const hd = hargaDasar.find((h) => h.kategori_sewa_id === form.kategori_sewa_id && h.jenis_usaha === 'F&B' && h.periode === periode)
     return Number(hd?.harga ?? 0)
-  }, [form.kategori_sewa_id, form.jenis_usaha, hargaDasar, periode])
+  }, [form.kategori_sewa_id, hargaDasar, periode])
+
+  const hargaNonFnb = useMemo(() => {
+    if (!periode || !form.kategori_sewa_id) return 0
+    const hd = hargaDasar.find((h) => h.kategori_sewa_id === form.kategori_sewa_id && h.jenis_usaha === 'Non-F&B' && h.periode === periode)
+    return Number(hd?.harga ?? 0)
+  }, [form.kategori_sewa_id, hargaDasar, periode])
 
   const pilihanPerTenant = useMemo(() => {
     return Object.entries(pilihanQty).reduce((sum, [id, qty]) => {
@@ -122,7 +128,9 @@ export default function DaftarTenantPublik() {
     }, 0)
   }, [pilihanQty, pilihanTambahan])
 
-  const jumlahTenant = Math.max(1, Number(form.jumlah_tenant) || 1)
+  const jumlahFnb = Math.max(0, Number(form.jumlah_fnb) || 0)
+  const jumlahNonFnb = Math.max(0, Number(form.jumlah_nonfnb) || 0)
+  const jumlahTenant = jumlahFnb + jumlahNonFnb
   const pilihanTerpilih = pilihanTambahan.filter((p) => pilihanQty[p.id] !== undefined)
   const addonTerpilih = addons
     .map((item) => {
@@ -134,7 +142,8 @@ export default function DaftarTenantPublik() {
     })
     .filter(({ qty }) => qty > 0)
   const addonTotal = addonTerpilih.reduce((sum, { item, qty }) => sum + Number(item.harga_sewa) * qty, 0)
-  const subtotalPaket = (baseHarga + pilihanPerTenant) * jumlahTenant
+  const subtotalPaket =
+    (hargaFnb + pilihanPerTenant) * jumlahFnb + (hargaNonFnb + pilihanPerTenant) * jumlahNonFnb
   const bundleAktif = [...paketBundles]
     .filter((b) => jumlahTenant >= Number(b.jumlah_min))
     .sort((a, b) => Number(b.jumlah_min) - Number(a.jumlah_min))[0] ?? null
@@ -198,16 +207,18 @@ export default function DaftarTenantPublik() {
     })
   }
 
-  function rapikanJumlahTenant() {
-    const max = sisaSlot !== null ? Math.max(1, sisaSlot) : 99
-    const value = Math.max(1, Math.min(max, Number(form.jumlah_tenant) || 1))
-    setForm((prev) => ({ ...prev, jumlah_tenant: String(value) }))
+  function rapikanJumlah(field: 'jumlah_fnb' | 'jumlah_nonfnb') {
+    const max = sisaSlot !== null ? Math.max(0, sisaSlot) : 99
+    const value = Math.max(0, Math.min(max, Number(form[field]) || 0))
+    setForm((prev) => ({ ...prev, [field]: String(value) }))
   }
 
   async function daftar() {
     if (submittingTenant.current) return
     if (!periode) return toast.error('Tanggal daftar di luar periode open tenant')
     if (sisaSlot === 0) return toast.error('Slot kategori ini sudah habis')
+    if (jumlahTenant < 1) return toast.error('Isi minimal 1 tenant (F&B atau Non-F&B)')
+    if (sisaSlot !== null && jumlahTenant > sisaSlot) return toast.error(`Sisa slot hanya ${sisaSlot}`)
     submittingTenant.current = true
     try {
       let token = turnstileRef.current?.getToken() ?? null
@@ -227,8 +238,13 @@ export default function DaftarTenantPublik() {
         }
       }
       const res = await sendJSON('/api/public/tenant', 'POST', {
-        ...form,
-        jumlah_tenant: jumlahTenant,
+        nama_usaha: form.nama_usaha,
+        kontak: form.kontak,
+        email: form.email,
+        alamat: form.alamat,
+        deskripsi_usaha: form.deskripsi_usaha,
+        kategori_sewa_id: form.kategori_sewa_id,
+        jenis_usaha_qty: { fnb: jumlahFnb, nonFnb: jumlahNonFnb },
         addon: addonTerpilih.map(({ item, qty }) => ({ id: item.id, qty })),
         pilihan: Object.entries(pilihanQty).map(([id, qty]) => ({ id, qty: Math.max(1, Number(qty) || 1) })),
         periode_daftar: periode,
@@ -317,15 +333,12 @@ export default function DaftarTenantPublik() {
               <div className="space-y-3 rounded-xl border border-slate-200 p-3.5 md:col-span-4">
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div>
-                    <label className="mb-1 block text-sm font-medium">Jenis Usaha</label>
-                    <select className={input} value={form.jenis_usaha} onChange={e=>setForm({...form,jenis_usaha:e.target.value as 'F&B' | 'Non-F&B'})}>
-                      <option value="F&B">F&B</option>
-                      <option value="Non-F&B">Non-F&B</option>
-                    </select>
+                    <label className="mb-1 block text-sm font-medium">Jumlah Tenant F&B</label>
+                    <input type="number" inputMode="numeric" min={0} max={sisaSlot !== null ? Math.max(0, sisaSlot) : 99} className={input} value={form.jumlah_fnb} onChange={e=>setForm({...form, jumlah_fnb: e.target.value})} onBlur={()=>rapikanJumlah('jumlah_fnb')} />
                   </div>
                   <div>
-                    <label className="mb-1 block text-sm font-medium">Jumlah Tenant</label>
-                    <input type="number" inputMode="numeric" min={1} max={sisaSlot !== null ? Math.max(1, sisaSlot) : 99} className={input} value={form.jumlah_tenant} onChange={e=>setForm({...form, jumlah_tenant: e.target.value})} onBlur={rapikanJumlahTenant} />
+                    <label className="mb-1 block text-sm font-medium">Jumlah Tenant Non-F&B</label>
+                    <input type="number" inputMode="numeric" min={0} max={sisaSlot !== null ? Math.max(0, sisaSlot) : 99} className={input} value={form.jumlah_nonfnb} onChange={e=>setForm({...form, jumlah_nonfnb: e.target.value})} onBlur={()=>rapikanJumlah('jumlah_nonfnb')} />
                     {sisaSlot !== null && <p className="mt-1 text-xs text-slate-400">Sisa slot: {sisaSlot}</p>}
                   </div>
                   <div>
@@ -339,11 +352,15 @@ export default function DaftarTenantPublik() {
                   <p className="text-xs text-slate-500">Tempat wajib diambil sesuai jumlah tenant. Pilihan lain tercentang otomatis, hilangkan centang untuk item yang tidak diambil.</p>
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary-200 bg-primary-50/50 px-3 py-2">
-                  <label className="flex min-w-0 flex-1 items-center gap-2 text-sm">
+                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 text-sm">
                     <input type="checkbox" checked disabled className="h-4 w-4 shrink-0 rounded border-slate-300 text-primary-600" />
                     <span className="truncate font-medium text-slate-800">Tempat · {selectedKategori?.nama ?? 'Stand'}</span>
-                    <span className="shrink-0 text-xs text-slate-500">{formatRupiah(baseHarga)} / tenant</span>
-                  </label>
+                    <span className="shrink-0 text-xs text-slate-500">
+                      {jumlahFnb > 0 ? `F&B ${formatRupiah(hargaFnb)}/tenant` : ''}
+                      {jumlahFnb > 0 && jumlahNonFnb > 0 ? ' · ' : ''}
+                      {jumlahNonFnb > 0 ? `Non-F&B ${formatRupiah(hargaNonFnb)}/tenant` : ''}
+                    </span>
+                  </div>
                   <span className="text-xs font-medium text-slate-600">{jumlahTenant} tempat</span>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">
@@ -443,7 +460,8 @@ export default function DaftarTenantPublik() {
                 </div>
                 <div className="text-right">
                   <div className="space-y-0.5 text-xs text-slate-500">
-                    <p>Tempat × {jumlahTenant}: {formatRupiah(baseHarga * jumlahTenant)}</p>
+                    {jumlahFnb > 0 && <p>F&B × {jumlahFnb}: {formatRupiah(hargaFnb * jumlahFnb)}</p>}
+                    {jumlahNonFnb > 0 && <p>Non-F&B × {jumlahNonFnb}: {formatRupiah(hargaNonFnb * jumlahNonFnb)}</p>}
                     {pilihanTerpilih.map((item) => {
                       const qty = Number(pilihanQty[item.id]) || 1
                       return (
@@ -459,7 +477,7 @@ export default function DaftarTenantPublik() {
               </div>
               <div className="flex flex-col items-end gap-3 md:col-span-4 sm:flex-row sm:justify-end">
                 <Turnstile ref={turnstileRef} />
-                <button onClick={daftar} disabled={!periode || !form.nama_usaha || !form.kontak || !form.kategori_sewa_id || sisaSlot === 0 || submittingTenant.current} className="rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50">{submittingTenant.current ? 'Mengirim…' : 'Lanjut ke Pembayaran'}</button>
+                <button onClick={daftar} disabled={!periode || !form.nama_usaha || !form.kontak || !form.kategori_sewa_id || sisaSlot === 0 || jumlahTenant < 1 || submittingTenant.current} className="rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50">{submittingTenant.current ? 'Mengirim…' : 'Lanjut ke Pembayaran'}</button>
               </div>
             </div>
           </div>

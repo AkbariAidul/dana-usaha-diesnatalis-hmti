@@ -7,6 +7,7 @@ import { QrScanner } from '@/components/qr-scanner'
 import { useIsViewer } from '@/lib/dashboard-user'
 import { beep } from '@/lib/beep'
 import { formatDateTime, formatRupiah } from '@/lib/utils'
+import { labelJenisUsaha } from '@/lib/tenant'
 
 type TenantAddon = {
   nama: string
@@ -22,6 +23,7 @@ type TenantResult = {
     kontak: string
     email: string | null
     jenis_usaha: string
+    jenis_usaha_qty?: { fnb?: number; nonFnb?: number } | null
     asal: string
     lokasi: string
     periode_daftar: string
@@ -253,7 +255,7 @@ export default function ScanPage() {
                     </div>
                     <div>
                       <dt className="text-xs text-slate-500">Jenis Usaha</dt>
-                      <dd className="text-slate-900">{t.jenis_usaha || '-'}</dd>
+                      <dd className="text-slate-900">{labelJenisUsaha(t.jenis_usaha, t.jenis_usaha_qty)}</dd>
                     </div>
                     <div>
                       <dt className="text-xs text-slate-500">Asal</dt>

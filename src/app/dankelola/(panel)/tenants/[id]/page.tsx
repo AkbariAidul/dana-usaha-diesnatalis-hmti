@@ -7,6 +7,7 @@ import { formatRupiah, formatDate, formatDateTime } from '@/lib/utils'
 import { STATUS_LABEL, STATUS_COLOR, periodeLabel } from '@/lib/types'
 import { getJSON } from '../../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
+import { labelJenisUsaha } from '@/lib/tenant'
 import { PageSkeleton } from '../../ui'
 
 export default function TenantDetailPage() {
@@ -49,7 +50,7 @@ export default function TenantDetailPage() {
     ['Kontak', tenant.kontak],
     ['Email', tenant.email ?? '-'],
     ['Kategori', tenant.kategori_sewa?.nama ?? '-'],
-    ['Jenis Usaha', tenant.jenis_usaha],
+    ['Jenis Usaha', labelJenisUsaha(tenant.jenis_usaha, tenant.jenis_usaha_qty)],
     ['Lokasi', tenant.lokasi],
     ['Jumlah Tenant', String(tenant.jumlah_tenant ?? 1)],
     ['Periode', periodeLabel(tenant.periode_daftar, periods)],
