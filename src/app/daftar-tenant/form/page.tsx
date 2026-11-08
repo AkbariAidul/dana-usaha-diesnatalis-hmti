@@ -339,13 +339,17 @@ export default function DaftarTenantPublik() {
                   <div>
                     <label className="mb-1 block text-sm font-medium">Jumlah Tenant Non-F&B</label>
                     <input type="number" inputMode="numeric" min={0} max={sisaSlot !== null ? Math.max(0, sisaSlot) : 99} className={input} value={form.jumlah_nonfnb} onChange={e=>setForm({...form, jumlah_nonfnb: e.target.value})} onBlur={()=>rapikanJumlah('jumlah_nonfnb')} />
-                    {sisaSlot !== null && <p className="mt-1 text-xs text-slate-400">Sisa slot: {sisaSlot}</p>}
                   </div>
                   <div>
                     <label className="mb-1 block text-sm font-medium">Paket</label>
                     <div className={`${input} flex items-center bg-slate-50 text-slate-700`}>{selectedKategori?.nama ?? '-'}</div>
                   </div>
                 </div>
+
+                <p className="text-xs text-slate-500">
+                  Total tenant dipilih: <span className="font-medium text-slate-700">{jumlahTenant}</span>
+                  {sisaSlot !== null && <> · Sisa slot paket ini: <span className="font-medium text-slate-700">{sisaSlot}</span> (untuk semua jenis usaha)</>}
+                </p>
 
                 <div>
                   <p className="text-sm font-medium text-slate-900">Pilih paket & item yang mau disewa</p>

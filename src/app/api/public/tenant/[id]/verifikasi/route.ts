@@ -5,6 +5,12 @@ import { todayISO } from '@/lib/utils'
 import { kirimNotifTenantDitolak, kirimNotifTenantTerverifikasi } from '@/lib/notifikasi-tenant'
 import { getSessionUser } from '@/lib/session-server'
 
+function errorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message
+  if (err && typeof err === 'object' && 'message' in err) return String((err as { message: unknown }).message)
+  return String(err)
+}
+
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   // Security: hanya user yang login (bukan publik) yang bisa memverifikasi pendaftaran
   const session = await getSessionUser()
@@ -148,7 +154,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     return NextResponse.json(data)
   } catch (err: unknown) {
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    return NextResponse.json({ error: errorMessage(err) }, { status: 500 })
   }
 }
 
@@ -164,6 +170,6 @@ export async function GET() {
     if (error) throw error
     return NextResponse.json(data ?? [])
   } catch (err: unknown) {
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    return NextResponse.json({ error: errorMessage(err) }, { status: 500 })
   }
 }

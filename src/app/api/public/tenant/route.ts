@@ -7,6 +7,12 @@ import { todayISO } from '@/lib/utils'
 import { signRef } from '@/lib/link-token'
 import { turnstileFailure, verifyTurnstile } from '@/lib/turnstile'
 
+function errorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message
+  if (err && typeof err === 'object' && 'message' in err) return String((err as { message: unknown }).message)
+  return String(err)
+}
+
 export async function GET() {
   try {
     const { data, error } = await supabaseAdmin
@@ -17,7 +23,7 @@ export async function GET() {
     if (error) throw error
     return NextResponse.json(data ?? [])
   } catch (err: unknown) {
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    return NextResponse.json({ error: errorMessage(err) }, { status: 500 })
   }
 }
 
@@ -72,7 +78,7 @@ export async function POST(request: Request) {
     if (qtyNonFnb > 0 && !hargaNonFnbItem) {
       return NextResponse.json({ error: 'Harga Non-F&B untuk kategori dan periode ini belum diatur' }, { status: 400 })
     }
-    const jenisUsaha = qtyFnb > 0 && qtyNonFnb > 0 ? 'Campuran' : qtyFnb > 0 ? 'F&B' : 'Non-F&B'
+    const jenisUsaha = qtyNonFnb > qtyFnb ? 'Non-F&B' : 'F&B'
     const kategoriItem = kategori.find((k) => k.id === body.kategori_sewa_id)
     if (!kategoriItem) {
       return NextResponse.json({ error: 'Kategori tidak ditemukan' }, { status: 400 })
@@ -203,6 +209,6 @@ export async function POST(request: Request) {
     const data = inserted.data
     return NextResponse.json({ ...data, t: signRef('tenant', data.kode_pendaftaran) }, { status: 201 })
   } catch (err: unknown) {
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    return NextResponse.json({ error: errorMessage(err) }, { status: 500 })
   }
 }
