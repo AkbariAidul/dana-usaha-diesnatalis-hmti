@@ -517,6 +517,15 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               <span className="grid h-9 w-9 place-items-center rounded-full bg-primary-600 text-sm font-semibold text-white">
                 {currentUser.name.trim().charAt(0).toUpperCase()}
               </span>
+              {currentUser.name === OWNER_NAME && (
+                <button
+                  onClick={logoutAllDevices}
+                  title="Cabut semua perangkat lain"
+                  className="rounded-lg border border-red-300 p-1.5 text-red-500 transition-all hover:bg-red-50 hover:text-red-700"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -549,10 +558,6 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                 <LogOut className="h-4 w-4 shrink-0" />
                 <span>Keluar</span>
               </button>
-              <button onClick={logoutAllDevices} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-amber-300 transition-all hover:bg-amber-500/20 hover:text-amber-200">
-                <X className="h-4 w-4 shrink-0" />
-                <span>Cabut Semua Perangkat</span>
-              </button>
             </div>
           </aside>
         </div>
@@ -570,10 +575,6 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             <button onClick={logout} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-red-300 transition-all hover:bg-red-500/20 hover:text-red-200">
               <LogOut className="h-4 w-4 shrink-0" />
               <span>Keluar</span>
-            </button>
-            <button onClick={logoutAllDevices} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-amber-300 transition-all hover:bg-amber-500/20 hover:text-amber-200">
-              <X className="h-4 w-4 shrink-0" />
-              <span>Cabut Semua Perangkat</span>
             </button>
           </div>
         </aside>
