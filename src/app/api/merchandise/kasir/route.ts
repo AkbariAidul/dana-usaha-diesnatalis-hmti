@@ -156,21 +156,39 @@ export async function POST(request: Request) {
   }
 }
 
+async function deleteStoragePaths(paths: string[]) {
+  if (paths.length === 0) return
+  try {
+    const { error } = await supabaseAdmin.storage.from('bukti').remove(paths as string[])
+    if (error) console.error('Gagal hapus storage:', error.message)
+  } catch { /* ignore */ }
+}
+
 export async function DELETE(request: Request) {
   try {
     const { ids }: { ids: string[] } = await request.json()
     if (!Array.isArray(ids) || ids.length === 0) {
       return NextResponse.json({ error: 'ID wajib diisi' }, { status: 400 })
     }
-    // Ambil data sebelum dihapus untuk restorasi stok
+    // Ambil data sebelum dihapus (stok + bukti)
     const { data: existing } = await supabaseAdmin
       .from('kasir_transaksi')
-      .select('id, merchandise_id, qty')
+      .select('id, merchandise_id, qty, bukti_url')
       .in('id', ids)
     const toRestore = (existing ?? []).filter((r) => r.merchandise_id != null && Number(r.qty) > 0)
+    const pathsToClean = (existing ?? [])
+      .map((r) => {
+        if (!r.bukti_url) return null
+        try {
+          const url = new URL(r.bukti_url)
+          return url.pathname.split('?')[0].startsWith('/') ? url.pathname.slice(1) : null
+        } catch { return null }
+      })
+      .filter(Boolean) as string[]
 
     const { error } = await supabaseAdmin.from('kasir_transaksi').delete().in('id', ids)
     if (error) throw error
+    if (pathsToClean.length > 0) await deleteStoragePaths(pathsToClean)
 
     // Restore stok produk yang finite
     const restoredMap = new Map<string, number>()

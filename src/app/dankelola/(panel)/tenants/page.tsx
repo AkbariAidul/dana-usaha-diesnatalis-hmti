@@ -133,15 +133,24 @@ export default function TenantsPage() {
     setSelectedKeys(isAll ? new Set() : new Set(paginated.map((r) => r.key)))
   }
   async function hapusTenantTerpilih() {
-    const chosen = paginated.filter((r) => selectedKeys.has(r.key) && r.kind === 'tenant' && r.detailId)
-    if (chosen.length === 0) { setSelectedKeys(new Set()); return }
-    const ok = await confirm({ title: `Hapus ${chosen.length} tenant terpilih?`, description: 'Semua data terkait akan dihapus permanen.', confirmText: 'Hapus' })
+    const tenants = paginated.filter((r) => selectedKeys.has(r.key) && r.kind === 'tenant' && r.detailId)
+    const regs = paginated.filter((r) => selectedKeys.has(r.key) && r.kind === 'pendaftaran')
+    const total = tenants.length + regs.length
+    if (total === 0) { setSelectedKeys(new Set()); return }
+    const labels = []
+    if (tenants.length > 0) labels.push(`${tenants.length} tenant`)
+    if (regs.length > 0) labels.push(`${regs.length} pendaftaran`)
+    const ok = await confirm({ title: `Hapus ${total} data terpilih?`, description: `Akan menghapus ${labels.join(' dan ')} secara permanen beserta bukti pembayarannya.`, confirmText: 'Hapus' })
     if (!ok) return
     try {
-      for (const r of chosen) {
+      for (const r of tenants) {
         await sendJSON(`/api/tenants/${r.detailId}`, 'DELETE')
       }
-      toast.success(`${chosen.length} tenant dihapus`)
+      for (const r of regs) {
+        const regId = r.key.startsWith('daftar-') ? r.key.slice(7) : r.key
+        await sendJSON(`/api/public/tenant/${regId}/verifikasi`, 'DELETE')
+      }
+      toast.success(`${total} data dihapus`)
       setSelectedKeys(new Set())
       await load()
     } catch (err) { toast.error((err as Error).message) }

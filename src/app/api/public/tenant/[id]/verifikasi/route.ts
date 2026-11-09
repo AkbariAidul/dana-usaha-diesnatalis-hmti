@@ -158,6 +158,42 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 }
 
+export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await getSessionUser()
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const { id } = await params
+    // Ambil data sebelum dihapus agar bisa hapus storage-nya
+    const { data: reg, error: fetchErr } = await supabaseAdmin
+      .from('pendaftaran_tenant_pub')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle()
+    if (fetchErr) throw fetchErr
+    if (!reg) return NextResponse.json({ error: 'Pendaftaran tidak ditemukan' }, { status: 404 })
+
+    // Hapus file bukti dari storage jika ada
+    if (reg.bukti_url) {
+      try {
+        const url = new URL(reg.bukti_url)
+        const path = url.pathname.split('?')[0]
+        if (path.startsWith('/')) {
+          const fullPath = path.slice(1)
+          const { error: delErr } = await supabaseAdmin.storage.from('bukti').remove([fullPath])
+          if (delErr) console.error('Gagal hapus storage:', delErr.message)
+        }
+      } catch { /* ignore malformed URL */ }
+    }
+    // Hard delete pendaftaran
+    const { error } = await supabaseAdmin.from('pendaftaran_tenant_pub').delete().eq('id', id)
+    if (error) throw error
+    await createAuditLog({ aksi: 'HAPUS_PENDAFTARAN', target_type: 'pendaftaran_tenant_pub', target_id: id, data_lama: reg })
+    return NextResponse.json({ success: true })
+  } catch (err: unknown) {
+    return NextResponse.json({ error: errorMessage(err) }, { status: 500 })
+  }
+}
+
 export async function GET() {
   const session = await getSessionUser()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
