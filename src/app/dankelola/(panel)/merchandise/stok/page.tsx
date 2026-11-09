@@ -4,8 +4,9 @@ import { DataError } from '@/components/data-error'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { CalendarClock, ChevronDown, LayoutGrid, Printer, Rows3, Wallet } from 'lucide-react'
+import { CalendarClock, ChevronDown, LayoutGrid, Rows3, Wallet, FileSpreadsheet } from 'lucide-react'
 import { getJSON } from '../../../api'
+import { exportReportPdf } from '@/lib/report-export'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { formatRupiah } from '@/lib/utils'
 import { PageSkeleton } from '../../ui'
@@ -299,8 +300,51 @@ export default function StokPage() {
     )
   }
 
-  function handlePrint() {
-    window.print()
+  async function handleDownload() {
+    const report = {
+      title: 'Rekap Produksi & Stok Merchandise',
+      filename: 'produksi-stok-merchandise',
+      summary: [
+        { label: 'PO Lunas', value: String(totalPo) },
+        { label: 'Total Pcs', value: String(totalQtyPo) },
+        { label: 'Omset', value: formatRupiah(totalOmset) },
+        { label: 'Biaya Cetak', value: formatRupiah(totalBiayaCetak) },
+        { label: 'Keuntungan', value: formatRupiah(totalKeuntungan) },
+      ],
+      sheets: [
+        {
+          name: 'Detail Per Varian',
+          headers: ['Produk', 'Warna', 'Lengan', 'Ukuran', 'Qty', 'Jumlah PO', 'Omset', 'Modal'],
+          currencyCols: [6, 7],
+          rows: rekap.map((row) => [
+            row.produk,
+            row.warna,
+            row.lengan,
+            row.ukuran,
+            row.qty,
+            row.jumlahPo,
+            Number(row.omset),
+            Number(row.modal),
+          ]),
+        },
+        {
+          name: 'Ringkasan Per Produk',
+          headers: ['Produk', 'Total Qty', 'Per Ukuran', 'Per Warna', 'Per Lengan', 'Omset', 'Modal', 'Untung'],
+          currencyCols: [5, 6, 7],
+          rows: perProduk.map((p) => [
+            p.produk,
+            p.qty,
+            [...p.ukuran.entries()].map(([k, v]) => `${k}: ${v}`).join(', ') || '-',
+            [...p.warna.entries()].map(([k, v]) => `${k}: ${v}`).join(', ') || '-',
+            [...p.lengan.entries()].map(([k, v]) => `${k}: ${v}`).join(', ') || '-',
+            Number(p.omset),
+            Number(p.modal),
+            Number(p.untung),
+          ]),
+        },
+      ],
+    }
+    await exportReportPdf(report)
   }
 
   if (loading) return <PageSkeleton />
@@ -323,10 +367,10 @@ export default function StokPage() {
           </Link>
           <button
             type="button"
-            onClick={handlePrint}
+            onClick={handleDownload}
             className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
           >
-            <Printer className="h-4 w-4" /> Cetak
+            <FileSpreadsheet className="h-4 w-4" /> Unduh PDF Percetakan
           </button>
         </div>
       </div>
