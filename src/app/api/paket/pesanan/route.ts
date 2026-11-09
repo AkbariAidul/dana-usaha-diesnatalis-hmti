@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { createAuditLog } from '@/lib/queries'
-import { buatQrPayload } from '@/lib/link-token'
-import { kirimNotifTerverifikasi } from '@/lib/notifikasi-tiket'
-import { kirimNotifPoTerverifikasi } from '@/lib/notifikasi-po'
+import { buatQrPayload, signRef } from '@/lib/link-token'
+import { baseUrl, kirimWhatsApp } from '@/lib/notifikasi-tiket'
+import { formatRupiah } from '@/lib/utils'
 
 async function terbitkanTiket(pesananId: string) {
   const { data: existing } = await supabaseAdmin
@@ -43,49 +43,50 @@ async function terbitkanTiket(pesananId: string) {
 }
 
 async function kirimNotifOrder(request: Request, bundleOrderId: string) {
-  const { data: tiketOrders } = await supabaseAdmin
-    .from('pesanan_tiket')
+  const { data: order } = await supabaseAdmin
+    .from('bundle_order')
     .select('*')
-    .eq('bundle_order_id', bundleOrderId)
-  for (const pesanan of tiketOrders ?? []) {
-    try {
-      const { data: tipe } = await supabaseAdmin
-        .from('tiket_tipe')
-        .select('nama')
-        .eq('id', pesanan.tiket_tipe_id)
-        .maybeSingle()
-      await kirimNotifTerverifikasi(request, pesanan, tipe?.nama || 'Tiket')
-    } catch (err) {
-      console.error('Notif tiket bundle gagal:', err)
-    }
-  }
-
-  const { data: po } = await supabaseAdmin
-    .from('merch_po')
-    .select('*')
-    .eq('bundle_order_id', bundleOrderId)
+    .eq('id', bundleOrderId)
     .maybeSingle()
-  if (!po) return
+  if (!order) return
+
+  const [{ data: items }, { data: bundle }] = await Promise.all([
+    supabaseAdmin.from('bundle_order_item').select('*').eq('bundle_order_id', bundleOrderId).order('id'),
+    order.bundle_id
+      ? supabaseAdmin.from('bundle').select('nama').eq('id', order.bundle_id).maybeSingle()
+      : Promise.resolve({ data: null as { nama: string } | null }),
+  ])
+
+  const barisItem = (items ?? []).map((i) => {
+    const varian = [i.warna, i.lengan, i.ukuran].filter(Boolean).join(' · ')
+    const label = i.tipe === 'tiket' ? 'Tiket' : 'Merch'
+    return `- ${i.qty}× ${i.nama_snapshot}${varian ? ` (${varian})` : ''} [${label}]`
+  })
+  const link = `${baseUrl(request)}/lacak/${encodeURIComponent(order.no_pesanan)}?t=${encodeURIComponent(signRef('bundle', order.no_pesanan))}`
+
+  const message = [
+    `Halo ${order.nama_pembeli}, pembayaran paket combo kamu sudah diverifikasi.`,
+    '',
+    `Kode pesanan: ${order.no_pesanan}`,
+    `Paket: ${bundle?.nama || 'Paket Combo'}`,
+    'Status: Lunas / terverifikasi.',
+    '',
+    'Isi paket:',
+    ...barisItem,
+    '',
+    `Total: ${formatRupiah(Number(order.total))}`,
+    '',
+    'QR tiket & QR pengambilan merchandise sudah aktif di halaman riwayat paket combo:',
+    link,
+    '',
+    'Hormat Kami,',
+    'Panitia Danus In4Days XI',
+  ].join('\n')
+
   try {
-    const [{ data: items }, { data: merchandise }, { data: varian }] = await Promise.all([
-      supabaseAdmin.from('merch_po_item').select('*').eq('po_id', po.id),
-      supabaseAdmin.from('merchandise').select('id,nama'),
-      supabaseAdmin.from('merch_varian').select('id,nama'),
-    ])
-    const merchMap = new Map((merchandise ?? []).map((m) => [m.id, m.nama]))
-    const varianMap = new Map((varian ?? []).map((v) => [v.id, v.nama]))
-    const itemDetails = (items ?? []).map((item) => ({
-      nama_produk: merchMap.get(item.merchandise_id ?? '') ?? 'Item',
-      ukuran: item.varian_id ? varianMap.get(item.varian_id) ?? null : null,
-      warna: item.warna ?? null,
-      lengan: item.lengan ?? null,
-      qty: Number(item.qty),
-      harga_satuan: Number(item.harga_satuan),
-      subtotal: Number(item.subtotal),
-    }))
-    await kirimNotifPoTerverifikasi(request, { ...po, items: itemDetails })
+    await kirimWhatsApp(order.kontak, message)
   } catch (err) {
-    console.error('Notif PO bundle gagal:', err)
+    console.error('Notif paket combo gagal:', err)
   }
 }
 
