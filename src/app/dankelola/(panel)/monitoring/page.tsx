@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { Activity, Cloud, Database, ExternalLink, HardDrive } from 'lucide-react'
+import { Activity, Cloud, Database, ExternalLink, HardDrive, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { getJSON } from '../../api'
+import { getJSON, sendJSON } from '../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { parseUserAgent } from '@/lib/request-meta'
 import { formatDateTime } from '@/lib/utils'
@@ -260,6 +260,20 @@ export default function MonitoringPage() {
   }, [load])
   useLiveRefresh(load, 60000)
 
+  const [cleaningUp, setCleaningUp] = useState(false)
+  async function handleCleanup(bucket: string) {
+    setCleaningUp(true)
+    try {
+      const result = await sendJSON('/api/storage/cleanup', 'POST', { bucket })
+      toast.success(`Bersih: ${result.removed} file dihapus, ${result.failed} gagal`)
+      await load()
+    } catch (e) {
+      toast.error(String(e))
+    } finally {
+      setCleaningUp(false)
+    }
+  }
+
   if (loading) return <PageSkeleton />
   if (!data) return <p className="text-sm text-slate-500">Monitoring belum tersedia.</p>
 
@@ -330,7 +344,21 @@ export default function MonitoringPage() {
               </div>
             ))}
           </div>
-          <a href={supabase.dashboardUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:underline">
+          <div className="mt-4 flex flex-wrap gap-2">
+            {storage.buckets.map((bucket) => (
+              <button
+                key={bucket.name}
+                type="button"
+                onClick={() => handleCleanup(bucket.name)}
+                disabled={cleaningUp}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-100 disabled:opacity-50"
+              >
+                <Trash2 className="h-3 w-3" />
+                Bersihkan {bucket.name} ({formatBytes(bucket.size)})
+              </button>
+            ))}
+          </div>
+          <a href={supabase.dashboardUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:underline">
             Buka usage Supabase <ExternalLink className="h-3.5 w-3.5" />
           </a>
         </section>
