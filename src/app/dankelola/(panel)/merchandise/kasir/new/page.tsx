@@ -11,6 +11,7 @@ import { QrImage } from '@/components/qr-image'
 import type { Merchandise } from '@/lib/types'
 import { formatRupiah } from '@/lib/utils'
 import { hitungDiskon } from '@/lib/merch-diskon'
+import { hargaMulai, hargaUntuk, opsiLengan, opsiWarna, type Lengan } from '@/lib/merch-harga'
 import { buatQrisDinamis } from '@/lib/qris'
 import { useDashboardUser } from '@/lib/dashboard-user'
 
@@ -26,7 +27,13 @@ export default function KasirNewPage() {
   const [uploadingBukti, setUploadingBukti] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({ merchandise_id: '', qty: 1, metode: 'Tunai' })
+  const [form, setForm] = useState<{ merchandise_id: string; qty: number; metode: string; warna: string; lengan: Lengan | '' }>({
+    merchandise_id: '',
+    qty: 1,
+    metode: 'Tunai',
+    warna: '',
+    lengan: '',
+  })
 
   useEffect(() => {
     if (currentUser?.name) setKasir(currentUser.name)
@@ -39,9 +46,15 @@ export default function KasirNewPage() {
       .catch(() => setQrisPayload(''))
     getJSON<Merchandise[]>('/api/merchandise')
       .then((items) => {
-        const produkHariH = items.filter((item) => item.aktif && Number(item.harga) > 0)
+        const produkHariH = items.filter((item) => item.aktif && opsiLengan(item, 'hari_h').length > 0)
         setProduk(produkHariH)
-        setForm((f) => ({ ...f, merchandise_id: produkHariH[0]?.id || '' }))
+        const first = produkHariH[0]
+        setForm((f) => ({
+          ...f,
+          merchandise_id: first?.id || '',
+          warna: opsiWarna(first?.warna)[0] ?? '',
+          lengan: first ? opsiLengan(first, 'hari_h')[0] ?? '' : '',
+        }))
       })
       .catch(() => toast.error('Gagal memuat produk'))
       .finally(() => setLoading(false))
@@ -50,9 +63,12 @@ export default function KasirNewPage() {
   const dipilih = useMemo(() => produk.find((item) => item.id === form.merchandise_id) ?? null, [produk, form.merchandise_id])
   const stokTersisa = dipilih && !dipilih.stok_unlimited ? Number(dipilih.stok) : null
   const stokHabis = stokTersisa !== null && stokTersisa < 1
+  const warnaOpsi = useMemo(() => opsiWarna(dipilih?.warna), [dipilih])
+  const lenganOpsi = useMemo(() => (dipilih ? opsiLengan(dipilih, 'hari_h') : []), [dipilih])
+  const hargaSatuan = dipilih ? hargaUntuk(dipilih, 'Umum', (form.lengan || 'Pendek') as Lengan, 'hari_h') : 0
   const hitung = useMemo(
-    () => hitungDiskon(Number(form.qty), Number(dipilih?.harga ?? 0), dipilih?.diskon, 'hari_h'),
-    [dipilih, form.qty],
+    () => hitungDiskon(Number(form.qty), hargaSatuan, dipilih?.diskon, 'hari_h'),
+    [dipilih, form.qty, hargaSatuan],
   )
   const qrisValue = useMemo(
     () => (form.metode === 'QRIS' && qrisPayload && hitung.total > 0 ? buatQrisDinamis(qrisPayload, hitung.total) : ''),
@@ -99,6 +115,14 @@ export default function KasirNewPage() {
       toast.error('Produk dan qty harus diisi')
       return
     }
+    if (warnaOpsi.length > 0 && !form.warna) {
+      toast.error('Pilih warna produk')
+      return
+    }
+    if (lenganOpsi.length > 0 && !form.lengan) {
+      toast.error('Pilih lengan produk')
+      return
+    }
     if (stokHabis) {
       toast.error('Stok produk ini sudah habis')
       return
@@ -113,6 +137,8 @@ export default function KasirNewPage() {
         merchandise_id: form.merchandise_id,
         qty: form.qty,
         metode: form.metode,
+        warna: form.warna || null,
+        lengan: form.lengan || null,
         bukti_url: form.metode === 'QRIS' ? buktiUrl || null : null,
       })
       toast.success('Transaksi disimpan')
@@ -146,17 +172,48 @@ export default function KasirNewPage() {
             <select
               className={input}
               value={form.merchandise_id}
-              onChange={(e) => setForm({ ...form, merchandise_id: e.target.value, qty: 1 })}
+              onChange={(e) => {
+                const next = produk.find((item) => item.id === e.target.value)
+                setForm({
+                  ...form,
+                  merchandise_id: e.target.value,
+                  qty: 1,
+                  warna: next ? opsiWarna(next.warna)[0] ?? '' : '',
+                  lengan: next ? opsiLengan(next, 'hari_h')[0] ?? '' : '',
+                })
+              }}
             >
               {produk.map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.nama} · {formatRupiah(Number(item.harga))}
+                  {item.nama} · {formatRupiah(hargaMulai(item, 'Umum', 'hari_h'))}
                 </option>
               ))}
             </select>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
+            {warnaOpsi.length > 0 && (
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">Warna</label>
+                <select className={input} value={form.warna} onChange={(e) => setForm({ ...form, warna: e.target.value })}>
+                  <option value="">Pilih warna</option>
+                  {warnaOpsi.map((warna) => (
+                    <option key={warna} value={warna}>{warna}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {lenganOpsi.length > 0 && (
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">Lengan</label>
+                <select className={input} value={form.lengan} onChange={(e) => setForm({ ...form, lengan: e.target.value as Lengan })}>
+                  <option value="">Pilih lengan</option>
+                  {lenganOpsi.map((lengan) => (
+                    <option key={lengan} value={lengan}>{lengan}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-500">Qty</label>
               <input

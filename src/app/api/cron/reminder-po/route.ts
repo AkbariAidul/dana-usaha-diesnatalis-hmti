@@ -50,7 +50,7 @@ export async function GET(request: Request) {
     const { data: produk } = await supabaseAdmin
       .from('merchandise')
       .select('po_selesai')
-      .not('harga_po', 'is', null)
+      .or('harga_po.gt.0,harga_po_panjang.gt.0,harga_po_umum.gt.0,harga_po_umum_panjang.gt.0')
       .not('po_selesai', 'is', null)
 
     const today = todayISO()

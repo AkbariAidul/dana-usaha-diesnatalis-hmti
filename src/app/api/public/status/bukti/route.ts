@@ -111,7 +111,7 @@ export async function POST(request: Request) {
 
     const { data: poItems } = await supabaseAdmin
       .from('merch_po_item')
-      .select('merchandise_id,varian_id,qty,harga_satuan,subtotal')
+      .select('merchandise_id,varian_id,warna,lengan,qty,harga_satuan,subtotal')
       .eq('po_id', po.id)
 
     const { data: merchandise } = await supabaseAdmin
@@ -127,6 +127,8 @@ export async function POST(request: Request) {
     const itemDetails = (poItems ?? []).map((item) => ({
       nama_produk: merchMap.get(item.merchandise_id ?? '') ?? 'Item',
       ukuran: item.varian_id ? varianMap.get(item.varian_id) ?? null : null,
+      warna: item.warna ?? null,
+      lengan: item.lengan ?? null,
       qty: Number(item.qty),
       harga_satuan: Number(item.harga_satuan),
       subtotal: Number(item.subtotal),

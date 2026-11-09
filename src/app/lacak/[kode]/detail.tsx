@@ -112,6 +112,8 @@ type MerchPo = {
 type MerchItem = {
   id: string
   ukuran: string | null
+  warna: string | null
+  lengan: string | null
   qty: number
   harga_satuan: number
   subtotal: number
@@ -843,7 +845,7 @@ function PoView({ data, token, reload }: { data: Extract<StatusResponse, { tipe:
             <thead className="text-left text-xs text-slate-500">
               <tr>
                 <th className="py-2">Item</th>
-                <th className="py-2">Ukuran</th>
+                <th className="py-2">Varian</th>
                 <th className="py-2">Qty</th>
                 <th className="py-2">Subtotal</th>
               </tr>
@@ -852,7 +854,9 @@ function PoView({ data, token, reload }: { data: Extract<StatusResponse, { tipe:
               {items.map((item) => (
                 <tr key={item.id}>
                   <td className="py-2">{item.merchandise?.nama || 'Merchandise'}</td>
-                  <td className="py-2">{item.varian?.nama || item.ukuran || '-'}</td>
+                  <td className="py-2">
+                    {[item.warna, item.lengan, item.varian?.nama || item.ukuran].filter(Boolean).join(' · ') || '-'}
+                  </td>
                   <td className="py-2">{item.qty}</td>
                   <td className="py-2 font-medium">{formatRupiah(Number(item.subtotal))}</td>
                 </tr>

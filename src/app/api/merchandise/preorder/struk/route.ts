@@ -25,7 +25,7 @@ export async function GET(request: Request) {
       po,
       (items ?? []).map((item) => ({
         nama: merchandiseMap.get(item.merchandise_id) ?? 'Merchandise',
-        ukuran: item.varian_id ? varianMap.get(item.varian_id) ?? item.ukuran : item.ukuran,
+        ukuran: [item.warna, item.lengan, item.varian_id ? varianMap.get(item.varian_id) ?? item.ukuran : item.ukuran].filter(Boolean).join(' · ') || null,
         qty: Number(item.qty),
         harga_satuan: Number(item.harga_satuan),
         subtotal: Number(item.subtotal),

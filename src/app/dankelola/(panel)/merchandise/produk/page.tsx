@@ -11,12 +11,21 @@ import { PageSkeleton } from '../../ui'
 import { useConfirm } from '@/components/confirm-dialog'
 import { useIsViewer } from '@/lib/dashboard-user'
 import type { Merchandise } from '@/lib/types'
+import { opsiLengan } from '@/lib/merch-harga'
 import { formatRupiah } from '@/lib/utils'
 import { Copy, Eye, Image as ImageIcon, Pencil, Plus, Trash2, Wallet } from 'lucide-react'
 
 function formatJadwal(value: string | null) {
   if (!value) return '-'
   return new Date(value).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })
+}
+
+function hargaPoTerendah(item: Merchandise) {
+  const values = [
+    Number(item.harga_po_umum) || Number(item.harga_po) || 0,
+    Number(item.harga_po_umum_panjang) || Number(item.harga_po_panjang) || 0,
+  ].filter((value) => value > 0)
+  return values.length > 0 ? Math.min(...values) : 0
 }
 
 export default function ProdukPage() {
@@ -98,6 +107,10 @@ export default function ProdukPage() {
         warna: item.warna,
         harga: Number(item.harga) || 0,
         harga_po: item.harga_po ? Number(item.harga_po) : null,
+        harga_po_panjang: Number(item.harga_po_panjang) || 0,
+        harga_po_umum: Number(item.harga_po_umum) || 0,
+        harga_po_umum_panjang: Number(item.harga_po_umum_panjang) || 0,
+        harga_hari_h_panjang: Number(item.harga_hari_h_panjang) || 0,
         po_mulai: item.po_mulai,
         po_selesai: item.po_selesai,
         po_unlimited: item.po_unlimited,
@@ -251,7 +264,15 @@ export default function ProdukPage() {
                     <div className="font-medium text-slate-900">
                       {Number(item.harga) > 0 ? formatRupiah(Number(item.harga)) : 'Tidak dijual Hari H'}
                     </div>
-                    {item.harga_po ? <div className="text-xs text-slate-400">PO: {formatRupiah(Number(item.harga_po))}</div> : null}
+                    {Number(item.harga_hari_h_panjang) > 0 ? (
+                      <div className="text-xs text-slate-400">Panjang: {formatRupiah(Number(item.harga_hari_h_panjang))}</div>
+                    ) : null}
+                    {hargaPoTerendah(item) > 0 ? (
+                      <div className="text-xs text-slate-400">
+                        PO: {opsiLengan(item, 'po').length > 1 ? 'mulai ' : ''}
+                        {formatRupiah(hargaPoTerendah(item))}
+                      </div>
+                    ) : null}
                     {item.po_mulai && item.po_selesai ? (
                       <div className="text-[11px] text-slate-400">{formatJadwal(item.po_mulai)} – {formatJadwal(item.po_selesai)}</div>
                     ) : null}
@@ -270,7 +291,7 @@ export default function ProdukPage() {
                     <div className={`font-medium ${item.stok_unlimited || item.stok > 0 ? 'text-slate-700' : 'text-red-600'}`}>
                       Hari H: {item.stok_unlimited ? 'Tak terbatas' : item.stok}
                     </div>
-                    {item.harga_po ? (
+                    {opsiLengan(item, 'po').length > 0 ? (
                       <div className="text-xs text-slate-400">
                         Slot PO: {item.po_unlimited ? 'Tak terbatas' : item.po_stok}
                       </div>

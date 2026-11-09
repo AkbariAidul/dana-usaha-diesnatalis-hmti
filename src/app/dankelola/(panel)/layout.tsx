@@ -19,6 +19,7 @@ const MENU_HREFS = menuConfig.flatMap((group) =>
 const MENU_ALIASES: Record<string, string[]> = {
   '/dankelola/ticket/tahap': ['/dankelola/ticket/tipe', '/dankelola/ticket/periode', '/dankelola/ticket/modal'],
   '/dankelola/merchandise/produk': ['/dankelola/merchandise/modal'],
+  '/dankelola/merchandise/stok': ['/dankelola/merchandise/pengambilan'],
   '/dankelola/tenants/harga': ['/dankelola/tenants/pembayaran'],
 }
 
@@ -117,6 +118,10 @@ function getBreadcrumbs(pathname: string) {
     breadcrumbs.push({ label: 'Detail Tenant', href: pathname })
   } else if (pathname === '/dankelola/ticket/modal') {
     breadcrumbs.push({ label: 'Kelola Modal', href: pathname })
+  } else if (pathname === '/dankelola/merchandise/pengambilan') {
+    breadcrumbs.length = 1
+    breadcrumbs.push({ label: 'Produksi & Stok', href: '/dankelola/merchandise/stok' })
+    breadcrumbs.push({ label: 'Pengaturan Pengambilan', href: pathname })
   } else if (pathname.startsWith('/dankelola/merchandise/pengurus/')) {
     const action = pathname === '/dankelola/merchandise/pengurus/new' ? 'Tambah Pengurus' : 'Edit Pengurus'
     breadcrumbs.push({ label: action, href: pathname })

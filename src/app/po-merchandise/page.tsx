@@ -12,6 +12,7 @@ import { getJSON } from '@/app/dankelola/api'
 import { formatDate, formatRupiah } from '@/lib/utils'
 import { buatQrisDinamis } from '@/lib/qris'
 import { hitungDiskon } from '@/lib/merch-diskon'
+import { hargaMulai, hargaUntuk, opsiLengan, opsiWarna, type Lengan } from '@/lib/merch-harga'
 import type { DiskonRule } from '@/lib/types'
 
 type Pengurus = { id: string; nama: string; divisi: string | null; kontak: string | null }
@@ -24,6 +25,10 @@ type Produk = {
   warna: string | null
   harga: number
   harga_po: number | null
+  harga_po_panjang: number | null
+  harga_po_umum: number | null
+  harga_po_umum_panjang: number | null
+  harga_hari_h_panjang: number | null
   po_mulai: string | null
   po_selesai: string | null
   diskon: DiskonRule[] | null
@@ -33,13 +38,21 @@ type ItemKeranjang = {
   produk: Produk
   qty: number
   varian?: Varian
+  warna?: string
+  lengan?: Lengan
 }
 type Pesanan = {
   id: string
   no_po: string
   total: number
   t: string
-  items: Array<{ produk: { nama: string; gambar_url: string | null }; qty: number; varian?: { nama: string } | null }>
+  items: Array<{
+    produk: { nama: string; gambar_url: string | null }
+    qty: number
+    varian?: { nama: string } | null
+    warna?: string | null
+    lengan?: string | null
+  }>
 }
 
 const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
@@ -123,8 +136,14 @@ export default function PoMerchandisePage() {
     }).catch(() => toast.error('Gagal memuat katalog'))
   }, [])
 
-  const totalKeranjang = useMemo(() => keranjang.reduce((s, item) => s + hitungDiskon(item.qty, Number(item.produk.harga_po), item.produk.diskon, 'po').total, 0), [keranjang])
-  const totalDiskon = useMemo(() => keranjang.reduce((s, item) => s + hitungDiskon(item.qty, Number(item.produk.harga_po), item.produk.diskon, 'po').diskon, 0), [keranjang])
+  const totalKeranjang = useMemo(
+    () => keranjang.reduce((s, item) => s + hitungDiskon(item.qty, hargaUntuk(item.produk, form.tipe_pemesan, item.lengan ?? 'Pendek', 'po'), item.produk.diskon, 'po').total, 0),
+    [keranjang, form.tipe_pemesan],
+  )
+  const totalDiskon = useMemo(
+    () => keranjang.reduce((s, item) => s + hitungDiskon(item.qty, hargaUntuk(item.produk, form.tipe_pemesan, item.lengan ?? 'Pendek', 'po'), item.produk.diskon, 'po').diskon, 0),
+    [keranjang, form.tipe_pemesan],
+  )
   const totalQty = useMemo(() => keranjang.reduce((s, item) => s + item.qty, 0), [keranjang])
   const pengurusTersaring = useMemo(() => {
     const q = form.nama_pengurus.trim().toLowerCase()
@@ -158,15 +177,20 @@ export default function PoMerchandisePage() {
   }, [file])
 
   function tambahKeKeranjang(produk: Produk) {
-    if (!produk.harga_po) {
+    const lenganTersedia = opsiLengan(produk, 'po', form.tipe_pemesan)
+    if (lenganTersedia.length === 0) {
       return toast.error('Produk ini belum dibuka pre-order')
     }
+    const warna = opsiWarna(produk.warna)[0]
+    const lengan = lenganTersedia[0]
     setKeranjang((prev) => {
-      const found = prev.find((i) => i.produk.id === produk.id)
+      const found = prev.find(
+        (i) => i.produk.id === produk.id && i.warna === warna && i.lengan === lengan && !i.varian,
+      )
       if (found) {
-        return prev.map((i) => i.produk.id === produk.id ? { ...i, qty: Math.min(20, i.qty + 1) } : i)
+        return prev.map((i) => (i === found ? { ...i, qty: Math.min(20, i.qty + 1) } : i))
       }
-      return [...prev, { produk, qty: 1 }]
+      return [...prev, { produk, qty: 1, warna, lengan }]
     })
     toast.success('Ditambahkan ke keranjang')
   }
@@ -185,6 +209,14 @@ export default function PoMerchandisePage() {
     setKeranjang((prev) => prev.map((i, n) => n === idx ? { ...i, varian: v } : i))
   }
 
+  function pilihWarna(idx: number, warna: string) {
+    setKeranjang((prev) => prev.map((i, n) => n === idx ? { ...i, warna } : i))
+  }
+
+  function pilihLengan(idx: number, lengan: Lengan) {
+    setKeranjang((prev) => prev.map((i, n) => n === idx ? { ...i, lengan } : i))
+  }
+
   function validasiPemesan() {
     if (keranjang.length === 0) {
       toast.error('Keranjang kosong')
@@ -193,6 +225,19 @@ export default function PoMerchandisePage() {
     const belumUkuran = keranjang.find((item) => (item.produk.varian_ids?.length ?? 0) > 0 && !item.varian)
     if (belumUkuran) {
       toast.error(`Pilih ukuran untuk ${belumUkuran.produk.nama}`)
+      return false
+    }
+    const belumWarna = keranjang.find((item) => opsiWarna(item.produk.warna).length > 0 && !item.warna)
+    if (belumWarna) {
+      toast.error(`Pilih warna untuk ${belumWarna.produk.nama}`)
+      return false
+    }
+    const belumLengan = keranjang.find((item) => {
+      const opsi = opsiLengan(item.produk, 'po', form.tipe_pemesan)
+      return opsi.length > 0 && (!item.lengan || !opsi.includes(item.lengan))
+    })
+    if (belumLengan) {
+      toast.error(`Pilih lengan untuk ${belumLengan.produk.nama}`)
       return false
     }
     if (form.tipe_pemesan === 'Pengurus Himpunan' && !form.pengurus_id) {
@@ -251,6 +296,8 @@ export default function PoMerchandisePage() {
             merchandise_id: item.produk.id,
             varian_id: item.varian?.id ?? null,
             qty: item.qty,
+            warna: item.warna ?? null,
+            lengan: item.lengan ?? null,
           })),
         }),
       })
@@ -360,7 +407,10 @@ export default function PoMerchandisePage() {
                       ) : null}
                     </div>
                     <div className="min-h-[1.25rem] text-sm text-slate-500">
-                      {item.warna ? `Warna: ${item.warna}` : ''}
+                      {opsiWarna(item.warna).length > 0 ? `Warna: ${opsiWarna(item.warna).join(', ')}` : ''}
+                    </div>
+                    <div className="min-h-[1rem] text-xs text-slate-400">
+                      {opsiLengan(item, 'po', form.tipe_pemesan).length > 0 ? `Lengan: ${opsiLengan(item, 'po', form.tipe_pemesan).join(', ')}` : ''}
                     </div>
                     <div className="mt-1 min-h-[2.5rem] text-xs text-slate-500">
                       {item.po_mulai && item.po_selesai
@@ -369,11 +419,13 @@ export default function PoMerchandisePage() {
                     </div>
                     <div className="mt-auto flex flex-col gap-2 pt-3 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
                       <span className="text-sm font-semibold text-violet-600">
-                        {item.harga_po ? formatRupiah(Number(item.harga_po)) : 'Pre-order belum dibuka'}
+                        {hargaMulai(item, form.tipe_pemesan, 'po') > 0
+                          ? `${opsiLengan(item, 'po', form.tipe_pemesan).length > 1 ? 'Mulai ' : ''}${formatRupiah(hargaMulai(item, form.tipe_pemesan, 'po'))}`
+                          : 'Pre-order belum dibuka'}
                       </span>
                       <button
                         onClick={() => tambahKeKeranjang(item)}
-                        disabled={!item.harga_po}
+                        disabled={opsiLengan(item, 'po', form.tipe_pemesan).length === 0}
                         className="flex w-full shrink-0 items-center justify-center gap-1 rounded-xl bg-violet-600 px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                       >
                         <Plus className="h-4 w-4" /> Tambah
@@ -420,8 +472,11 @@ export default function PoMerchandisePage() {
               ) : (
                 <div className="mt-4 space-y-3">
                   {keranjang.map((item, idx) => {
-                    const hitung = hitungDiskon(item.qty, Number(item.produk.harga_po), item.produk.diskon, 'po')
+                    const harga = hargaUntuk(item.produk, form.tipe_pemesan, item.lengan ?? 'Pendek', 'po')
+                    const hitung = hitungDiskon(item.qty, harga, item.produk.diskon, 'po')
                     const varianProduk = varianList.filter((v) => item.produk.varian_ids?.includes(v.id))
+                    const warnaProduk = opsiWarna(item.produk.warna)
+                    const lenganProduk = opsiLengan(item.produk, 'po', form.tipe_pemesan)
                     return (
                       <div key={idx} className="flex flex-wrap items-center gap-3 border-b border-slate-100 pb-3 last:border-0 last:pb-0">
                         <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-100">
@@ -433,20 +488,46 @@ export default function PoMerchandisePage() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-slate-900">{item.produk.nama}</p>
-                          {varianProduk.length > 0 ? (
-                            <select
-                              className="mt-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700"
-                              value={item.varian?.id ?? ''}
-                              onChange={(e) => pilihVarian(idx, e.target.value)}
-                            >
-                              <option value="">Pilih ukuran</option>
-                              {varianProduk.map((v) => (
-                                <option key={v.id} value={v.id}>{v.nama}</option>
-                              ))}
-                            </select>
-                          ) : (
-                            <p className="text-xs text-slate-500">{item.varian?.nama || 'Tanpa ukuran'}</p>
-                          )}
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            {warnaProduk.length > 0 && (
+                              <select
+                                className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700"
+                                value={item.warna ?? ''}
+                                onChange={(e) => pilihWarna(idx, e.target.value)}
+                              >
+                                <option value="">Pilih warna</option>
+                                {warnaProduk.map((warna) => (
+                                  <option key={warna} value={warna}>{warna}</option>
+                                ))}
+                              </select>
+                            )}
+                            {lenganProduk.length > 0 && (
+                              <select
+                                className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700"
+                                value={item.lengan ?? ''}
+                                onChange={(e) => pilihLengan(idx, e.target.value as Lengan)}
+                              >
+                                <option value="">Pilih lengan</option>
+                                {lenganProduk.map((lengan) => (
+                                  <option key={lengan} value={lengan}>{lengan}</option>
+                                ))}
+                              </select>
+                            )}
+                            {varianProduk.length > 0 ? (
+                              <select
+                                className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700"
+                                value={item.varian?.id ?? ''}
+                                onChange={(e) => pilihVarian(idx, e.target.value)}
+                              >
+                                <option value="">Pilih ukuran</option>
+                                {varianProduk.map((v) => (
+                                  <option key={v.id} value={v.id}>{v.nama}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span className="self-center text-xs text-slate-500">{item.varian?.nama || 'Tanpa ukuran'}</span>
+                            )}
+                          </div>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <button onClick={() => updateQty(idx, item.qty - 1)} className="rounded-lg border p-1 hover:bg-slate-50"><Minus className="h-3.5 w-3.5" /></button>
@@ -672,7 +753,11 @@ export default function PoMerchandisePage() {
               <div className="mt-2 space-y-1">
                 {pesanan.items.map((it, i) => (
                   <p key={i} className="text-sm">
-                    <span className="text-slate-500">{it.produk.nama}</span> {it.varian?.nama ? `(${it.varian.nama})` : ''} × {it.qty}
+                    <span className="text-slate-500">{it.produk.nama}</span>{' '}
+                    {[it.warna, it.lengan, it.varian?.nama].filter(Boolean).length > 0
+                      ? `(${[it.warna, it.lengan, it.varian?.nama].filter(Boolean).join(' · ')})`
+                      : ''}{' '}
+                    × {it.qty}
                   </p>
                 ))}
               </div>
@@ -797,7 +882,7 @@ export default function PoMerchandisePage() {
                   <thead className="bg-slate-50 text-left text-xs text-slate-500">
                     <tr>
                       <th className="px-3 py-2">Item</th>
-                      <th className="px-3 py-2">Ukuran</th>
+                      <th className="px-3 py-2">Varian</th>
                       <th className="px-3 py-2 text-center">Qty</th>
                     </tr>
                   </thead>
@@ -805,7 +890,9 @@ export default function PoMerchandisePage() {
                     {pesanan.items.map((it, i) => (
                       <tr key={i}>
                         <td className="px-3 py-2 text-slate-900">{it.produk.nama}</td>
-                        <td className="px-3 py-2 text-slate-600">{it.varian?.nama || '-'}</td>
+                        <td className="px-3 py-2 text-slate-600">
+                          {[it.warna, it.lengan, it.varian?.nama].filter(Boolean).join(' · ') || '-'}
+                        </td>
                         <td className="px-3 py-2 text-center text-slate-600">{it.qty}</td>
                       </tr>
                     ))}

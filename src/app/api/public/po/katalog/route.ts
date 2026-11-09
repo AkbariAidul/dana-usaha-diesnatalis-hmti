@@ -9,14 +9,16 @@ export async function GET() {
       supabaseAdmin.from('merch_varian').select('*').eq('aktif', true).order('urutan'),
       supabaseAdmin
         .from('merchandise')
-        .select('id,nama,deskripsi,gambar_url,harga_po,po_mulai,po_selesai,po_unlimited,po_stok,varian_ids')
+        .select('id,nama,deskripsi,gambar_url,warna,harga,harga_po,harga_po_panjang,harga_po_umum,harga_po_umum_panjang,harga_hari_h_panjang,po_mulai,po_selesai,po_unlimited,po_stok,varian_ids')
         .eq('aktif', true)
         .order('nama'),
     ])
 
     const now = Date.now()
     const aktif = (produk.data ?? []).filter((item) => {
-      if (!item.harga_po || !item.po_mulai || !item.po_selesai) return false
+      const punyaHargaPo = [item.harga_po, item.harga_po_panjang, item.harga_po_umum, item.harga_po_umum_panjang]
+        .some((harga) => Number(harga) > 0)
+      if (!punyaHargaPo || !item.po_mulai || !item.po_selesai) return false
       const mulai = new Date(item.po_mulai).getTime()
       const selesai = new Date(item.po_selesai).getTime()
       return Number.isFinite(mulai) && Number.isFinite(selesai) && now >= mulai && now <= selesai
@@ -29,7 +31,12 @@ export async function GET() {
         const sisa = item.po_unlimited ? null : Math.max(0, Number(item.po_stok) - total)
         return {
           ...item,
-          harga_po: Number(item.harga_po),
+          harga: Number(item.harga ?? 0),
+          harga_po: Number(item.harga_po ?? 0),
+          harga_po_panjang: Number(item.harga_po_panjang ?? 0),
+          harga_po_umum: Number(item.harga_po_umum ?? 0),
+          harga_po_umum_panjang: Number(item.harga_po_umum_panjang ?? 0),
+          harga_hari_h_panjang: Number(item.harga_hari_h_panjang ?? 0),
           po_stok: Number(item.po_stok),
           terjual: total,
           sisa,

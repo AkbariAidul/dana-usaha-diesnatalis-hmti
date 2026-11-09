@@ -13,6 +13,8 @@ import { PageSkeleton } from '../../ui'
 type PoItem = {
   id: string
   ukuran: string | null
+  warna: string | null
+  lengan: string | null
   qty: number
   merchandise: { nama: string } | null
   varian: { nama: string } | null
@@ -47,22 +49,29 @@ export default function StokPage() {
   useLiveRefresh(load)
 
   const rekap = useMemo(() => {
-    const map = new Map<string, { produk: string; ukuran: string; qty: number; po: Set<string> }>()
+    const map = new Map<string, { produk: string; warna: string; lengan: string; ukuran: string; qty: number; po: Set<string> }>()
     for (const po of poList) {
       if (po.status !== 'lunas') continue
       for (const item of po.items) {
         const produk = item.merchandise?.nama ?? 'Merchandise'
+        const warna = item.warna || '-'
+        const lengan = item.lengan || '-'
         const ukuran = item.varian?.nama || item.ukuran || '-'
-        const key = `${produk}|${ukuran}`
-        const row = map.get(key) ?? { produk, ukuran, qty: 0, po: new Set<string>() }
+        const key = `${produk}|${warna}|${lengan}|${ukuran}`
+        const row = map.get(key) ?? { produk, warna, lengan, ukuran, qty: 0, po: new Set<string>() }
         row.qty += Number(item.qty)
         row.po.add(po.id)
         map.set(key, row)
       }
     }
     return [...map.values()]
-      .map((row) => ({ produk: row.produk, ukuran: row.ukuran, qty: row.qty, jumlahPo: row.po.size }))
-      .sort((a, b) => a.produk.localeCompare(b.produk) || a.ukuran.localeCompare(b.ukuran))
+      .map((row) => ({ produk: row.produk, warna: row.warna, lengan: row.lengan, ukuran: row.ukuran, qty: row.qty, jumlahPo: row.po.size }))
+      .sort((a, b) =>
+        a.produk.localeCompare(b.produk) ||
+        a.warna.localeCompare(b.warna) ||
+        a.lengan.localeCompare(b.lengan) ||
+        a.ukuran.localeCompare(b.ukuran),
+      )
   }, [poList])
   const totalPo = poList.filter((po) => po.status === 'lunas').length
   const totalQtyPo = rekap.reduce((sum, row) => sum + row.qty, 0)
@@ -73,7 +82,8 @@ export default function StokPage() {
     for (const row of rekap) {
       const produk = map.get(row.produk) ?? { produk: row.produk, qty: 0, ukuran: new Map<string, number>() }
       produk.qty += row.qty
-      produk.ukuran.set(row.ukuran, (produk.ukuran.get(row.ukuran) ?? 0) + row.qty)
+      const label = [row.warna, row.lengan, row.ukuran].filter((value) => value && value !== '-').join(' · ') || '-'
+      produk.ukuran.set(label, (produk.ukuran.get(label) ?? 0) + row.qty)
       map.set(row.produk, produk)
     }
     return [...map.values()].map((p) => ({
@@ -141,16 +151,20 @@ export default function StokPage() {
           <thead className="bg-slate-50 text-left">
             <tr>
               <th className="px-3 py-2">Produk</th>
+              <th className="px-3 py-2">Warna</th>
+              <th className="px-3 py-2">Lengan</th>
               <th className="px-3 py-2">Ukuran</th>
               <th className="px-3 py-2 text-right">Qty</th>
               <th className="px-3 py-2 text-right">Jumlah PO</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100/80">
-            {rekap.length === 0 && <tr><td colSpan={4} className="px-3 py-6 text-center text-slate-400">Belum ada item pre-order lunas.</td></tr>}
+            {rekap.length === 0 && <tr><td colSpan={6} className="px-3 py-6 text-center text-slate-400">Belum ada item pre-order lunas.</td></tr>}
             {rekap.map((row) => (
-              <tr key={`${row.produk}|${row.ukuran}`} className="hover:bg-slate-50">
+              <tr key={`${row.produk}|${row.warna}|${row.lengan}|${row.ukuran}`} className="hover:bg-slate-50">
                 <td className="px-3 py-2 font-medium">{row.produk}</td>
+                <td className="px-3 py-2">{row.warna}</td>
+                <td className="px-3 py-2">{row.lengan}</td>
                 <td className="px-3 py-2">{row.ukuran}</td>
                 <td className="px-3 py-2 text-right font-semibold tabular-nums">{row.qty}</td>
                 <td className="px-3 py-2 text-right tabular-nums text-slate-500">{row.jumlahPo}</td>
@@ -160,7 +174,7 @@ export default function StokPage() {
           {rekap.length > 0 && (
             <tfoot className="bg-slate-50 font-semibold">
               <tr>
-                <td className="px-3 py-2" colSpan={2}>Total</td>
+                <td className="px-3 py-2" colSpan={4}>Total</td>
                 <td className="px-3 py-2 text-right tabular-nums">{totalQtyPo}</td>
                 <td className="px-3 py-2" />
               </tr>

@@ -143,6 +143,10 @@ export interface Merchandise {
   stok: number
   stok_unlimited: boolean
   harga_po: number | null
+  harga_po_panjang: number | null
+  harga_po_umum: number | null
+  harga_po_umum_panjang: number | null
+  harga_hari_h_panjang: number | null
   po_mulai: string | null
   po_selesai: string | null
   po_unlimited: boolean

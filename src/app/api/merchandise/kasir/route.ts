@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { hitungDiskon } from '@/lib/merch-diskon'
+import { hargaUntuk, opsiLengan, opsiWarna, type Lengan } from '@/lib/merch-harga'
 import { createAuditLog } from '@/lib/queries'
 import { getSessionUser } from '@/lib/session-server'
 
@@ -37,6 +38,8 @@ export async function GET(request: Request) {
       merchandise_id: item.merchandise_id ?? null,
       tanggal: item.created_at || new Date().toISOString(),
       produk: item.produk_nama || item.produk || '-',
+      warna: item.warna || null,
+      lengan: item.lengan || null,
       qty: Number(item.qty),
       total: Number(item.total),
       diskon: Number(item.diskon ?? 0),
@@ -69,13 +72,37 @@ export async function POST(request: Request) {
 
     const { data: produk, error: produkError } = await supabaseAdmin
       .from('merchandise')
-      .select('id,nama,harga,stok,stok_unlimited,diskon')
+      .select('id,nama,harga,harga_po,harga_po_panjang,harga_po_umum,harga_po_umum_panjang,harga_hari_h_panjang,warna,stok,stok_unlimited,diskon')
       .eq('id', merchandiseId)
       .eq('aktif', true)
       .maybeSingle()
     if (produkError) throw produkError
     if (!produk) return NextResponse.json({ error: 'Produk tidak ditemukan' }, { status: 404 })
-    if (Number(produk.harga) <= 0) {
+
+    const lenganTersedia = opsiLengan(produk, 'hari_h')
+    if (lenganTersedia.length === 0) {
+      return NextResponse.json({ error: 'Produk ini tidak dijual pada Hari H' }, { status: 400 })
+    }
+    const lenganInput: Lengan = body.lengan === 'Panjang'
+      ? 'Panjang'
+      : body.lengan === 'Pendek'
+        ? 'Pendek'
+        : lenganTersedia[0]
+    if (!lenganTersedia.includes(lenganInput)) {
+      return NextResponse.json({ error: 'Lengan tidak tersedia' }, { status: 400 })
+    }
+
+    const warnaTersedia = opsiWarna(produk.warna)
+    const warnaInput = String(body.warna ?? '').trim()
+    if (warnaTersedia.length > 0 && !warnaInput) {
+      return NextResponse.json({ error: 'Pilih warna produk' }, { status: 400 })
+    }
+    if (warnaTersedia.length > 0 && !warnaTersedia.includes(warnaInput)) {
+      return NextResponse.json({ error: 'Warna tidak tersedia' }, { status: 400 })
+    }
+    const warna = warnaTersedia.length > 0 ? warnaInput : null
+    const harga = hargaUntuk(produk, 'Umum', lenganInput, 'hari_h')
+    if (harga <= 0) {
       return NextResponse.json({ error: 'Produk ini tidak dijual pada Hari H' }, { status: 400 })
     }
 
@@ -96,13 +123,15 @@ export async function POST(request: Request) {
       }
     }
 
-    const hitung = hitungDiskon(qty, Number(produk.harga), produk.diskon, 'hari_h')
+    const hitung = hitungDiskon(qty, harga, produk.diskon, 'hari_h')
     const { data, error } = await supabaseAdmin
       .from('kasir_transaksi')
       .insert({
         merchandise_id: merchandiseId,
         produk: produk.nama,
         produk_nama: produk.nama,
+        warna,
+        lengan: lenganInput,
         qty,
         total: hitung.total,
         diskon: hitung.diskon,

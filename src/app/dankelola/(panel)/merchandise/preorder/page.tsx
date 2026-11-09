@@ -33,6 +33,8 @@ function statusClass(status: string) {
 type Item = {
   id: string
   ukuran: string | null
+  warna: string | null
+  lengan: string | null
   qty: number
   subtotal: number
   merchandise: { nama: string } | null
@@ -338,7 +340,10 @@ export default function PreorderPage() {
                     {item.items?.map((i) => (
                       <div key={i.id} className="text-xs">
                         {i.merchandise?.nama ?? 'Item'}
-                        {(i.varian?.nama || i.ukuran) ? ` (${i.varian?.nama || i.ukuran})` : ''} × {i.qty}
+                        {(() => {
+                          const varian = [i.warna, i.lengan, i.varian?.nama || i.ukuran].filter(Boolean).join(' · ')
+                          return varian ? ` (${varian})` : ''
+                        })()} × {i.qty}
                       </div>
                     ))}
                   </td>
@@ -590,7 +595,7 @@ export default function PreorderPage() {
                 <thead className="bg-slate-50 text-left text-xs text-slate-500">
                   <tr>
                     <th className="px-3 py-2">Produk</th>
-                    <th className="px-3 py-2">Ukuran</th>
+                    <th className="px-3 py-2">Varian</th>
                     <th className="px-3 py-2 text-center">Qty</th>
                     <th className="px-3 py-2 text-right">Subtotal</th>
                   </tr>
@@ -599,7 +604,9 @@ export default function PreorderPage() {
                   {strukTarget.items.map((it) => (
                     <tr key={it.id}>
                       <td className="px-3 py-2">{it.merchandise?.nama ?? 'Merchandise'}</td>
-                      <td className="px-3 py-2">{it.varian?.nama || it.ukuran || '-'}</td>
+                      <td className="px-3 py-2">
+                        {[it.warna, it.lengan, it.varian?.nama || it.ukuran].filter(Boolean).join(' · ') || '-'}
+                      </td>
                       <td className="px-3 py-2 text-center">{it.qty}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{formatRupiah(Number(it.subtotal))}</td>
                     </tr>

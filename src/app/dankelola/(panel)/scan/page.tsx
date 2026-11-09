@@ -64,6 +64,8 @@ type PoResult = {
     items: Array<{
       id: string
       ukuran: string | null
+      warna: string | null
+      lengan: string | null
       qty: number
       harga_satuan: number
       subtotal: number
@@ -370,7 +372,7 @@ export default function ScanPage() {
                       <thead className="bg-slate-50 text-left text-xs text-slate-500">
                         <tr>
                           <th className="px-3 py-2">Item</th>
-                          <th className="px-3 py-2">Ukuran</th>
+                          <th className="px-3 py-2">Varian</th>
                           <th className="px-3 py-2 text-center">Qty</th>
                           <th className="px-3 py-2 text-right">Subtotal</th>
                         </tr>
@@ -379,7 +381,9 @@ export default function ScanPage() {
                         {po.items.map((item) => (
                           <tr key={item.id}>
                             <td className="px-3 py-2 text-slate-900">{item.merchandise?.nama || 'Merchandise'}</td>
-                            <td className="px-3 py-2 text-slate-600">{item.varian?.nama || item.ukuran || '-'}</td>
+                            <td className="px-3 py-2 text-slate-600">
+                              {[item.warna, item.lengan, item.varian?.nama || item.ukuran].filter(Boolean).join(' · ') || '-'}
+                            </td>
                             <td className="px-3 py-2 text-center text-slate-600">{item.qty}</td>
                             <td className="px-3 py-2 text-right font-medium tabular-nums text-slate-900">
                               {formatRupiah(Number(item.subtotal))}

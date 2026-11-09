@@ -28,7 +28,7 @@ function toIso(value: string) {
 
 export default function ProdukForm({ id }: { id?: string }) {
   const router = useRouter()
-  const [form, setForm] = useState({ nama: '', deskripsi: '', warna: '', harga: 0, harga_po: 0, po_mulai: '', po_selesai: '', po_unlimited: true, po_stok: 0, stok: 0, stok_unlimited: false, gambar_url: '', aktif: true, diskon: [] as DiskonRule[], varian_ids: [] as string[] })
+  const [form, setForm] = useState({ nama: '', deskripsi: '', warna: '', harga: 0, harga_po: 0, harga_po_panjang: 0, harga_po_umum: 0, harga_po_umum_panjang: 0, harga_hari_h_panjang: 0, po_mulai: '', po_selesai: '', po_unlimited: true, po_stok: 0, stok: 0, stok_unlimited: false, gambar_url: '', aktif: true, diskon: [] as DiskonRule[], varian_ids: [] as string[] })
   const [varianList, setVarianList] = useState<Varian[]>([])
   const [foto, setFoto] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
@@ -53,6 +53,10 @@ export default function ProdukForm({ id }: { id?: string }) {
           warna: found.warna ?? '',
           harga: Number(found.harga),
           harga_po: Number(found.harga_po ?? 0),
+          harga_po_panjang: Number(found.harga_po_panjang ?? 0),
+          harga_po_umum: Number(found.harga_po_umum ?? 0),
+          harga_po_umum_panjang: Number(found.harga_po_umum_panjang ?? 0),
+          harga_hari_h_panjang: Number(found.harga_hari_h_panjang ?? 0),
           po_mulai: toLocalInput(found.po_mulai),
           po_selesai: toLocalInput(found.po_selesai),
           po_unlimited: found.po_unlimited ?? true,
@@ -143,8 +147,8 @@ export default function ProdukForm({ id }: { id?: string }) {
         toast.error('Tanggal mulai dan selesai pre-order wajib diisi')
         return
       }
-      if (!form.harga_po) {
-        toast.error('Harga pre-order wajib diisi jika jadwal diatur')
+      if (!form.harga_po && !form.harga_po_panjang && !form.harga_po_umum && !form.harga_po_umum_panjang) {
+        toast.error('Isi minimal satu harga pre-order jika jadwal diatur')
         return
       }
       if (new Date(form.po_selesai).getTime() <= new Date(form.po_mulai).getTime()) {
@@ -192,6 +196,10 @@ export default function ProdukForm({ id }: { id?: string }) {
         warna: form.warna.trim() || null,
         harga: Number(form.harga) || 0,
         harga_po: Number(form.harga_po) || null,
+        harga_po_panjang: Number(form.harga_po_panjang) || 0,
+        harga_po_umum: Number(form.harga_po_umum) || 0,
+        harga_po_umum_panjang: Number(form.harga_po_umum_panjang) || 0,
+        harga_hari_h_panjang: Number(form.harga_hari_h_panjang) || 0,
         po_mulai: form.po_mulai ? toIso(form.po_mulai) : null,
         po_selesai: form.po_selesai ? toIso(form.po_selesai) : null,
         po_unlimited: form.po_unlimited,
@@ -270,7 +278,7 @@ export default function ProdukForm({ id }: { id?: string }) {
           />
         </div>
         <div>
-          <label htmlFor="warna" className="mb-1 block text-xs font-medium text-slate-500">Warna (opsional)</label>
+          <label htmlFor="warna" className="mb-1 block text-xs font-medium text-slate-500">Pilihan Warna (opsional)</label>
           <input
             id="warna"
             className={input}
@@ -278,6 +286,7 @@ export default function ProdukForm({ id }: { id?: string }) {
             value={form.warna}
             onChange={(e) => setForm({ ...form, warna: e.target.value })}
           />
+          <p className="mt-1 text-xs text-slate-400">Pisahkan dengan koma. Warna tidak mengubah harga.</p>
         </div>
         <div>
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -338,31 +347,98 @@ export default function ProdukForm({ id }: { id?: string }) {
             onChange={(e) => setForm({ ...form, deskripsi: e.target.value })}
           />
         </div>
+        <div>
+          <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
+            <label className="block text-xs font-medium text-slate-500">Harga (Rp)</label>
+            <p className="text-xs text-slate-400">Isi kolom Panjang jika produk tersedia lengan panjang. Kosongkan jika tidak dijual.</p>
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <table className="w-full min-w-[520px] text-sm">
+              <thead className="bg-slate-50 text-left text-xs text-slate-500">
+                <tr>
+                  <th className="px-3 py-2">Jenis</th>
+                  <th className="px-3 py-2">Pendek / Default</th>
+                  <th className="px-3 py-2">Panjang</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                <tr>
+                  <td className="px-3 py-2 font-medium text-slate-700">PO Pengurus</td>
+                  <td className="px-3 py-2">
+                    <input
+                      type="number"
+                      min={0}
+                      className={input}
+                      placeholder="Kosongkan jika tidak ada PO"
+                      value={form.harga_po || ''}
+                      onChange={(e) => setForm({ ...form, harga_po: Number(e.target.value) })}
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <input
+                      type="number"
+                      min={0}
+                      className={input}
+                      placeholder="Harga lengan panjang"
+                      value={form.harga_po_panjang || ''}
+                      onChange={(e) => setForm({ ...form, harga_po_panjang: Number(e.target.value) })}
+                    />
+                  </td>
+                </tr>
+                <tr>
+                  <td className="px-3 py-2 font-medium text-slate-700">PO Umum</td>
+                  <td className="px-3 py-2">
+                    <input
+                      type="number"
+                      min={0}
+                      className={input}
+                      placeholder="Kosongkan = ikut PO Pengurus"
+                      value={form.harga_po_umum || ''}
+                      onChange={(e) => setForm({ ...form, harga_po_umum: Number(e.target.value) })}
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <input
+                      type="number"
+                      min={0}
+                      className={input}
+                      placeholder="Kosongkan = ikut PO Pengurus"
+                      value={form.harga_po_umum_panjang || ''}
+                      onChange={(e) => setForm({ ...form, harga_po_umum_panjang: Number(e.target.value) })}
+                    />
+                  </td>
+                </tr>
+                <tr>
+                  <td className="px-3 py-2 font-medium text-slate-700">Hari H</td>
+                  <td className="px-3 py-2">
+                    <input
+                      type="number"
+                      min={0}
+                      className={input}
+                      placeholder="Kosongkan jika hanya pre-order"
+                      value={form.harga || ''}
+                      onChange={(e) => setForm({ ...form, harga: Number(e.target.value) })}
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <input
+                      type="number"
+                      min={0}
+                      className={input}
+                      placeholder="Harga lengan panjang"
+                      value={form.harga_hari_h_panjang || ''}
+                      onChange={(e) => setForm({ ...form, harga_hari_h_panjang: Number(e.target.value) })}
+                    />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-1 text-xs text-slate-400">
+            PO Umum kosong = memakai harga PO Pengurus. Modal tetap diatur di menu Kelola Modal.
+          </p>
+        </div>
         <div className="grid gap-4 sm:grid-cols-3">
-          <div>
-            <label htmlFor="harga" className="mb-1 block text-xs font-medium text-slate-500">Harga Hari H (Rp) — opsional</label>
-            <input
-              id="harga"
-              type="number"
-              min={0}
-              className={input}
-              placeholder="Kosongkan jika hanya pre-order"
-              value={form.harga || ''}
-              onChange={(e) => setForm({ ...form, harga: Number(e.target.value) })}
-            />
-          </div>
-          <div>
-            <label htmlFor="harga_po" className="mb-1 block text-xs font-medium text-slate-500">Harga Pre-Order (Rp)</label>
-            <input
-              id="harga_po"
-              type="number"
-              min={0}
-              className={input}
-              placeholder="Kosongkan jika tidak ada PO"
-              value={form.harga_po || ''}
-              onChange={(e) => setForm({ ...form, harga_po: Number(e.target.value) })}
-            />
-          </div>
           <div>
             <label htmlFor="stok" className="mb-1 block text-xs font-medium text-slate-500">Stok Hari H</label>
             <input

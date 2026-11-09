@@ -3,12 +3,15 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { hitungTerjual } from '@/lib/merch-po'
 import { signRef } from '@/lib/link-token'
 import { hitungDiskon } from '@/lib/merch-diskon'
+import { hargaUntuk, opsiLengan, opsiWarna, type Lengan } from '@/lib/merch-harga'
 import { turnstileFailure, verifyTurnstile } from '@/lib/turnstile'
 
 type ItemBody = {
   merchandise_id: string
   varian_id?: string
   qty?: number
+  warna?: string
+  lengan?: string
 }
 type Varian = { id: string; nama: string }
 
@@ -45,7 +48,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Nama dan kontak wajib diisi' }, { status: 400 })
     }
 
-    const validatedItems: Array<{ produk: { id: string; nama: string; harga_po: number; gambar_url: string | null; po_unlimited: boolean; po_stok: number; diskon?: unknown; varian_ids?: string[] | null }; qty: number; varian?: Varian | null; subtotal: number; diskon: number }> = []
+    const validatedItems: Array<{
+      produk: { id: string; nama: string; gambar_url: string | null }
+      qty: number
+      varian?: Varian | null
+      warna: string | null
+      lengan: Lengan
+      harga: number
+      subtotal: number
+      diskon: number
+    }> = []
     let total = 0
 
     for (const item of items) {
@@ -66,10 +78,6 @@ export async function POST(request: Request) {
       if (!produk) {
         return NextResponse.json({ error: 'Produk tidak tersedia' }, { status: 400 })
       }
-      if (!produk.harga_po) {
-        return NextResponse.json({ error: 'Pre-order produk ini belum dibuka' }, { status: 400 })
-      }
-
       const now = Date.now()
       const mulai = new Date(produk.po_mulai).getTime()
       const selesai = new Date(produk.po_selesai).getTime()
@@ -94,6 +102,29 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: `Ukuran tidak tersedia untuk ${produk.nama}` }, { status: 400 })
       }
 
+      const lenganTersedia = opsiLengan(produk, 'po', tipe)
+      if (lenganTersedia.length === 0) {
+        return NextResponse.json({ error: 'Pre-order produk ini belum dibuka' }, { status: 400 })
+      }
+      const lenganInput: Lengan = item.lengan === 'Panjang'
+        ? 'Panjang'
+        : item.lengan === 'Pendek'
+          ? 'Pendek'
+          : lenganTersedia[0]
+      if (!lenganTersedia.includes(lenganInput)) {
+        return NextResponse.json({ error: `Lengan tidak tersedia untuk ${produk.nama}` }, { status: 400 })
+      }
+
+      const warnaTersedia = opsiWarna(produk.warna)
+      const warnaInput = String(item.warna ?? '').trim()
+      if (warnaTersedia.length > 0 && !warnaInput) {
+        return NextResponse.json({ error: `Pilih warna untuk ${produk.nama}` }, { status: 400 })
+      }
+      if (warnaTersedia.length > 0 && !warnaTersedia.includes(warnaInput)) {
+        return NextResponse.json({ error: `Warna tidak tersedia untuk ${produk.nama}` }, { status: 400 })
+      }
+      const warna = warnaTersedia.length > 0 ? warnaInput : null
+
       let varian: { id: string; nama: string } | null = null
       if (varianId) {
         const { data } = await supabaseAdmin
@@ -108,10 +139,22 @@ export async function POST(request: Request) {
         varian = data
       }
 
-      const harga = Number(produk.harga_po)
+      const harga = hargaUntuk(produk, tipe, lenganInput, 'po')
+      if (harga <= 0) {
+        return NextResponse.json({ error: 'Pre-order produk ini belum dibuka' }, { status: 400 })
+      }
       const hitung = hitungDiskon(qty, harga, produk.diskon, 'po')
       total += hitung.total
-      validatedItems.push({ produk, qty, varian, subtotal: hitung.total, diskon: hitung.diskon })
+      validatedItems.push({
+        produk,
+        qty,
+        varian,
+        warna,
+        lengan: lenganInput,
+        harga,
+        subtotal: hitung.total,
+        diskon: hitung.diskon,
+      })
     }
 
     const { data: existing } = await supabaseAdmin.from('merch_po').select('no_po')
@@ -152,8 +195,10 @@ export async function POST(request: Request) {
       merchandise_id: v.produk.id,
       varian_id: v.varian?.id ?? null,
       ukuran: v.varian?.nama ?? null,
+      warna: v.warna,
+      lengan: v.lengan,
       qty: v.qty,
-      harga_satuan: Number(v.produk.harga_po),
+      harga_satuan: v.harga,
       diskon: v.diskon,
       subtotal: v.subtotal,
     }))
@@ -172,6 +217,8 @@ export async function POST(request: Request) {
         produk: { nama: v.produk.nama, gambar_url: v.produk.gambar_url },
         qty: v.qty,
         varian: v.varian ? { nama: v.varian.nama } : null,
+        warna: v.warna,
+        lengan: v.lengan,
       })),
       t: signRef('po', po.no_po),
     }, { status: 201 })

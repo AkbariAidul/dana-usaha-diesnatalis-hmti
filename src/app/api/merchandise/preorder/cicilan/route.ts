@@ -19,7 +19,7 @@ type PoRow = {
 
 async function detailItems(poId: string) {
   const [{ data: poItems }, { data: merchandise }, { data: varian }] = await Promise.all([
-    supabaseAdmin.from('merch_po_item').select('merchandise_id,varian_id,qty,harga_satuan,subtotal').eq('po_id', poId),
+    supabaseAdmin.from('merch_po_item').select('merchandise_id,varian_id,warna,lengan,qty,harga_satuan,subtotal').eq('po_id', poId),
     supabaseAdmin.from('merchandise').select('id,nama'),
     supabaseAdmin.from('merch_varian').select('id,nama'),
   ])
@@ -28,6 +28,8 @@ async function detailItems(poId: string) {
   return (poItems ?? []).map((item) => ({
     nama_produk: merchMap.get(item.merchandise_id ?? '') ?? 'Item',
     ukuran: item.varian_id ? varianMap.get(item.varian_id) ?? null : null,
+    warna: item.warna ?? null,
+    lengan: item.lengan ?? null,
     qty: Number(item.qty),
     harga_satuan: Number(item.harga_satuan),
     subtotal: Number(item.subtotal),

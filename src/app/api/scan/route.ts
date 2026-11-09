@@ -108,6 +108,8 @@ export async function POST(request: Request) {
             items: (items ?? []).map((i) => ({
               nama_produk: merchandiseMap.get(i.merchandise_id ?? '')?.nama ?? 'Item',
               ukuran: i.varian_id ? varianMap.get(i.varian_id) ?? null : null,
+              warna: i.warna ?? null,
+              lengan: i.lengan ?? null,
               qty: Number(i.qty),
               harga_satuan: Number(i.harga_satuan),
               subtotal: Number(i.subtotal),

@@ -16,6 +16,8 @@ type KasirTransaksi = {
   merchandise_id: string | null
   tanggal: string
   produk: string
+  warna: string | null
+  lengan: string | null
   qty: number
   total: number
   diskon: number
@@ -118,7 +120,12 @@ export default function KasirPage() {
               return (
                 <tr key={t.id} className="hover:bg-slate-50">
                   <td className="px-3 py-2 text-slate-500">{new Date(t.tanggal).toLocaleString('id-ID')}</td>
-                  <td className="px-3 py-2 font-medium">{t.produk}</td>
+                  <td className="px-3 py-2 font-medium">
+                    {t.produk}
+                    {(t.warna || t.lengan) && (
+                      <div className="text-[11px] text-slate-500">{[t.warna, t.lengan].filter(Boolean).join(' · ')}</div>
+                    )}
+                  </td>
                   <td className="px-3 py-2">{t.qty}</td>
                   <td className="px-3 py-2 text-right font-medium tabular-nums">
                     {formatRupiah(t.total)}

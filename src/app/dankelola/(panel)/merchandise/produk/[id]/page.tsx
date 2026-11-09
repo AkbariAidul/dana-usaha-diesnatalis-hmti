@@ -109,10 +109,14 @@ export default function ProdukDetailPage() {
           <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <h2 className="font-semibold text-slate-900">Harga & Stok</h2>
             <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
-              <div><dt className="text-xs text-slate-500">Harga Hari H</dt><dd className="font-semibold text-primary-600">{Number(produk.harga) > 0 ? formatRupiah(Number(produk.harga)) : 'Tidak dijual Hari H'}</dd></div>
+              <div><dt className="text-xs text-slate-500">Hari H · Pendek</dt><dd className="font-semibold text-primary-600">{Number(produk.harga) > 0 ? formatRupiah(Number(produk.harga)) : '-'}</dd></div>
+              <div><dt className="text-xs text-slate-500">Hari H · Panjang</dt><dd className="font-semibold text-primary-600">{Number(produk.harga_hari_h_panjang) > 0 ? formatRupiah(Number(produk.harga_hari_h_panjang)) : '-'}</dd></div>
+              <div><dt className="text-xs text-slate-500">PO Pengurus · Pendek</dt><dd className="font-semibold text-primary-600">{Number(produk.harga_po) > 0 ? formatRupiah(Number(produk.harga_po)) : '-'}</dd></div>
+              <div><dt className="text-xs text-slate-500">PO Pengurus · Panjang</dt><dd className="font-semibold text-primary-600">{Number(produk.harga_po_panjang) > 0 ? formatRupiah(Number(produk.harga_po_panjang)) : '-'}</dd></div>
+              <div><dt className="text-xs text-slate-500">PO Umum · Pendek</dt><dd className="font-semibold text-primary-600">{Number(produk.harga_po_umum) > 0 ? formatRupiah(Number(produk.harga_po_umum)) : 'Ikut PO Pengurus'}</dd></div>
+              <div><dt className="text-xs text-slate-500">PO Umum · Panjang</dt><dd className="font-semibold text-primary-600">{Number(produk.harga_po_umum_panjang) > 0 ? formatRupiah(Number(produk.harga_po_umum_panjang)) : 'Ikut PO Pengurus'}</dd></div>
               <div><dt className="text-xs text-slate-500">Stok Hari H</dt><dd className="font-medium text-slate-900">{produk.stok_unlimited ? 'Tak terbatas' : produk.stok}</dd></div>
-              <div><dt className="text-xs text-slate-500">Harga Pre-Order</dt><dd className="font-semibold text-primary-600">{produk.harga_po ? formatRupiah(Number(produk.harga_po)) : '-'}</dd></div>
-              <div><dt className="text-xs text-slate-500">Slot Pre-Order</dt><dd className="font-medium text-slate-900">{produk.harga_po ? (produk.po_unlimited ? 'Tak terbatas' : produk.po_stok) : '-'}</dd></div>
+              <div><dt className="text-xs text-slate-500">Slot Pre-Order</dt><dd className="font-medium text-slate-900">{(produk.harga_po || produk.harga_po_panjang || produk.harga_po_umum || produk.harga_po_umum_panjang) ? (produk.po_unlimited ? 'Tak terbatas' : produk.po_stok) : '-'}</dd></div>
               <div><dt className="text-xs text-slate-500">Mulai Pre-Order</dt><dd className="text-slate-700">{formatJadwal(produk.po_mulai)}</dd></div>
               <div><dt className="text-xs text-slate-500">Selesai Pre-Order</dt><dd className="text-slate-700">{formatJadwal(produk.po_selesai)}</dd></div>
             </dl>

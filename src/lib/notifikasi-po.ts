@@ -5,6 +5,8 @@ import { baseUrl, kirimWhatsApp } from './notifikasi-tiket'
 type ItemDetail = {
   nama_produk: string
   ukuran: string | null
+  warna?: string | null
+  lengan?: string | null
   qty: number
   harga_satuan: number
   subtotal: number
@@ -34,8 +36,9 @@ export function linkPo(request: Request, kode: string) {
 function detailItem(items?: ItemDetail[]) {
   if (!items || items.length === 0) return ''
   return items.map((item) => {
-    const ukuran = item.ukuran ? ` (${item.ukuran})` : ''
-    return `  - ${item.nama_produk}${ukuran} x${item.qty} @ ${formatRupiah(item.harga_satuan)} = ${formatRupiah(item.subtotal)}`
+    const varian = [item.warna, item.lengan, item.ukuran].filter(Boolean).join(' · ')
+    const label = varian ? ` (${varian})` : ''
+    return `  - ${item.nama_produk}${label} x${item.qty} @ ${formatRupiah(item.harga_satuan)} = ${formatRupiah(item.subtotal)}`
   }).join('\n')
 }
 
