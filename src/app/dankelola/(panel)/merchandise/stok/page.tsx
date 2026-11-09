@@ -307,40 +307,39 @@ export default function StokPage() {
       summary: [
         { label: 'PO Lunas', value: String(totalPo) },
         { label: 'Total Pcs', value: String(totalQtyPo) },
-        { label: 'Omset', value: formatRupiah(totalOmset) },
-        { label: 'Biaya Cetak', value: formatRupiah(totalBiayaCetak) },
-        { label: 'Keuntungan', value: formatRupiah(totalKeuntungan) },
       ],
       sheets: [
         {
-          name: 'Detail Per Varian',
-          headers: ['Produk', 'Warna', 'Lengan', 'Ukuran', 'Qty', 'Jumlah PO', 'Omset', 'Modal'],
-          currencyCols: [6, 7],
+          name: 'Detail per Varian',
+          headers: ['Produk', 'Warna', 'Lengan', 'Ukuran', 'Qty'],
           rows: rekap.map((row) => [
             row.produk,
             row.warna,
             row.lengan,
             row.ukuran,
             row.qty,
-            row.jumlahPo,
-            Number(row.omset),
-            Number(row.modal),
           ]),
         },
         {
-          name: 'Ringkasan Per Produk',
-          headers: ['Produk', 'Total Qty', 'Per Ukuran', 'Per Warna', 'Per Lengan', 'Omset', 'Modal', 'Untung'],
-          currencyCols: [5, 6, 7],
-          rows: perProduk.map((p) => [
-            p.produk,
-            p.qty,
-            [...p.ukuran.entries()].map(([k, v]) => `${k}: ${v}`).join(', ') || '-',
-            [...p.warna.entries()].map(([k, v]) => `${k}: ${v}`).join(', ') || '-',
-            [...p.lengan.entries()].map(([k, v]) => `${k}: ${v}`).join(', ') || '-',
-            Number(p.omset),
-            Number(p.modal),
-            Number(p.untung),
-          ]),
+          name: 'Ringkasan per Ukuran',
+          headers: ['Produk', 'Ukuran', 'Qty'],
+          rows: perProduk.flatMap((p) =>
+            [...p.ukuran.entries()].map(([ukuran, qty]) => [p.produk, ukuran, qty]),
+          ),
+        },
+        {
+          name: 'Ringkasan per Warna',
+          headers: ['Produk', 'Warna', 'Qty'],
+          rows: perProduk.flatMap((p) =>
+            [...p.warna.entries()].map(([warna, qty]) => [p.produk, warna, qty]),
+          ),
+        },
+        {
+          name: 'Ringkasan per Lengan',
+          headers: ['Produk', 'Lengan', 'Qty'],
+          rows: perProduk.flatMap((p) =>
+            [...p.lengan.entries()].map(([lengan, qty]) => [p.produk, lengan, qty]),
+          ),
         },
       ],
     }
