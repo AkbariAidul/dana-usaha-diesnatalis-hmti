@@ -119,19 +119,25 @@ export default async function Home() {
         </Link>
       )}
 
-      <div className="pointer-events-none fixed bottom-4 right-4 z-40 flex items-center gap-2">
+      <div className="flex items-center justify-center gap-2 px-4 py-6 lg:fixed lg:bottom-4 lg:right-4 lg:z-40 lg:justify-start lg:p-0">
         <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-slate-400">
           Powered by
         </p>
-        <div className="relative h-6 w-14 shrink-0 opacity-70">
+        <a
+          href="https://shiftdigitalid.vercel.app/"
+          target="_blank"
+          rel="noreferrer"
+          aria-label="Shift Digital"
+          className="relative h-6 w-14 shrink-0 opacity-70 transition-opacity hover:opacity-100"
+        >
           <Image
             src="/shift-hd.webp"
-            alt="Shift"
+            alt="Shift Digital"
             fill
             sizes="56px"
             className="object-contain object-right"
           />
-        </div>
+        </a>
       </div>
     </div>
   )
