@@ -183,15 +183,7 @@ export default function PoMerchandisePage() {
     }
     const warna = opsiWarna(produk.warna)[0]
     const lengan = lenganTersedia[0]
-    setKeranjang((prev) => {
-      const found = prev.find(
-        (i) => i.produk.id === produk.id && i.warna === warna && i.lengan === lengan && !i.varian,
-      )
-      if (found) {
-        return prev.map((i) => (i === found ? { ...i, qty: Math.min(20, i.qty + 1) } : i))
-      }
-      return [...prev, { produk, qty: 1, warna, lengan }]
-    })
+    setKeranjang((prev) => [...prev, { produk, qty: 1, warna, lengan }])
     toast.success('Ditambahkan ke keranjang')
   }
 
