@@ -2,9 +2,6 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getSessionUser } from '@/lib/session-server'
 
-/**
- * Mengembalikan daftar path file yang aktif (masih direferensikan) dari semua tabel.
- */
 async function getActivePaths(): Promise<Set<string>> {
   const active = new Set<string>()
   const addUrls = async (table: string, col: string) => {
@@ -16,13 +13,9 @@ async function getActivePaths(): Promise<Set<string>> {
       if (p) active.add(p)
     }
   }
-  // Pendaftaran tenant publik
   await addUrls('pendaftaran_tenant_pub', 'bukti_url')
-  // Pembayaran tenant
   await addUrls('pembayaran', 'bukti_url')
-  // Transaksi kasir
   await addUrls('kasir_transaksi', 'bukti_url')
-  // Data tenant (jika ada)
   await addUrls('tenants', 'bukti_url')
   return active
 }
@@ -37,6 +30,41 @@ function extractPath(url: string): string | null {
   }
 }
 
+/** List semua file (recursive) di dalam bucket dengan prefix tertentu */
+async function listAllFiles(
+  bucket: string,
+  prefix = '',
+  depth = 0,
+): Promise<Array<{ path: string; name: string; size?: number }>> {
+  if (depth > 10) return []
+  const results: Array<{ path: string; name: string; size?: number }> = []
+  let offset = 0
+  const limit = 500
+  while (true) {
+    const { data, error } = await supabaseAdmin.storage.from(bucket).list(prefix || undefined, {
+      limit,
+      offset,
+      sortBy: { column: 'name', order: 'asc' },
+    })
+    if (error) throw error
+    if (!data || data.length === 0) break
+    for (const item of data) {
+      if (!item.id) {
+        // folder — recurse
+        const childPrefix = prefix ? `${prefix}/${item.name}` : item.name
+        const nested = await listAllFiles(bucket, childPrefix, depth + 1)
+        results.push(...nested)
+      } else {
+        const path = prefix ? `${prefix}/${item.name}` : item.name
+        results.push({ path, name: item.name, size: Number(item.metadata?.size ?? 0) })
+      }
+    }
+    if (data.length < limit) break
+    offset += limit
+  }
+  return results
+}
+
 export async function POST(request: Request) {
   try {
     const session = await getSessionUser()
@@ -44,72 +72,54 @@ export async function POST(request: Request) {
 
     const body = await request.json()
     const bucket = String(body.bucket ?? 'bukti')
-    const prefix = String(body.prefix ?? '')
 
-    // ── Step 1: List semua file di bucket ──────────────────────────────
-    const allFiles: Array<{ name: string }> = []
-    let offset = 0
-    while (true) {
-      const limit = 500
-      const { data: page, error: listErr } = await supabaseAdmin.storage
-        .from(bucket)
-        .list(prefix || undefined, { limit, offset })
-      if (listErr) throw listErr
-      if (!page || page.length === 0) break
-      allFiles.push(...page)
-      if (page.length < limit) break
-      offset += limit
-    }
-
+    // ── Langkah 1: Ambil semua file (termasuk subfolder) ───────────────
+    const allFiles = await listAllFiles(bucket)
     if (allFiles.length === 0) {
       return NextResponse.json({ removed: 0, failed: 0, totalScanned: 0, note: 'Bucket kosong' })
     }
 
-    // ── Step 2: Kumpulkan path yang masih aktif ────────────────────────
+    // ── Langkah 2: Ambil path aktif dari database ──────────────────────
     const activePaths = await getActivePaths()
 
-    // ── Step 3: Hitung mana yang bisa dihapus ─────────────────────────
-    type FileItem = { path: string }
-    const candidates: FileItem[] = []
-    for (const f of allFiles) {
-      const fullPath = prefix ? `${prefix}${f.name}` : f.name
-      if (activePaths.has(fullPath)) continue
-      candidates.push({ path: fullPath })
-    }
+    // ── Langkah 3: Cari file sampah ────────────────────────────────────
+    const orphans = allFiles.filter((f) => !activePaths.has(f.path))
 
-    // ── Step 4: Hapus sekaligus (batch remove) ────────────────────────
-    if (candidates.length === 0) {
+    if (orphans.length === 0) {
       return NextResponse.json({
-        removed: 0,
-        failed: 0,
-        totalScanned: allFiles.length,
-        orphaned: 0,
+        removed: 0, failed: 0, totalScanned: allFiles.length,
+        orphaned: 0, activePaths: activePaths.size,
         note: 'Tidak ada file sampah',
       })
     }
 
-    const pathsOnly = candidates.map((c) => c.path)
-    const { error: delErr } = await supabaseAdmin.storage.from(bucket).remove(pathsOnly)
+    console.log(`[cleanup] bucket=${bucket}, scanned=${allFiles.length}, orphans=${orphans.length}, active=${activePaths.size}`)
 
-    if (delErr) {
-      console.error('[cleanup] Gagal hapus batch:', delErr.message, 'path sample:', pathsOnly[0])
-      return NextResponse.json({
-        removed: 0,
-        failed: candidates.length,
-        totalScanned: allFiles.length,
-        orphaned: candidates.length,
-        error: delErr.message,
-      }, { status: 500 })
+    // ── Langkah 4: Hapus satu-satu (lebih reliable dari batch) ────────
+    let removed = 0
+    let failed = 0
+    const failedPaths: string[] = []
+    for (const f of orphans) {
+      const { error } = await supabaseAdmin.storage.from(bucket).remove([f.path])
+      if (error) {
+        console.error('[cleanup] Gagal hapus:', f.path, error.message)
+        failed++
+        failedPaths.push(`${f.path} (${error.message})`)
+      } else {
+        removed++
+      }
     }
 
     return NextResponse.json({
-      removed: candidates.length,
-      failed: 0,
+      removed,
+      failed,
       totalScanned: allFiles.length,
-      orphaned: candidates.length,
-      active: activePaths.size,
+      orphaned: orphans.length,
+      activePaths: activePaths.size,
+      failedPaths: failedPaths.slice(0, 10),
     })
   } catch (err: unknown) {
+    console.error('[cleanup] Error:', err)
     return NextResponse.json({ error: String(err) }, { status: 500 })
   }
 }
