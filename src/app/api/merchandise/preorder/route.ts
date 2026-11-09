@@ -202,3 +202,23 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: String(err) }, { status: 500 })
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const { ids }: { ids: string[] } = await request.json()
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return NextResponse.json({ error: 'ID wajib diisi' }, { status: 400 })
+    }
+    // Hapus item terlebih dahulu (child record)
+    for (const id of ids) {
+      await supabaseAdmin.from('merch_po_item').delete().eq('po_id', id)
+      await supabaseAdmin.from('merch_po_cicilan').delete().eq('po_id', id)
+    }
+    // Hapus PO utama
+    const { error } = await supabaseAdmin.from('merch_po').delete().in('id', ids)
+    if (error) throw error
+    return NextResponse.json({ success: true, deleted: ids.length })
+  } catch (err: unknown) {
+    return NextResponse.json({ error: String(err) }, { status: 500 })
+  }
+}

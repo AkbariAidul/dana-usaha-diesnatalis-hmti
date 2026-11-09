@@ -111,7 +111,7 @@ export default function PenjualanPage() {
   async function hapusTerpilih() {
     const chosen = pesanan.filter((p) => selectedPenjualan.has(p.id))
     if (chosen.length === 0) return
-    const ok = await confirm({ title: `Hapus ${chosen.length} pesanan terpilih?`, description: 'Pesanan akan ditandai batal dan tiket terkait dibatalkan.', confirmText: 'Hapus' })
+    const ok = await confirm({ title: `Hapus ${chosen.length} pesanan terpilih?`, description: 'Data akan dihapus permanen dari database. Tiket yang sudah diterbitkan juga akan dihapus.', confirmText: 'Hapus' })
     if (!ok) return
     try {
       await sendJSON('/api/ticket/penjualan', 'DELETE', { ids: [...selectedPenjualan] })

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getTicketPenjualan } from '@/lib/queries'
-import { createAuditLog } from '@/lib/queries'
 
 export async function GET() {
   try {
@@ -23,11 +22,10 @@ export async function DELETE(request: Request) {
       .from('pesanan_tiket')
       .select('id,tiket_tipe_id,jumlah,status')
       .in('id', ids)
-    const lunasOrders = (orders ?? []).filter((o) => o.status === 'lunas')
 
-    // Hapus tiket yang sudah dikeluarkan
-    for (const order of lunasOrders) {
-      if (order.tiket_tipe_id && order.jumlah > 0) {
+    // Kembalikan kuota & hapus tiket yang sudah diterbitkan (untuk pesanan lunas)
+    for (const order of orders ?? []) {
+      if (order.status === 'lunas' && order.tiket_tipe_id && order.jumlah > 0) {
         await supabaseAdmin.from('tiket_issued').delete().eq('pesanan_id', order.id)
         const { data: tipe } = await supabaseAdmin.from('tiket_tipe').select('kuota,terjual').eq('id', order.tiket_tipe_id).maybeSingle()
         if (tipe) {
@@ -37,16 +35,9 @@ export async function DELETE(request: Request) {
       }
     }
 
-    // Update status jadi batal (bukan hard delete agar audit log tetap ada)
-    const { error } = await supabaseAdmin
-      .from('pesanan_tiket')
-      .update({ status: 'batal', updated_at: new Date().toISOString() })
-      .in('id', ids)
+    // Hard delete pesanan
+    const { error } = await supabaseAdmin.from('pesanan_tiket').delete().in('id', ids)
     if (error) throw error
-
-    for (const order of orders ?? []) {
-      await createAuditLog({ aksi: 'DELETE_PESANAN_TIKET', target_type: 'pesanan_tiket', target_id: order.id, data_lama: order })
-    }
     return NextResponse.json({ success: true, deleted: ids.length })
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })

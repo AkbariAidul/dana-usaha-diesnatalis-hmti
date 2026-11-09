@@ -215,12 +215,13 @@ export default function PreorderPage() {
   async function hapusTerpilih() {
     const chosen = items.filter((i) => selectedPO.has(i.id))
     if (chosen.length === 0) return
-    const ok = await confirm({ title: `Hapus ${chosen.length} PO terpilih?`, description: 'Data akan dihapus permanen.', confirmText: 'Hapus' })
+    const ok = await confirm({ title: `Hapus ${chosen.length} PO terpilih?`, description: 'Data akan dihapus permanen dari database.', confirmText: 'Hapus' })
     if (!ok) return
     try {
-      await Promise.all(chosen.map((i) => updateStatus(i.id, 'batal')))
+      await sendJSON('/api/merchandise/preorder', 'DELETE', { ids: [...selectedPO] })
       toast.success(`${chosen.length} PO dihapus`)
       setSelectedPO(new Set())
+      await load()
     } catch (e) { toast.error(String(e)) }
   }
 

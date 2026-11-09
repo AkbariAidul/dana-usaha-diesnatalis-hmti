@@ -133,12 +133,14 @@ export default function TenantsPage() {
     setSelectedKeys(isAll ? new Set() : new Set(paginated.map((r) => r.key)))
   }
   async function hapusTenantTerpilih() {
-    const chosen = paginated.filter((r) => selectedKeys.has(r.key) && r.kind === 'tenant')
+    const chosen = paginated.filter((r) => selectedKeys.has(r.key) && r.kind === 'tenant' && r.detailId)
     if (chosen.length === 0) { setSelectedKeys(new Set()); return }
     const ok = await confirm({ title: `Hapus ${chosen.length} tenant terpilih?`, description: 'Semua data terkait akan dihapus permanen.', confirmText: 'Hapus' })
     if (!ok) return
     try {
-      await Promise.all(chosen.map((r) => sendJSON(`/api/tenants/${r.detailId}`, 'DELETE')))
+      for (const r of chosen) {
+        await sendJSON(`/api/tenants/${r.detailId}`, 'DELETE')
+      }
       toast.success(`${chosen.length} tenant dihapus`)
       setSelectedKeys(new Set())
       await load()
