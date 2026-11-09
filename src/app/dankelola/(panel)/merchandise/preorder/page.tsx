@@ -3,7 +3,7 @@
 import { DataError } from '@/components/data-error'
 
 import { useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
 import { useConfirm } from '@/components/confirm-dialog'
@@ -208,8 +208,21 @@ export default function PreorderPage() {
   }
 
   function toggleSelectPO(id: string) { setSelectedPO((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n }) }
-  function toggleSelectAllPO() {     const isAll = filtered.length > 0 && filtered.every((item) => selectedPO.has(item.id))
-    setSelectedPO(isAll ? new Set() : new Set(filtered.map((i) => i.id))) }
+  function toggleSelectAllPO() {
+    const isAll = filtered.length > 0 && filtered.every((item) => selectedPO.has(item.id))
+    setSelectedPO(isAll ? new Set() : new Set(filtered.map((i) => i.id)))
+  }
+  async function batalkanTerpilih() {
+    const chosen = items.filter((i) => selectedPO.has(i.id))
+    if (chosen.length === 0) return
+    const ok = await confirm({ title: `Batalkan ${chosen.length} PO terpilih?`, description: 'Status akan diubah menjadi batal.', confirmText: 'Batalkan' })
+    if (!ok) return
+    try {
+      await Promise.all(chosen.map((i) => updateStatus(i.id, 'batal')))
+      toast.success(`${chosen.length} PO dibatalkan`)
+      setSelectedPO(new Set())
+    } catch (e) { toast.error(String(e)) }
+  }
 
   if (loading) return <PageSkeleton />
   if (error) return (
@@ -299,6 +312,9 @@ export default function PreorderPage() {
       {selectedPO.size > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
           <p className="text-sm text-slate-600"><span className="font-semibold text-slate-900">{selectedPO.size}</span> PO dipilih</p>
+          <button type="button" onClick={batalkanTerpilih} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-700">
+            <Trash2 className="h-4 w-4" /> Batalkan Terpilih
+          </button>
         </div>
       )}
 
