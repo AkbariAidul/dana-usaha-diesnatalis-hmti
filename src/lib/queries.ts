@@ -396,7 +396,7 @@ export async function deleteMerchandise(id: string) {
   if (error) throw error
 }
 
-const MERCH_MODAL_FIELDS = ['nama', 'harga', 'urutan'] as const
+const MERCH_MODAL_FIELDS = ['nama', 'harga', 'harga_pengurus_pendek', 'harga_pengurus_panjang', 'harga_umum_pendek', 'harga_umum_panjang', 'urutan'] as const
 
 export async function getMerchModalItem(): Promise<MerchModalItem[]> {
   const { data, error } = await supabaseAdmin.from('merch_modal_item').select('*').order('urutan').order('nama')

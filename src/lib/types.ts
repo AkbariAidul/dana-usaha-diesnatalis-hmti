@@ -212,6 +212,10 @@ export interface MerchModalItem {
   id: string
   nama: string
   harga: number
+  harga_pengurus_pendek: number
+  harga_pengurus_panjang: number
+  harga_umum_pendek: number
+  harga_umum_panjang: number
   urutan: number
 }
 

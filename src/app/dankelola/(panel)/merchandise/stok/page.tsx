@@ -16,6 +16,10 @@ type PoItem = {
   warna: string | null
   lengan: string | null
   qty: number
+  subtotal: number
+  harga_satuan: number
+  modal_satuan: number
+  modal_total: number
   merchandise: { nama: string } | null
   varian: { nama: string } | null
 }
@@ -23,8 +27,47 @@ type PoItem = {
 type PoData = {
   id: string
   status: string
+  tipe_pemesan: string
+  total: number
   modal_satuan?: number
+  modal_total?: number
+  keuntungan?: number
   items: PoItem[]
+}
+
+function Breakdown({ title, data }: { title: string; data: [string, number][] }) {
+  return (
+    <div>
+      <p className="text-xs font-medium text-slate-500">{title}</p>
+      <div className="mt-1 space-y-1">
+        {data.length === 0 && <p className="text-xs text-slate-400">-</p>}
+        {data.map(([label, qty]) => (
+          <div key={label} className="flex justify-between text-sm">
+            <span className="text-slate-500">{label}</span>
+            <span className="font-medium tabular-nums text-slate-900">{qty}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+type SummaryColor = 'slate' | 'violet' | 'amber' | 'green' | 'red'
+const summaryColorClass: Record<SummaryColor, string> = {
+  slate: 'border-slate-200/70 bg-white text-slate-900',
+  violet: 'border-violet-200 bg-violet-50/60 text-violet-800',
+  amber: 'border-amber-200 bg-amber-50/60 text-amber-800',
+  green: 'border-green-200 bg-green-50/60 text-green-800',
+  red: 'border-red-200 bg-red-50/60 text-red-800',
+}
+
+function RingkasanBox({ label, value, color = 'slate', ring = false }: { label: string; value: React.ReactNode; color?: SummaryColor; ring?: boolean }) {
+  return (
+    <div className={`rounded-2xl border p-4 shadow-sm ${summaryColorClass[color]} ${ring ? 'ring-2 ring-primary-300' : ''}`}>
+      <p className={`text-xs ${color === 'slate' ? 'text-slate-500' : 'opacity-75'}`}>{label}</p>
+      <p className="mt-1 text-xl font-bold">{value}</p>
+    </div>
+  )
 }
 
 export default function StokPage() {
@@ -48,50 +91,67 @@ export default function StokPage() {
   }, [load])
   useLiveRefresh(load)
 
-  const rekap = useMemo(() => {
-    const map = new Map<string, { produk: string; warna: string; lengan: string; ukuran: string; qty: number; po: Set<string> }>()
+  const { rekap, perProduk } = useMemo(() => {
+    type Row = { produk: string; warna: string; lengan: string; ukuran: string; qty: number; omset: number; modal: number; po: Set<string> }
+    const rowMap = new Map<string, Omit<Row, 'jumlahPo'> & { po: Set<string> }>()
+    const produkMap = new Map<string, { produk: string; qty: number; omset: number; modal: number; ukuran: Map<string, number>; warna: Map<string, number>; lengan: Map<string, number> }>()
+
     for (const po of poList) {
       if (po.status !== 'lunas') continue
-      for (const item of po.items) {
+      for (const item of po.items ?? []) {
         const produk = item.merchandise?.nama ?? 'Merchandise'
         const warna = item.warna || '-'
         const lengan = item.lengan || '-'
         const ukuran = item.varian?.nama || item.ukuran || '-'
         const key = `${produk}|${warna}|${lengan}|${ukuran}`
-        const row = map.get(key) ?? { produk, warna, lengan, ukuran, qty: 0, po: new Set<string>() }
-        row.qty += Number(item.qty)
+        const row = rowMap.get(key) ?? { produk, warna, lengan, ukuran, qty: 0, omset: 0, modal: 0, po: new Set() }
+        const qty = Number(item.qty)
+        const omset = Number(item.subtotal ?? 0)
+        const modal = Number(item.modal_total ?? 0)
+        row.qty += qty
+        row.omset += omset
+        row.modal += modal
         row.po.add(po.id)
-        map.set(key, row)
+        rowMap.set(key, row)
+
+        const p = produkMap.get(produk) ?? { produk, qty: 0, omset: 0, modal: 0, ukuran: new Map(), warna: new Map(), lengan: new Map() }
+        p.qty += qty
+        p.omset += omset
+        p.modal += modal
+        p.ukuran.set(ukuran, (p.ukuran.get(ukuran) ?? 0) + qty)
+        p.warna.set(warna, (p.warna.get(warna) ?? 0) + qty)
+        p.lengan.set(lengan, (p.lengan.get(lengan) ?? 0) + qty)
+        produkMap.set(produk, p)
       }
     }
-    return [...map.values()]
-      .map((row) => ({ produk: row.produk, warna: row.warna, lengan: row.lengan, ukuran: row.ukuran, qty: row.qty, jumlahPo: row.po.size }))
-      .sort((a, b) =>
-        a.produk.localeCompare(b.produk) ||
-        a.warna.localeCompare(b.warna) ||
-        a.lengan.localeCompare(b.lengan) ||
-        a.ukuran.localeCompare(b.ukuran),
-      )
-  }, [poList])
-  const totalPo = poList.filter((po) => po.status === 'lunas').length
-  const totalQtyPo = rekap.reduce((sum, row) => sum + row.qty, 0)
-  const modalSatuan = poList.find((po) => Number(po.modal_satuan ?? 0) > 0)?.modal_satuan ?? 0
-  const totalBiayaCetak = totalQtyPo * Number(modalSatuan)
-  const perProduk = useMemo(() => {
-    const map = new Map<string, { produk: string; qty: number; ukuran: Map<string, number> }>()
-    for (const row of rekap) {
-      const produk = map.get(row.produk) ?? { produk: row.produk, qty: 0, ukuran: new Map<string, number>() }
-      produk.qty += row.qty
-      const label = [row.warna, row.lengan, row.ukuran].filter((value) => value && value !== '-').join(' · ') || '-'
-      produk.ukuran.set(label, (produk.ukuran.get(label) ?? 0) + row.qty)
-      map.set(row.produk, produk)
-    }
-    return [...map.values()].map((p) => ({
+
+    const rows: Array<Row & { jumlahPo: number }> = [...rowMap.values()].map((r) => ({ ...r, jumlahPo: r.po.size }))
+    rows.sort((a, b) =>
+      a.produk.localeCompare(b.produk) ||
+      a.warna.localeCompare(b.warna) ||
+      a.lengan.localeCompare(b.lengan) ||
+      a.ukuran.localeCompare(b.ukuran),
+    )
+
+    const products = [...produkMap.values()].map((p) => ({
       produk: p.produk,
       qty: p.qty,
+      omset: p.omset,
+      modal: p.modal,
+      untung: p.omset - p.modal,
       ukuran: [...p.ukuran.entries()].sort((a, b) => a[0].localeCompare(b[0])),
+      warna: [...p.warna.entries()].sort((a, b) => a[0].localeCompare(b[0])),
+      lengan: [...p.lengan.entries()].sort((a, b) => a[0].localeCompare(b[0])),
     }))
-  }, [rekap])
+
+    return { rekap: rows, perProduk: products }
+  }, [poList])
+
+  const totalPo = poList.filter((po) => po.status === 'lunas').length
+  const totalQtyPo = rekap.reduce((sum, row) => sum + row.qty, 0)
+  const totalOmset = rekap.reduce((sum, row) => sum + row.omset, 0)
+  const totalBiayaCetak = rekap.reduce((sum, row) => sum + row.modal, 0)
+  const totalKeuntungan = totalOmset - totalBiayaCetak
 
   if (loading) return <PageSkeleton />
   if (error) return (
@@ -113,30 +173,46 @@ export default function StokPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {perProduk.map((p) => (
-          <div key={p.produk} className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm shadow-slate-200/40">
-            <div className="flex items-start justify-between gap-2">
-              <p className="font-semibold text-slate-900">{p.produk}</p>
-              <span className="rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700">{p.qty} pcs</span>
-            </div>
-            <div className="mt-3 space-y-1.5">
-              {p.ukuran.map(([ukuran, qty]) => (
-                <div key={ukuran} className="flex items-center justify-between text-sm">
-                  <span className="text-slate-500">{ukuran}</span>
-                  <span className="font-medium tabular-nums text-slate-900">{qty}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
+        <RingkasanBox label="PO Lunas" value={totalPo} ring />
+        <RingkasanBox label="Total Pcs" value={totalQtyPo} />
+        <RingkasanBox label="Omset" value={formatRupiah(totalOmset)} color="violet" />
+        <RingkasanBox label="Biaya Cetak" value={formatRupiah(totalBiayaCetak)} color="amber" />
+        <RingkasanBox label="Keuntungan" value={formatRupiah(totalKeuntungan)} color={totalKeuntungan >= 0 ? 'green' : 'red'} />
       </div>
 
-      <div className="rounded-2xl border border-violet-200 bg-violet-50 p-4 shadow-sm shadow-violet-100">
-        <p className="text-sm font-medium text-violet-700">Total Biaya Percetakan</p>
-        <p className="mt-1 text-2xl font-bold text-violet-800">{formatRupiah(totalBiayaCetak)}</p>
-        <p className="mt-1 text-xs text-violet-600">
-          {totalQtyPo} pcs x {formatRupiah(Number(modalSatuan))} modal/pcs
-        </p>
+      <div>
+        <h2 className="mb-2 text-sm font-semibold text-slate-600">Rekap per Produk</h2>
+        {perProduk.length === 0 && (
+          <p className="rounded-xl border border-dashed py-8 text-center text-sm text-slate-400">Belum ada pre-order lunas.</p>
+        )}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {perProduk.map((p) => (
+            <div key={p.produk} className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-semibold text-slate-900">{p.produk}</p>
+                <span className="rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700">{p.qty} pcs</span>
+              </div>
+              <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <Breakdown title="Per Ukuran" data={p.ukuran} />
+                <Breakdown title="Per Warna" data={p.warna} />
+                <Breakdown title="Per Lengan" data={p.lengan} />
+              </div>
+              <div className="mt-3 flex items-end justify-between border-t border-slate-100 pt-3 text-sm">
+                <div className="flex gap-4 text-xs text-slate-500">
+                  <span>
+                    Omset <strong className="ml-1 text-slate-900">{formatRupiah(p.omset)}</strong>
+                  </span>
+                  <span>
+                    Modal <strong className="ml-1 text-slate-900">{formatRupiah(p.modal)}</strong>
+                  </span>
+                </div>
+                <span className={`font-semibold ${p.untung >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  Untung {formatRupiah(p.untung)}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
@@ -156,10 +232,12 @@ export default function StokPage() {
               <th className="px-3 py-2">Ukuran</th>
               <th className="px-3 py-2 text-right">Qty</th>
               <th className="px-3 py-2 text-right">Jumlah PO</th>
+              <th className="px-3 py-2 text-right">Omset</th>
+              <th className="px-3 py-2 text-right">Modal</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100/80">
-            {rekap.length === 0 && <tr><td colSpan={6} className="px-3 py-6 text-center text-slate-400">Belum ada item pre-order lunas.</td></tr>}
+            {rekap.length === 0 && <tr><td colSpan={8} className="px-3 py-6 text-center text-slate-400">Belum ada item pre-order lunas.</td></tr>}
             {rekap.map((row) => (
               <tr key={`${row.produk}|${row.warna}|${row.lengan}|${row.ukuran}`} className="hover:bg-slate-50">
                 <td className="px-3 py-2 font-medium">{row.produk}</td>
@@ -168,6 +246,8 @@ export default function StokPage() {
                 <td className="px-3 py-2">{row.ukuran}</td>
                 <td className="px-3 py-2 text-right font-semibold tabular-nums">{row.qty}</td>
                 <td className="px-3 py-2 text-right tabular-nums text-slate-500">{row.jumlahPo}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-violet-600">{formatRupiah(row.omset)}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-amber-600">{formatRupiah(row.modal)}</td>
               </tr>
             ))}
           </tbody>
@@ -177,6 +257,8 @@ export default function StokPage() {
                 <td className="px-3 py-2" colSpan={4}>Total</td>
                 <td className="px-3 py-2 text-right tabular-nums">{totalQtyPo}</td>
                 <td className="px-3 py-2" />
+                <td className="px-3 py-2 text-right tabular-nums text-violet-600">{formatRupiah(totalOmset)}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-amber-600">{formatRupiah(totalBiayaCetak)}</td>
               </tr>
             </tfoot>
           )}

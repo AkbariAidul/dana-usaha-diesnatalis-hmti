@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import QRCode from 'qrcode'
 import { toast } from 'sonner'
-import { Check, ChevronDown, Clock, Shirt, Trash2, Plus, Minus } from 'lucide-react'
+import { Check, ChevronDown, Clock, Shirt, Trash2, Plus, Minus, X } from 'lucide-react'
 import { PublicNavbar } from '@/components/public-navbar'
 import { PoStepper } from '@/components/po-stepper'
 import { Turnstile, type TurnstileHandle } from '@/components/turnstile'
@@ -13,6 +13,7 @@ import { formatDate, formatRupiah } from '@/lib/utils'
 import { buatQrisDinamis } from '@/lib/qris'
 import { hitungDiskon } from '@/lib/merch-diskon'
 import { hargaMulai, hargaUntuk, opsiLengan, opsiWarna, type Lengan } from '@/lib/merch-harga'
+import { Modal } from '@/components/modal'
 import type { DiskonRule } from '@/lib/types'
 
 type Pengurus = { id: string; nama: string; divisi: string | null; kontak: string | null }
@@ -113,6 +114,7 @@ export default function PoMerchandisePage() {
     pembayaran_metode: 'QRIS' as 'QRIS' | 'Cash',
     pembayaran_tipe: 'lunas' as 'lunas' | 'nyicil',
   })
+  const [fotoPreview, setFotoPreview] = useState<{ url: string; nama: string } | null>(null)
   const [pesanan, setPesanan] = useState<Pesanan | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState('')
@@ -472,13 +474,20 @@ export default function PoMerchandisePage() {
                     return (
                       <div key={idx} className="rounded-xl border border-slate-200 bg-slate-50/40 p-3">
                         <div className="flex items-start gap-3">
-                          <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-white ring-1 ring-slate-200">
-                            {item.produk.gambar_url ? (
+                          {item.produk.gambar_url ? (
+                            <button
+                              type="button"
+                              onClick={() => setFotoPreview({ url: item.produk.gambar_url!, nama: item.produk.nama })}
+                              aria-label={`Perbesar foto ${item.produk.nama}`}
+                              className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-white ring-1 ring-slate-200 transition hover:ring-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-200"
+                            >
                               <img src={item.produk.gambar_url} alt={item.produk.nama} className="h-full w-full object-cover" />
-                            ) : (
+                            </button>
+                          ) : (
+                            <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-100">
                               <Shirt className="h-5 w-5 text-slate-300" />
-                            )}
-                          </div>
+                            </div>
+                          )}
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium leading-snug text-slate-900">{item.produk.nama}</p>
                             <p className="mt-0.5 text-xs text-slate-500">@{formatRupiah(harga)}</p>
@@ -930,6 +939,19 @@ export default function PoMerchandisePage() {
             </div>
           </div>
         )}
+        <Modal open={!!fotoPreview} onClose={() => setFotoPreview(null)} panelClassName="w-full max-w-3xl rounded-2xl bg-white p-2 shadow-xl">
+          {fotoPreview && (
+            <div>
+              <div className="flex items-center justify-between px-2 py-1.5">
+                <p className="text-sm font-medium text-slate-700">{fotoPreview.nama}</p>
+                <button onClick={() => setFotoPreview(null)} aria-label="Tutup" className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <img src={fotoPreview.url} alt={fotoPreview.nama} className="max-h-[75vh] w-full rounded-xl object-contain" />
+            </div>
+          )}
+        </Modal>
       </main>
     </div>
   )
