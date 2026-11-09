@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Dana Usaha HMTI — In4Days XI
 
-## Getting Started
+Sistem pengelolaan Dana Usaha HMTI: pendaftaran tenant, penjualan tiket, pre-order merchandise, paket combo, pembayaran, scan QR, dan laporan.
 
-First, run the development server:
+## Stack
+
+- Next.js 15 (App Router) + React 19 + TypeScript
+- Tailwind CSS 4
+- Supabase (Postgres + Storage)
+- Fonnte (WhatsApp), Cloudflare Turnstile
+- PDF (`pdf-lib`), Excel (`write-excel-file`), QR (`qrcode`, `html5-qrcode`)
+
+## Prasyarat
+
+- Node.js 20+
+- Project Supabase (URL, anon key, service role key)
+- Token Fonnte dan widget Turnstile untuk production
+
+## Setup lokal
 
 ```bash
+npm install
+cp .env.example .env.local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Isi `.env.local` minimal:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Variabel | Wajib | Keterangan |
+| --- | --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | ya | URL project Supabase |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ya | Anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | ya | Service role key (server only) |
+| `DASHBOARD_SESSION_SECRET` | production | Secret tanda tangan sesi dashboard |
+| `DASHBOARD_PIN` / `DASHBOARD_PIN_*` | ya | PIN login dashboard per role |
+| `PUBLIC_LINK_SECRET` | production | HMAC link lacak publik |
+| `FONNTE_TOKEN` | production | Notifikasi WhatsApp |
+| `NEXT_PUBLIC_APP_URL` | production | Base URL untuk link WA & metadata |
+| `CRON_SECRET` | production | Auth endpoint cron reminder |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` | production | Anti-bot form publik |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Migrasi database
 
-## Learn More
+Jalankan file di `supabase/migrations/` **berurutan** (001 → terbaru) lewat SQL Editor Supabase atau Supabase CLI. Migrasi 045 membuat semua bucket Storage yang dibutuhkan; 046 menambah kolom revoke sesi.
 
-To learn more about Next.js, take a look at the following resources:
+## Script
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Perintah | Fungsi |
+| --- | --- |
+| `npm run dev` | Development server (Turbopack) |
+| `npm run build` | Build production |
+| `npm run start` | Jalankan hasil build |
+| `npm run lint` | ESLint |
+| `npm run check` | Typecheck + ESLint |
+| `npm run seed:demo` | Seed data demo (butuh `.env.local`) |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Deploy (Vercel)
 
-## Deploy on Vercel
+1. Set semua env production di dashboard Vercel.
+2. Apply seluruh migrasi ke Supabase production.
+3. Pastikan bucket Storage sudah ada (migrasi 045) dan `public = true`.
+4. Deploy. Cron di `vercel.json` memanggil endpoint `/api/cron/*` dan memerlukan `CRON_SECRET`.
+5. Uji alur publik: daftar tenant → tiket → PO → paket combo → upload bukti → verifikasi admin → scan QR.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Struktur singkat
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `src/app/(public pages)` — halaman publik: `beli-tiket`, `daftar-tenant`, `merchandise`, `paket`, `lacak`, `tiket-saya`, `tenant-info`.
+- `src/app/dankelola` — dashboard admin (PIN + sesi cookie).
+- `src/app/api` — route handler API (publik, admin, cron).
+- `src/lib` — query Supabase, aturan harga, notifikasi WA, PDF, token link, tipe.
+- `supabase/migrations` — skema database & storage.

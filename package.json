@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "check": "tsc --noEmit && eslint",
     "seed:demo": "node --env-file=.env.local scripts/seed-demo.mjs",
     "seed:demo:clean": "node --env-file=.env.local scripts/seed-demo.mjs --cleanup"
   },
@@ -30,7 +31,6 @@
     "sonner": "^2.0.8",
     "tailwind-merge": "^3.7.0",
     "write-excel-file": "^2.3.10",
-    "xlsx": "^0.18.5",
     "zod": "^4.6.7"
   },
   "devDependencies": {

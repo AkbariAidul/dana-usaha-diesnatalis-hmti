@@ -13,9 +13,29 @@ const poppins = Poppins({
   display: "swap",
 });
 
+const appUrl = process.env.NEXT_PUBLIC_APP_URL
+
+const title = "Dana Usaha HMTI — Open Tenant In4Days XI"
+const description = "Pendaftaran tenant, tiket acara, dan pre-order merchandise Dana Usaha HMTI In4Days XI."
+
 export const metadata: Metadata = {
-  title: "Dana Usaha HMTI",
-  description: "Sistem Pengelolaan Open Tenant Dana Usaha HMTI",
+  ...(appUrl ? { metadataBase: new URL(appUrl) } : {}),
+  title: { default: title, template: "%s · Dana Usaha HMTI" },
+  description,
+  applicationName: "Dana Usaha HMTI",
+  openGraph: {
+    title,
+    description,
+    type: "website",
+    locale: "id_ID",
+    images: ["/hero.png"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    images: ["/hero.png"],
+  },
   icons: {
     icon: '/favicon.png',
     apple: '/favicon.png',
