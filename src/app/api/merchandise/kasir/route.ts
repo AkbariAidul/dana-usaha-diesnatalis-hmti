@@ -4,6 +4,7 @@ import { hitungDiskon } from '@/lib/merch-diskon'
 import { hargaUntuk, opsiLengan, opsiWarna, type Lengan } from '@/lib/merch-harga'
 import { createAuditLog } from '@/lib/queries'
 import { getSessionUser } from '@/lib/session-server'
+import { storagePathFromUrl } from '@/lib/storage'
 
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams
@@ -177,13 +178,7 @@ export async function DELETE(request: Request) {
       .in('id', ids)
     const toRestore = (existing ?? []).filter((r) => r.merchandise_id != null && Number(r.qty) > 0)
     const pathsToClean = (existing ?? [])
-      .map((r) => {
-        if (!r.bukti_url) return null
-        try {
-          const url = new URL(r.bukti_url)
-          return url.pathname.split('?')[0].startsWith('/') ? url.pathname.slice(1) : null
-        } catch { return null }
-      })
+      .map((r) => storagePathFromUrl(r.bukti_url))
       .filter(Boolean) as string[]
 
     const { error } = await supabaseAdmin.from('kasir_transaksi').delete().in('id', ids)

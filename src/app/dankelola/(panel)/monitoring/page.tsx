@@ -8,6 +8,7 @@ import { getJSON, sendJSON } from '../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { parseUserAgent } from '@/lib/request-meta'
 import { formatDateTime } from '@/lib/utils'
+import { useConfirm } from '@/components/confirm-dialog'
 import { PageSkeleton } from '../ui'
 
 type Monitoring = {
@@ -260,10 +261,28 @@ export default function MonitoringPage() {
   }, [load])
   useLiveRefresh(load, 60000)
 
+  const confirm = useConfirm()
   const [cleaningUp, setCleaningUp] = useState(false)
   async function handleCleanup(bucket: string) {
     setCleaningUp(true)
     try {
+      const preview = await sendJSON('/api/storage/cleanup', 'POST', { bucket, dryRun: true })
+      if (!preview.orphaned) {
+        toast.success('Tidak ada file sampah.')
+        return
+      }
+      const sample: string[] = (preview.files ?? []).slice(0, 8)
+      const description =
+        `${preview.orphaned} file (${formatBytes(preview.orphanBytes ?? 0)}) tidak terpakai akan dihapus permanen.` +
+        (sample.length ? `\n\n${sample.join('\n')}${preview.orphaned > sample.length ? '\n...' : ''}` : '')
+      const ok = await confirm({
+        title: `Bersihkan bucket ${bucket}?`,
+        description,
+        confirmText: 'Hapus',
+        danger: true,
+      })
+      if (!ok) return
+
       const result = await sendJSON('/api/storage/cleanup', 'POST', { bucket })
       toast.success(`Bersih: ${result.removed} file dihapus, ${result.failed} gagal`)
       await load()

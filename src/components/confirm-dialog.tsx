@@ -70,7 +70,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
               <AlertTriangle className="h-6 w-6 animate-pulse" />
             </div>
             <h2 className="text-lg font-semibold text-slate-900">{options.title ?? 'Konfirmasi'}</h2>
-            {options.description && <p className="mt-1 text-sm leading-relaxed text-slate-500">{options.description}</p>}
+            {options.description && <p className="mt-1 whitespace-pre-line break-words text-sm leading-relaxed text-slate-500">{options.description}</p>}
             <div className="mt-6 flex gap-2">
               <button
                 onClick={() => close(false)}

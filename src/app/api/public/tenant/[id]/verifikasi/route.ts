@@ -4,6 +4,7 @@ import { createPembayaran, createAuditLog } from '@/lib/queries'
 import { todayISO } from '@/lib/utils'
 import { kirimNotifTenantDitolak, kirimNotifTenantTerverifikasi } from '@/lib/notifikasi-tenant'
 import { getSessionUser } from '@/lib/session-server'
+import { storagePathFromUrl } from '@/lib/storage'
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message
@@ -173,16 +174,10 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
     if (!reg) return NextResponse.json({ error: 'Pendaftaran tidak ditemukan' }, { status: 404 })
 
     // Hapus file bukti dari storage jika ada
-    if (reg.bukti_url) {
-      try {
-        const url = new URL(reg.bukti_url)
-        const path = url.pathname.split('?')[0]
-        if (path.startsWith('/')) {
-          const fullPath = path.slice(1)
-          const { error: delErr } = await supabaseAdmin.storage.from('bukti').remove([fullPath])
-          if (delErr) console.error('Gagal hapus storage:', delErr.message)
-        }
-      } catch { /* ignore malformed URL */ }
+    const buktiPath = storagePathFromUrl(reg.bukti_url)
+    if (buktiPath) {
+      const { error: delErr } = await supabaseAdmin.storage.from('bukti').remove([buktiPath])
+      if (delErr) console.error('Gagal hapus storage:', delErr.message)
     }
     // Hard delete pendaftaran
     const { error } = await supabaseAdmin.from('pendaftaran_tenant_pub').delete().eq('id', id)
