@@ -10,9 +10,16 @@ export async function POST(request: Request) {
 
     const { data: sebelum } = await supabaseAdmin
       .from('pesanan_tiket')
-      .select('status')
+      .select('status,bundle_order_id')
       .eq('id', id)
       .maybeSingle()
+
+    if (sebelum?.bundle_order_id) {
+      return NextResponse.json(
+        { error: 'Pesanan ini bagian dari Paket Combo. Verifikasi lewat menu Pesanan Paket.' },
+        { status: 400 },
+      )
+    }
 
     const { data, error } = await supabaseAdmin
       .from('pesanan_tiket')

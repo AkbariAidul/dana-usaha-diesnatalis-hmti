@@ -15,6 +15,8 @@ const URL_SOURCES: Array<[table: string, column: string]> = [
   ['tiket_tipe', 'thumbnail_url'],
   ['kategori_sewa', 'thumbnail_url'],
   ['kategori_pilihan', 'gambar_url'],
+  ['bundle', 'gambar_url'],
+  ['bundle_order', 'bukti_url'],
 ]
 
 async function getActivePaths(): Promise<Set<string>> {

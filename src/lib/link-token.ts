@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'crypto'
 
-export type TipeLacak = 'tenant' | 'tiket' | 'po'
+export type TipeLacak = 'tenant' | 'tiket' | 'po' | 'bundle'
 
 function secret() {
   if (process.env.PUBLIC_LINK_SECRET) return process.env.PUBLIC_LINK_SECRET
@@ -14,6 +14,7 @@ export function tipeDariKode(kode: string): TipeLacak | null {
   if (upper.startsWith('TP-') || upper.startsWith('KT-')) return 'tenant'
   if (upper.startsWith('TK-')) return 'tiket'
   if (upper.startsWith('PO-')) return 'po'
+  if (upper.startsWith('BD-')) return 'bundle'
   return null
 }
 
@@ -45,7 +46,7 @@ export function parseQrPayload(payload: string): { tipe: TipeLacak; kode: string
   const kode = parts[2]
   const token = parts[3]
   const expiresAtStr = parts[4] ?? ''
-  if (!['tenant', 'tiket', 'po'].includes(tipeRaw.toLowerCase())) return null
+  if (!['tenant', 'tiket', 'po', 'bundle'].includes(tipeRaw.toLowerCase())) return null
   const tipe = tipeRaw.toLowerCase() as TipeLacak
   if (!verifyRef(tipe, kode, token)) return null
   // Old-format QRs (no expiry field) are treated as never-expiring for backward compat

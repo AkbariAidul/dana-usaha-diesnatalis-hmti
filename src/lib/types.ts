@@ -237,6 +237,7 @@ export interface PesananTiket {
   modal_satuan: number
   modal_total: number
   keuntungan: number
+  bundle_order_id?: string | null
 }
 
 // ─── Business Logic ───────────────────────────────────────────────────────────
@@ -319,4 +320,69 @@ export const STATUS_COLOR: Record<string, string> = {
   lunas: 'bg-green-100 text-green-700',
   batal: 'bg-red-100 text-red-700',
   menunggak: 'bg-orange-100 text-orange-700',
+}
+
+// --- Bundle Combo (tiket + merchandise) -------------------------------
+
+export type BundleItemTipe = 'tiket' | 'merch'
+export type BundleOrderStatus = 'menunggu_verifikasi' | 'lunas' | 'ditolak' | 'batal'
+
+export interface BundleItem {
+  id: string
+  bundle_id: string
+  tipe: BundleItemTipe
+  ref_id: string
+  qty: number
+  urutan: number
+  // diisi dari join saat baca
+  nama?: string
+  harga_satuan?: number
+}
+
+export interface Bundle {
+  id: string
+  nama: string
+  deskripsi: string | null
+  gambar_url: string | null
+  harga_bundle: number
+  aktif: boolean
+  tgl_mulai: string | null
+  tgl_selesai: string | null
+  kuota: number
+  urutan: number
+  items?: BundleItem[]
+}
+
+export interface BundleOrderItem {
+  id: string
+  bundle_order_id: string
+  tipe: BundleItemTipe
+  ref_id: string
+  nama_snapshot: string
+  qty: number
+  varian_id: string | null
+  ukuran: string | null
+  warna: string | null
+  lengan: string | null
+  harga_satuan: number
+  subtotal: number
+}
+
+export interface BundleOrder {
+  id: string
+  no_pesanan: string
+  bundle_id: string | null
+  nama_pembeli: string
+  kontak: string
+  email: string | null
+  total: number
+  status: BundleOrderStatus
+  bukti_url: string | null
+  catatan_admin: string | null
+  verified_by: string | null
+  verified_at: string | null
+  tiket_pesanan_id: string | null
+  merch_po_id: string | null
+  created_at: string
+  items?: BundleOrderItem[]
 }

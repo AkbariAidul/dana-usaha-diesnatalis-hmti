@@ -9,7 +9,7 @@ import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { exportReportPdf, exportReportXlsx, type ReportPayload } from '@/lib/report-export'
 import { PageSkeleton } from '../ui'
 
-type JenisLaporan = 'tenant' | 'merchandise' | 'ticket'
+type JenisLaporan = 'tenant' | 'merchandise' | 'ticket' | 'bundle'
 
 type PreOrder = {
   id: string
@@ -22,6 +22,18 @@ type PreOrder = {
   created_at: string
   modal_total: number
   keuntungan: number
+  bundle_order_id?: string | null
+}
+
+type BundleOrderReport = {
+  id: string
+  no_pesanan: string
+  nama_pembeli: string
+  kontak: string
+  total: number
+  status: string
+  bundle_nama: string | null
+  created_at: string
 }
 
 type KasirTransaksi = {
@@ -47,6 +59,7 @@ const JENIS_LABEL: Record<JenisLaporan, string> = {
   tenant: 'Tenant',
   merchandise: 'Merchandise',
   ticket: 'Ticket',
+  bundle: 'Paket Combo',
 }
 
 function StatCard({ label, value, color = 'text-slate-900' }: { label: string; value: string; color?: string }) {
@@ -72,20 +85,23 @@ export default function LaporanPage() {
   const [preorders, setPreorders] = useState<PreOrder[]>([])
   const [kasir, setKasir] = useState<KasirTransaksi[]>([])
   const [tickets, setTickets] = useState<PesananTiket[]>([])
+  const [bundleOrders, setBundleOrders] = useState<BundleOrderReport[]>([])
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState<'xlsx' | 'pdf' | null>(null)
 
   const load = useCallback(async () => {
-    const [tenantData, preorderData, kasirData, ticketData] = await Promise.all([
+    const [tenantData, preorderData, kasirData, ticketData, bundleData] = await Promise.all([
       getJSON<Tenant[]>('/api/tenants'),
       getJSON<PreOrder[]>('/api/merchandise/preorder').catch(() => []),
       getJSON<KasirTransaksi[]>('/api/merchandise/kasir?limit=1000').catch(() => []),
       getJSON<PesananTiket[]>('/api/ticket/penjualan').catch(() => []),
+      getJSON<BundleOrderReport[]>('/api/paket/pesanan').catch(() => []),
     ])
     setTenants(tenantData)
     setPreorders(preorderData)
     setKasir(kasirData)
     setTickets(ticketData)
+    setBundleOrders(bundleData)
   }, [])
 
   useEffect(() => {
@@ -94,8 +110,16 @@ export default function LaporanPage() {
   useLiveRefresh(load)
 
   const tenantAktif = useMemo(() => tenants.filter((t) => t.status !== 'batal'), [tenants])
-  const preorderValid = useMemo(() => preorders.filter((p) => !['ditolak', 'batal'].includes(p.status)), [preorders])
-  const ticketValid = useMemo(() => tickets.filter((t) => !['ditolak', 'batal'].includes(t.status)), [tickets])
+  // Record hilir paket combo dikecualikan agar pendapatan tidak dihitung dua kali.
+  const preorderValid = useMemo(
+    () => preorders.filter((p) => !['ditolak', 'batal'].includes(p.status) && !p.bundle_order_id),
+    [preorders],
+  )
+  const ticketValid = useMemo(
+    () => tickets.filter((t) => !['ditolak', 'batal'].includes(t.status) && !t.bundle_order_id),
+    [tickets],
+  )
+  const bundleValid = useMemo(() => bundleOrders.filter((b) => b.status === 'lunas'), [bundleOrders])
 
   const tenantStats = useMemo(() => {
     const tagihan = tenantAktif.reduce((s, t) => s + t.harga_akhir, 0)
@@ -117,6 +141,14 @@ export default function LaporanPage() {
     const menunggu = ticketValid.filter((t) => t.status === 'menunggu_verifikasi').reduce((s, t) => s + t.total, 0)
     return { pendapatan, tiketLunas, menunggu, pesanan: ticketValid.length }
   }, [ticketValid])
+
+  const bundleStats = useMemo(() => {
+    const pendapatan = bundleValid.reduce((s, b) => s + Number(b.total), 0)
+    const menunggu = bundleOrders
+      .filter((b) => b.status === 'menunggu_verifikasi')
+      .reduce((s, b) => s + Number(b.total), 0)
+    return { pendapatan, pesanan: bundleValid.length, menunggu }
+  }, [bundleValid, bundleOrders])
 
   function buildReport(): ReportPayload {
     if (jenis === 'tenant') {
@@ -175,6 +207,28 @@ export default function LaporanPage() {
       }
     }
 
+    if (jenis === 'bundle') {
+      const rows = bundleOrders.filter((b) => !['ditolak', 'batal'].includes(b.status))
+      return {
+        title: 'Laporan Paket Combo',
+        filename: 'laporan-paket-combo',
+        summary: [
+          { label: 'Pesanan Lunas', value: String(bundleStats.pesanan) },
+          { label: 'Pendapatan Paket', value: formatRupiah(bundleStats.pendapatan) },
+          { label: 'Menunggu Verifikasi', value: formatRupiah(bundleStats.menunggu) },
+        ],
+        sheets: [{
+          name: 'Paket Combo',
+          headers: ['No Pesanan', 'Nama', 'Kontak', 'Paket', 'Total', 'Status', 'Tanggal'],
+          widths: [1.3, 1.8, 1.2, 1.6, 1.1, 1.2, 1.2],
+          currencyCols: [4],
+          rows: rows.map((b) => [
+            b.no_pesanan, b.nama_pembeli, b.kontak, b.bundle_nama ?? 'Paket', Number(b.total), b.status, formatDate(b.created_at),
+          ]),
+        }],
+      }
+    }
+
     return {
       title: 'Laporan Ticket',
       filename: 'laporan-ticket',
@@ -230,6 +284,7 @@ export default function LaporanPage() {
             <option value="tenant">Laporan Tenant</option>
             <option value="merchandise">Laporan Merchandise</option>
             <option value="ticket">Laporan Ticket</option>
+            <option value="bundle">Laporan Paket Combo</option>
           </select>
           <button onClick={() => void exportReport('xlsx')} disabled={exporting !== null} className="rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">
             {exporting === 'xlsx' ? 'Menyiapkan...' : 'Export Excel'}
@@ -373,6 +428,40 @@ export default function LaporanPage() {
                   <td className="px-3 py-2.5">{formatRupiah(t.total)}</td>
                   <td className="px-3 py-2.5">{t.status === 'lunas' ? 'Lunas' : t.status === 'menunggu_verifikasi' ? 'Menunggu' : t.status}</td>
                   <td className="px-3 py-2.5 text-xs text-slate-500">{formatDate(t.created_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </TableShell>
+        </>
+      )}
+
+      {jenis === 'bundle' && (
+        <>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+            <StatCard label="Pesanan Lunas" value={String(bundleStats.pesanan)} color="text-primary-600" />
+            <StatCard label="Pendapatan Paket" value={formatRupiah(bundleStats.pendapatan)} color="text-green-600" />
+            <StatCard label="Menunggu Verifikasi" value={formatRupiah(bundleStats.menunggu)} color="text-orange-600" />
+          </div>
+
+          <TableShell>
+            <thead className="bg-slate-50 text-left">
+              <tr>
+                <th className="px-3 py-2.5">No Pesanan</th><th className="px-3 py-2.5">Nama</th><th className="px-3 py-2.5">Kontak</th>
+                <th className="px-3 py-2.5">Paket</th><th className="px-3 py-2.5">Total</th><th className="px-3 py-2.5">Status</th>
+                <th className="px-3 py-2.5">Tanggal</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100/80">
+              {bundleOrders.length === 0 && <tr><td colSpan={7} className="px-3 py-8 text-center text-slate-400">Belum ada pesanan paket.</td></tr>}
+              {bundleOrders.map((b) => (
+                <tr key={b.id} className="hover:bg-slate-50/80">
+                  <td className="px-3 py-2.5 font-mono text-xs">{b.no_pesanan}</td>
+                  <td className="px-3 py-2.5 font-medium text-slate-700">{b.nama_pembeli}</td>
+                  <td className="px-3 py-2.5">{b.kontak}</td>
+                  <td className="px-3 py-2.5">{b.bundle_nama ?? 'Paket'}</td>
+                  <td className="px-3 py-2.5">{formatRupiah(b.total)}</td>
+                  <td className="px-3 py-2.5">{b.status === 'lunas' ? 'Lunas' : b.status === 'menunggu_verifikasi' ? 'Menunggu' : b.status}</td>
+                  <td className="px-3 py-2.5 text-xs text-slate-500">{formatDate(b.created_at)}</td>
                 </tr>
               ))}
             </tbody>

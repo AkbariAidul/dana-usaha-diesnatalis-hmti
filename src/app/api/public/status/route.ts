@@ -90,6 +90,79 @@ export async function GET(request: Request) {
       })
     }
 
+    if (tipe === 'bundle') {
+      const { data: order } = await supabaseAdmin
+        .from('bundle_order')
+        .select('*')
+        .eq('no_pesanan', kode)
+        .maybeSingle()
+      if (!order) return NextResponse.json({ error: 'Pesanan tidak ditemukan' }, { status: 404 })
+
+      const [{ data: orderItems }, { data: tiketOrders }, { data: po }] = await Promise.all([
+        supabaseAdmin.from('bundle_order_item').select('*').eq('bundle_order_id', order.id),
+        supabaseAdmin.from('pesanan_tiket').select('*').eq('bundle_order_id', order.id),
+        supabaseAdmin.from('merch_po').select('*').eq('bundle_order_id', order.id).maybeSingle(),
+      ])
+
+      const tipeIds = [...new Set((tiketOrders ?? []).map((t) => t.tiket_tipe_id).filter(Boolean))] as string[]
+      const [{ data: tipeTiket }, { data: issued }] = await Promise.all([
+        tipeIds.length
+          ? supabaseAdmin.from('tiket_tipe').select('id,nama').in('id', tipeIds)
+          : Promise.resolve({ data: [] as { id: string; nama: string }[] }),
+        (tiketOrders ?? []).length
+          ? supabaseAdmin
+              .from('tiket_issued')
+              .select('*')
+              .in('pesanan_id', (tiketOrders ?? []).map((t) => t.id))
+              .order('created_at', { ascending: true })
+          : Promise.resolve({ data: [] as Record<string, unknown>[] }),
+      ])
+      const tipeMap = new Map((tipeTiket ?? []).map((t) => [t.id, t.nama]))
+      const issuedByPesanan = new Map<string, Record<string, unknown>[]>()
+      for (const row of issued ?? []) {
+        const list = issuedByPesanan.get(row.pesanan_id as string) ?? []
+        list.push(row)
+        issuedByPesanan.set(row.pesanan_id as string, list)
+      }
+
+      let poData = null
+      if (po) {
+        const [{ data: poItems }, { data: varian }, { data: merchandise }] = await Promise.all([
+          supabaseAdmin.from('merch_po_item').select('*').eq('po_id', po.id),
+          supabaseAdmin.from('merch_varian').select('id,nama'),
+          supabaseAdmin.from('merchandise').select('id,nama,gambar_url'),
+        ])
+        const varianMap = new Map((varian ?? []).map((v) => [v.id, v.nama]))
+        const merchMap = new Map((merchandise ?? []).map((m) => [m.id, m]))
+        poData = {
+          ...po,
+          items: (poItems ?? []).map((i) => ({
+            ...i,
+            merchandise: i.merchandise_id ? merchMap.get(i.merchandise_id) ?? null : null,
+            varian: i.varian_id ? { nama: varianMap.get(i.varian_id) ?? '' } : null,
+          })),
+        }
+      }
+
+      const tiketData = (tiketOrders ?? []).map((t) => ({
+        ...t,
+        tiket_tipe: { nama: tipeMap.get(t.tiket_tipe_id) ?? 'Tiket' },
+        issued: issuedByPesanan.get(t.id) ?? [],
+      }))
+
+      const bisaAmbil = order.status === 'lunas' && po && !po.picked_up_at
+
+      return NextResponse.json({
+        tipe,
+        kode,
+        order,
+        items: orderItems ?? [],
+        tiket: tiketData,
+        po: poData,
+        qr: bisaAmbil ? buatQrPayload('po', po.no_po) : null,
+      })
+    }
+
     const { data: po } = await supabaseAdmin
       .from('merch_po')
       .select('*')

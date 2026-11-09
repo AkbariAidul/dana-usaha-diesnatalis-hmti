@@ -6,6 +6,7 @@ import {
   ShoppingCart,
   QrCode,
   FileText,
+  Package,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -65,6 +66,15 @@ export const menuConfig: MenuGroup[] = [
       { label: 'Tipe & Harga', href: '/dankelola/ticket/tahap' },
       { label: 'Penjualan', href: '/dankelola/ticket/penjualan' },
       { label: 'Check-in', href: '/dankelola/ticket/checkin' },
+    ],
+  },
+  {
+    key: 'bundle',
+    label: 'BUNDLE',
+    icon: Package,
+    children: [
+      { label: 'Paket Combo', href: '/dankelola/paket' },
+      { label: 'Pesanan Paket', href: '/dankelola/paket/pesanan' },
     ],
   },
   {

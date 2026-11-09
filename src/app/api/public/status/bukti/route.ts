@@ -99,6 +99,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, message: 'Bukti terkirim, menunggu verifikasi admin' })
     }
 
+    if (tipe === 'bundle') {
+      const { data: order } = await supabaseAdmin
+        .from('bundle_order')
+        .select('id,status')
+        .eq('no_pesanan', kode)
+        .maybeSingle()
+      if (!order) return NextResponse.json({ error: 'Pesanan tidak ditemukan' }, { status: 404 })
+      if (order.status === 'lunas') {
+        return NextResponse.json({ error: 'Pesanan sudah lunas' }, { status: 400 })
+      }
+      const { error } = await supabaseAdmin
+        .from('bundle_order')
+        .update({ bukti_url: buktiUrl, status: 'menunggu_verifikasi', updated_at: new Date().toISOString() })
+        .eq('id', order.id)
+      if (error) throw error
+      return NextResponse.json({ success: true, message: 'Bukti terkirim, menunggu verifikasi admin' })
+    }
+
     const { data: po } = await supabaseAdmin
       .from('merch_po')
       .select('id,status,no_po,nama_pemesan,kontak,total,sudah_dibayar,pembayaran_metode,pembayaran_tipe,tipe_pemesan')

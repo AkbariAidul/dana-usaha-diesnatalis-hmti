@@ -116,10 +116,16 @@ export async function PATCH(request: Request) {
 
     const { data: current } = await supabaseAdmin
       .from('merch_po')
-      .select('total,no_po,nama_pemesan,kontak,tipe_pemesan,sudah_dibayar,pembayaran_metode,pembayaran_tipe')
+      .select('total,no_po,nama_pemesan,kontak,tipe_pemesan,sudah_dibayar,pembayaran_metode,pembayaran_tipe,bundle_order_id')
       .eq('id', id)
       .single()
     if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (current.bundle_order_id) {
+      return NextResponse.json(
+        { error: 'PO ini bagian dari Paket Combo. Verifikasi lewat menu Pesanan Paket.' },
+        { status: 400 },
+      )
+    }
 
     const nominalCicilan = body.nominal_cicilan ? Number(body.nominal_cicilan) : null
     const payload: Record<string, unknown> = {

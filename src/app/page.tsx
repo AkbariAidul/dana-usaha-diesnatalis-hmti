@@ -1,13 +1,14 @@
 ﻿import Link from 'next/link'
 import Image from 'next/image'
 import { cookies } from 'next/headers'
-import { ArrowRight, LayoutDashboard, ShoppingBag, Store, Ticket } from 'lucide-react'
+import { ArrowRight, LayoutDashboard, Package, ShoppingBag, Store, Ticket } from 'lucide-react'
 import { SESSION_COOKIE, verifySession } from '@/lib/session'
 
 const services = [
   { no: '01', title: 'Daftar Tenant', desc: 'Buka peluang usahamu di In4Days XI.', href: '/daftar-tenant', icon: Store },
   { no: '02', title: 'PO Merchandise', desc: 'Dapatkan merchandise resmi In4Days XI.', href: '/po-merchandise', icon: ShoppingBag },
   { no: '03', title: 'Beli Tiket', desc: 'Jadilah bagian dari kemeriahannya.', href: '/beli-tiket', icon: Ticket },
+  { no: '04', title: 'Paket Combo', desc: 'Tiket + merchandise, bayar sekali.', href: '/paket', icon: Package },
 ]
 
 export default async function Home() {

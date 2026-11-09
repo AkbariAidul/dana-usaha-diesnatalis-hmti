@@ -134,10 +134,39 @@ type Cicilan = {
   created_at: string
 }
 
+type BundleOrderItemView = {
+  id: string
+  tipe: string
+  nama_snapshot: string
+  qty: number
+  ukuran: string | null
+  warna: string | null
+  lengan: string | null
+  harga_satuan: number
+  subtotal: number
+}
+
+type BundleOrderView = {
+  id: string
+  no_pesanan: string
+  nama_pembeli: string
+  kontak: string
+  email: string | null
+  total: number
+  status: string
+  bukti_url: string | null
+  catatan_admin: string | null
+  verified_at: string | null
+  created_at: string
+}
+
+type BundleTiketView = PesananTiket & { tiket_tipe: { nama: string } | null; issued: TiketIssued[] }
+
 type StatusResponse =
   | { tipe: 'tenant'; kode: string; daftar: DaftarTenant | null; tenant: Tenant | null; kategori: string | null; pembayaran: Pembayaran[]; totalValid: number; eligible: boolean; qr: string | null; waGroup: { nama: string } | null }
   | { tipe: 'tiket'; kode: string; pesanan: PesananTiket; tiket: TiketIssued[] }
   | { tipe: 'po'; kode: string; po: MerchPo; items: MerchItem[]; cicilan: Cicilan[]; qr: string | null }
+  | { tipe: 'bundle'; kode: string; order: BundleOrderView; items: BundleOrderItemView[]; tiket: BundleTiketView[]; po: (MerchPo & { items: MerchItem[] }) | null; qr: string | null }
 
 const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
 
@@ -463,6 +492,7 @@ export function LacakDetail({ kode, token }: { kode: string; token: string }) {
         {data?.tipe === 'tenant' && <TenantView data={data} token={token} reload={load} />}
         {data?.tipe === 'tiket' && <TiketView data={data} token={token} reload={load} />}
         {data?.tipe === 'po' && <PoView data={data} token={token} reload={load} />}
+        {data?.tipe === 'bundle' && <BundleView data={data} token={token} reload={load} />}
       </main>
     </div>
   )
@@ -963,6 +993,121 @@ function PoView({ data, token, reload }: { data: Extract<StatusResponse, { tipe:
               {formatRupiah(data.cicilan.filter((c) => c.validated).reduce((s, c) => s + Number(c.nominal), 0))}
             </span>
           </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function BundleView({ data, token, reload }: { data: Extract<StatusResponse, { tipe: 'bundle' }>; token: string; reload: () => void }) {
+  const { order, items, tiket, po, qr } = data
+  const perluUpload = !order.bukti_url || order.status === 'ditolak'
+  const semuaIssued = tiket.flatMap((t) => t.issued ?? [])
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-xl font-semibold text-slate-900">Paket Combo {order.no_pesanan}</h1>
+            <p className="mt-1 break-words text-sm text-slate-500">{order.nama_pembeli} · {order.kontak}</p>
+          </div>
+          <StatusBadge status={order.status} />
+        </div>
+
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs text-slate-500">
+              <tr>
+                <th className="py-2">Item</th>
+                <th className="py-2">Varian</th>
+                <th className="py-2">Qty</th>
+                <th className="py-2">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {items.map((item) => (
+                <tr key={item.id}>
+                  <td className="py-2">{item.nama_snapshot} <span className="text-xs text-slate-400">({item.tipe === 'tiket' ? 'Tiket' : 'Merch'})</span></td>
+                  <td className="py-2">{[item.warna, item.lengan, item.ukuran].filter(Boolean).join(' · ') || '-'}</td>
+                  <td className="py-2">{item.qty}</td>
+                  <td className="py-2 font-medium">{formatRupiah(Number(item.subtotal))}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-4 flex justify-between rounded-xl bg-slate-50 p-3 text-sm">
+          <span className="text-slate-500">Total Paket</span>
+          <span className="font-semibold text-slate-900">{formatRupiah(Number(order.total))}</span>
+        </div>
+        <p className="mt-2 text-xs text-slate-400">Dibuat {formatDate(order.created_at)}</p>
+        {order.catatan_admin && <p className="mt-3 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">{order.catatan_admin}</p>}
+        {order.bukti_url && (
+          <div className="mt-4 border-t border-slate-100 pt-4">
+            <BuktiPreview url={order.bukti_url} />
+          </div>
+        )}
+      </div>
+
+      {perluUpload && order.status !== 'lunas' && (
+        <BuktiUpload kode={data.kode} token={token} imageOnly onDone={reload} />
+      )}
+
+      {order.status !== 'lunas' && (
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm sm:p-6">
+          <div className="flex items-center gap-2 font-semibold text-slate-900">
+            <Clock className="h-4 w-4" /> QR Tiket & Merchandise
+          </div>
+          <p className="mt-2 text-sm text-slate-500">
+            {order.status === 'ditolak'
+              ? 'Pembayaran ditolak. Silakan unggah ulang bukti pembayaran.'
+              : 'QR tiket dan QR pengambilan merchandise muncul setelah pembayaran diverifikasi admin.'}
+          </p>
+        </div>
+      )}
+
+      {order.status === 'lunas' && semuaIssued.length > 0 && (
+        <div className="rounded-2xl border border-emerald-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className="mb-4 flex items-center gap-2 font-semibold text-emerald-900">
+            <QrCode className="h-4 w-4" /> QR Tiket
+          </div>
+          <div className="grid gap-4 xl:grid-cols-2">
+            {semuaIssued.map((t, index) => (
+              <div key={t.id} className="flex flex-col items-center gap-4 rounded-2xl border border-slate-200 p-4 text-center sm:flex-row sm:text-left">
+                <div className="shrink-0 rounded-xl bg-white p-2 ring-1 ring-slate-100">
+                  <QrImage value={t.kode_qr} size={140} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-slate-400">Tiket {index + 1} dari {semuaIssued.length}</p>
+                  <p className="mt-0.5 break-all font-mono text-sm font-semibold text-slate-800">{t.kode_tampil}</p>
+                  <p className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${t.status === 'terpakai' ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'}`}>
+                    {t.status === 'terpakai' ? 'Sudah check-in' : 'Belum check-in'}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 text-sm text-slate-500">Tunjukkan masing-masing QR ke petugas saat check-in hari H.</p>
+        </div>
+      )}
+
+      {qr && (
+        <div className="rounded-2xl border border-violet-200 bg-white p-6 text-center shadow-sm">
+          <div className="mb-2 flex items-center justify-center gap-2 text-sm font-medium text-violet-900">
+            <QrCode className="h-4 w-4" /> QR Pengambilan Merchandise
+          </div>
+          <div className="mx-auto w-fit rounded-2xl border border-slate-200 bg-white p-3">
+            <QrImage value={qr} />
+          </div>
+          <p className="mt-3 text-sm text-slate-500">Tunjukkan QR ini ke petugas untuk mengambil merchandise paket.</p>
+        </div>
+      )}
+
+      {po?.picked_up_at && (
+        <div className="flex items-center gap-2 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+          <CheckCircle2 className="h-4 w-4" /> Merchandise sudah diambil pada {formatDateTime(po.picked_up_at)}
         </div>
       )}
     </div>
