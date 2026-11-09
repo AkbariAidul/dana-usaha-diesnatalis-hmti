@@ -124,24 +124,23 @@ export default function TenantsPage() {
   const [strukTarget, setStrukTarget] = useState<Row | null>(null)
   const [riwayatTerbuka, setRiwayatTerbuka] = useState<string | null>(null)
   const [qrPreview, setQrPreview] = useState<string | null>(null)
-  const [selectedTenantKeys, setSelectedTenantKeys] = useState<Set<string>>(new Set())
-  function toggleSelectTenant(key: string) {
-    setSelectedTenantKeys((prev) => { const next = new Set(prev); if (next.has(key)) next.delete(key); else next.add(key); return next })
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set())
+  function toggleSelectKey(key: string) {
+    setSelectedKeys((prev) => { const next = new Set(prev); if (next.has(key)) next.delete(key); else next.add(key); return next })
   }
-  const getTenantRows = () => rows.filter((r) => r.kind === 'tenant')
-  function toggleSelectAllTenants() {
-    const tr = getTenantRows()
-    setSelectedTenantKeys(tr.length > 0 && tr.every((r) => selectedTenantKeys.has(r.key)) ? new Set() : new Set(tr.map((r) => r.key)))
+  function toggleSelectAllPaginated() {
+    const isAll = paginated.length > 0 && paginated.every((r) => selectedKeys.has(r.key))
+    setSelectedKeys(isAll ? new Set() : new Set(paginated.map((r) => r.key)))
   }
   async function hapusTenantTerpilih() {
-    if (selectedTenantKeys.size === 0) return
-    const chosen = getTenantRows().filter((r) => selectedTenantKeys.has(r.key))
+    const chosen = paginated.filter((r) => selectedKeys.has(r.key) && r.kind === 'tenant')
+    if (chosen.length === 0) { setSelectedKeys(new Set()); return }
     const ok = await confirm({ title: `Hapus ${chosen.length} tenant terpilih?`, description: 'Semua data terkait akan dihapus permanen.', confirmText: 'Hapus' })
     if (!ok) return
     try {
       await Promise.all(chosen.map((r) => sendJSON(`/api/tenants/${r.detailId}`, 'DELETE')))
       toast.success(`${chosen.length} tenant dihapus`)
-      setSelectedTenantKeys(new Set())
+      setSelectedKeys(new Set())
       await load()
     } catch (err) { toast.error((err as Error).message) }
   }
@@ -475,9 +474,9 @@ export default function TenantsPage() {
         </div>
       )}
 
-      {selectedTenantKeys.size > 0 && (
+      {selectedKeys.size > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
-          <p className="text-sm text-slate-600"><span className="font-semibold text-slate-900">{selectedTenantKeys.size}</span> tenant dipilih</p>
+          <p className="text-sm text-slate-600"><span className="font-semibold text-slate-900">{selectedKeys.size}</span> baris dipilih</p>
           <button type="button" onClick={hapusTenantTerpilih} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-700">
             <Trash2 className="h-4 w-4" /> Hapus Tenant Terpilih
           </button>
@@ -488,7 +487,7 @@ export default function TenantsPage() {
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs text-slate-500">
             <tr>
-              {!isViewer && <th className="px-5 py-3 w-10"><input type="checkbox" checked={getTenantRows().length > 0 && getTenantRows().every((r) => selectedTenantKeys.has(r.key))} onChange={toggleSelectAllTenants} aria-label="Pilih semua tenant" className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" /></th>}
+              {!isViewer && <th className="px-5 py-3 w-10"><input type="checkbox" checked={paginated.length > 0 && paginated.every((r) => selectedKeys.has(r.key))} onChange={toggleSelectAllPaginated} aria-label="Pilih semua" className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" /></th>}
               <th className="px-5 py-3">Kode</th>
               <th className="px-5 py-3">Tenant</th>
               <th className="px-5 py-3">Kategori</th>
@@ -502,15 +501,15 @@ export default function TenantsPage() {
           </thead>
           <tbody className="divide-y divide-slate-100/80">
             {loading && <TableSkeleton rows={5} cols={isViewer ? 9 : 10} />}
-            {!loading && filtered.length === 0 && (
+            {!loading && paginated.length === 0 && (
               <tr><td colSpan={isViewer ? 9 : 10} className="px-5 py-6 text-center text-slate-400">
                 {rows.length === 0 ? 'Belum ada tenant.' : 'Tidak ada tenant yang cocok.'}
               </td></tr>
             )}
             {paginated.map((r) => (
               <tr key={r.key} className="hover:bg-slate-50">
-                {!isViewer && r.kind === 'tenant' && (
-                  <td className="px-5 py-3 align-top"><input type="checkbox" checked={selectedTenantKeys.has(r.key)} onChange={() => toggleSelectTenant(r.key)} aria-label={`Pilih ${r.nama_usaha}`} className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" /></td>
+                {!isViewer && (
+                  <td className="px-5 py-3 align-top"><input type="checkbox" checked={selectedKeys.has(r.key)} onChange={() => toggleSelectKey(r.key)} aria-label={`Pilih ${r.nama_usaha || r.kode}`} className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" /></td>
                 )}
                 <td className="px-5 py-3 align-top">
                   <div className="font-mono text-xs">{r.kode}</div>

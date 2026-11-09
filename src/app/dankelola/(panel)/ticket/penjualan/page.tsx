@@ -164,6 +164,12 @@ export default function PenjualanPage() {
         </div>
       </div>
 
+      {selectedPenjualan.size > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
+          <p className="text-sm text-slate-600"><span className="font-semibold text-slate-900">{selectedPenjualan.size}</span> pesanan dipilih</p>
+        </div>
+      )}
+
       <section className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1040px] text-sm">

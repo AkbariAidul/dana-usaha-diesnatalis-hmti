@@ -106,6 +106,12 @@ export default function KasirPage() {
         </div>
       </div>
 
+      {selectedKasir.size > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
+          <p className="text-sm text-slate-600"><span className="font-semibold text-slate-900">{selectedKasir.size}</span> transaksi dipilih</p>
+        </div>
+      )}
+
       <div className="overflow-x-auto rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left">

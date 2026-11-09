@@ -207,7 +207,7 @@ export default function PreorderPage() {
     }
   }
 
-  function toggleSelectPO(id: string) { setSelectedPO((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n }) }
+  function toggleSelectPO(id: string) { setSelectedPO((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n }) }
   function toggleSelectAllPO() {     const isAll = filtered.length > 0 && filtered.every((item) => selectedPO.has(item.id))
     setSelectedPO(isAll ? new Set() : new Set(filtered.map((i) => i.id))) }
 
@@ -295,6 +295,12 @@ export default function PreorderPage() {
           <p className="text-3xl font-bold text-violet-600">{diambil}</p>
         </div>
       </div>
+
+      {selectedPO.size > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
+          <p className="text-sm text-slate-600"><span className="font-semibold text-slate-900">{selectedPO.size}</span> PO dipilih</p>
+        </div>
+      )}
 
       <div className="rounded-2xl border border-slate-200/70 bg-white shadow-sm">
         <div className="overflow-x-auto">
