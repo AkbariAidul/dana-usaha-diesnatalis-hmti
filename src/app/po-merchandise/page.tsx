@@ -454,15 +454,15 @@ export default function PoMerchandisePage() {
             </div>
 
             <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
-            <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between">
+            <div className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-5">
+              <div className="flex items-center justify-between gap-2">
                 <h2 className="font-medium text-slate-900">Produk Dipilih</h2>
-                <span className="text-sm text-slate-500">{totalQty} item</span>
+                <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">{totalQty} item</span>
               </div>
               {keranjang.length === 0 ? (
                 <p className="mt-4 text-center text-sm text-slate-500">Keranjang masih kosong.</p>
               ) : (
-                <div className="mt-4 space-y-3">
+                <div className="mt-4 space-y-2.5">
                   {keranjang.map((item, idx) => {
                     const harga = hargaUntuk(item.produk, form.tipe_pemesan, item.lengan ?? 'Pendek', 'po')
                     const hitung = hitungDiskon(item.qty, harga, item.produk.diskon, 'po')
@@ -470,77 +470,107 @@ export default function PoMerchandisePage() {
                     const warnaProduk = opsiWarna(item.produk.warna)
                     const lenganProduk = opsiLengan(item.produk, 'po', form.tipe_pemesan)
                     return (
-                      <div key={idx} className="flex flex-wrap items-center gap-3 border-b border-slate-100 pb-3 last:border-0 last:pb-0">
-                        <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-100">
-                          {item.produk.gambar_url ? (
-                            <img src={item.produk.gambar_url} alt={item.produk.nama} className="h-full w-full object-cover" />
-                          ) : (
-                            <Shirt className="h-5 w-5 text-slate-300" />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-slate-900">{item.produk.nama}</p>
-                          <div className="mt-1 flex flex-wrap gap-1.5">
-                            {warnaProduk.length > 0 && (
-                              <select
-                                className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700"
-                                value={item.warna ?? ''}
-                                onChange={(e) => pilihWarna(idx, e.target.value)}
-                              >
-                                <option value="">Pilih warna</option>
-                                {warnaProduk.map((warna) => (
-                                  <option key={warna} value={warna}>{warna}</option>
-                                ))}
-                              </select>
-                            )}
-                            {lenganProduk.length > 0 && (
-                              <select
-                                className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700"
-                                value={item.lengan ?? ''}
-                                onChange={(e) => pilihLengan(idx, e.target.value as Lengan)}
-                              >
-                                <option value="">Pilih lengan</option>
-                                {lenganProduk.map((lengan) => (
-                                  <option key={lengan} value={lengan}>{lengan}</option>
-                                ))}
-                              </select>
-                            )}
-                            {varianProduk.length > 0 ? (
-                              <select
-                                className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700"
-                                value={item.varian?.id ?? ''}
-                                onChange={(e) => pilihVarian(idx, e.target.value)}
-                              >
-                                <option value="">Pilih ukuran</option>
-                                {varianProduk.map((v) => (
-                                  <option key={v.id} value={v.id}>{v.nama}</option>
-                                ))}
-                              </select>
+                      <div key={idx} className="rounded-xl border border-slate-200 bg-slate-50/40 p-3">
+                        <div className="flex items-start gap-3">
+                          <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-white ring-1 ring-slate-200">
+                            {item.produk.gambar_url ? (
+                              <img src={item.produk.gambar_url} alt={item.produk.nama} className="h-full w-full object-cover" />
                             ) : (
-                              <span className="self-center text-xs text-slate-500">{item.varian?.nama || 'Tanpa ukuran'}</span>
+                              <Shirt className="h-5 w-5 text-slate-300" />
                             )}
                           </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium leading-snug text-slate-900">{item.produk.nama}</p>
+                            <p className="mt-0.5 text-xs text-slate-500">@{formatRupiah(harga)}</p>
+                          </div>
+                          <button
+                            onClick={() => hapusDariKeranjang(idx)}
+                            aria-label="Hapus produk"
+                            className="shrink-0 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <button onClick={() => updateQty(idx, item.qty - 1)} className="rounded-lg border p-1 hover:bg-slate-50"><Minus className="h-3.5 w-3.5" /></button>
-                          <span className="w-7 text-center text-sm">{item.qty}</span>
-                          <button onClick={() => updateQty(idx, item.qty + 1)} className="rounded-lg border p-1 hover:bg-slate-50"><Plus className="h-3.5 w-3.5" /></button>
+
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {warnaProduk.length > 0 && (
+                            <select
+                              aria-label="Warna"
+                              className="min-w-[110px] flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700"
+                              value={item.warna ?? ''}
+                              onChange={(e) => pilihWarna(idx, e.target.value)}
+                            >
+                              <option value="">Pilih warna</option>
+                              {warnaProduk.map((warna) => (
+                                <option key={warna} value={warna}>{warna}</option>
+                              ))}
+                            </select>
+                          )}
+                          {lenganProduk.length > 0 && (
+                            <select
+                              aria-label="Lengan"
+                              className="min-w-[110px] flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700"
+                              value={item.lengan ?? ''}
+                              onChange={(e) => pilihLengan(idx, e.target.value as Lengan)}
+                            >
+                              <option value="">Pilih lengan</option>
+                              {lenganProduk.map((lengan) => (
+                                <option key={lengan} value={lengan}>{lengan}</option>
+                              ))}
+                            </select>
+                          )}
+                          {varianProduk.length > 0 ? (
+                            <select
+                              aria-label="Ukuran"
+                              className="min-w-[110px] flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700"
+                              value={item.varian?.id ?? ''}
+                              onChange={(e) => pilihVarian(idx, e.target.value)}
+                            >
+                              <option value="">Pilih ukuran</option>
+                              {varianProduk.map((v) => (
+                                <option key={v.id} value={v.id}>{v.nama}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className="flex min-w-[110px] flex-1 items-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-500">
+                              Tanpa ukuran
+                            </span>
+                          )}
                         </div>
-                        <div className="min-w-24 text-right">
-                          <div className="text-sm font-semibold text-violet-600">{formatRupiah(hitung.total)}</div>
-                          {hitung.diskon > 0 && <div className="text-[11px] text-green-600">Diskon -{formatRupiah(hitung.diskon)}</div>}
+
+                        <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-200 pt-3">
+                          <div className="flex items-center rounded-lg border border-slate-200 bg-white">
+                            <button
+                              onClick={() => updateQty(idx, item.qty - 1)}
+                              disabled={item.qty <= 1}
+                              aria-label="Kurangi qty"
+                              className="p-1.5 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              <Minus className="h-3.5 w-3.5" />
+                            </button>
+                            <span className="w-8 text-center text-sm font-medium tabular-nums text-slate-900">{item.qty}</span>
+                            <button
+                              onClick={() => updateQty(idx, item.qty + 1)}
+                              disabled={item.qty >= 20}
+                              aria-label="Tambah qty"
+                              className="p-1.5 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm font-semibold text-violet-600">{formatRupiah(hitung.total)}</div>
+                            {hitung.diskon > 0 && <div className="text-[11px] text-green-600">Diskon -{formatRupiah(hitung.diskon)}</div>}
+                          </div>
                         </div>
-                        <button onClick={() => hapusDariKeranjang(idx)} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
                       </div>
                     )
                   })}
-                  <div className="flex items-center justify-between pt-1">
+                  <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
                     <span className="text-sm text-slate-500">Total Pembayaran</span>
                     <div className="text-right">
                       {totalDiskon > 0 && <div className="text-xs text-green-600">Hemat {formatRupiah(totalDiskon)}</div>}
-                      <span className="font-semibold text-violet-600">{formatRupiah(totalKeranjang)}</span>
+                      <span className="text-base font-semibold text-violet-600">{formatRupiah(totalKeranjang)}</span>
                     </div>
                   </div>
                 </div>
