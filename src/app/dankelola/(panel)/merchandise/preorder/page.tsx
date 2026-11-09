@@ -95,6 +95,7 @@ export default function PreorderPage() {
   const [filterAmbil, setFilterAmbil] = useState('all')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+  const [selectedPO, setSelectedPO] = useState<Set<string>>(new Set())
 
   async function load() {
     try {
@@ -206,6 +207,10 @@ export default function PreorderPage() {
     }
   }
 
+  function toggleSelectPO(id: string) { setSelectedPO((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n }) }
+  function toggleSelectAllPO() {     const isAll = filtered.length > 0 && filtered.every((item) => selectedPO.has(item.id))
+    setSelectedPO(isAll ? new Set() : new Set(filtered.map((i) => i.id))) }
+
   if (loading) return <PageSkeleton />
   if (error) return (
     <div className="flex justify-center">
@@ -296,6 +301,7 @@ export default function PreorderPage() {
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left">
             <tr>
+              {!isViewer && <th className="px-3 py-2 w-8"><input type="checkbox" checked={filtered.length > 0 && filtered.every((item) => selectedPO.has(item.id))} onChange={toggleSelectAllPO} aria-label="Pilih semua" className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" /></th>}
               <th className="px-3 py-2">No. PO / QR Pengambilan</th>
               <th className="px-3 py-2">Pemesan</th>
               <th className="px-3 py-2">Item</th>
@@ -309,7 +315,7 @@ export default function PreorderPage() {
           </thead>
           <tbody className="divide-y divide-slate-100/80">
             {filtered.length === 0 && (
-              <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-400">
+              <tr><td colSpan={isViewer ? 9 : 10} className="px-3 py-6 text-center text-slate-400">
                 {items.length === 0 ? 'Belum ada pre-order.' : 'Tidak ada PO yang cocok.'}
               </td></tr>
             )}
@@ -317,6 +323,9 @@ export default function PreorderPage() {
               const sisa = Math.max(0, Number(item.total) - Number(item.sudah_dibayar ?? 0))
               return (
                 <tr key={item.id} className="hover:bg-slate-50">
+                  {!isViewer && (
+                    <td className="px-3 py-2 align-top"><input type="checkbox" checked={selectedPO.has(item.id)} onChange={() => toggleSelectPO(item.id)} aria-label={`Pilih ${item.no_po}`} className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" /></td>
+                  )}
                   <td className="px-3 py-2 align-top">
                     <div className="font-mono text-xs">{item.no_po}</div>
                     <button

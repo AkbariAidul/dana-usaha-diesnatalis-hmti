@@ -7,6 +7,7 @@ import { getJSON, sendJSON } from '../../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
 import { useConfirm } from '@/components/confirm-dialog'
+import { useIsViewer } from '@/lib/dashboard-user'
 import { ChevronLeft, ChevronRight, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 
 type Pengurus = {
@@ -37,11 +38,13 @@ function poMilikPengurus(po: PoRingkas, pengurus: Pengurus) {
 
 export default function PengurusPage() {
   const confirm = useConfirm()
+  const isViewer = useIsViewer()
   const [items, setItems] = useState<Pengurus[]>([])
   const [poList, setPoList] = useState<PoRingkas[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
 
   async function load() {
     try {
@@ -132,6 +135,36 @@ export default function PengurusPage() {
     }
   }
 
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+  function toggleSelectAll() {
+    const isAll = filtered.length > 0 && filtered.every((item) => selected.has(item.id))
+    setSelected(isAll ? new Set() : new Set(filtered.map((i) => i.id)))
+  }
+  async function hapusTerpilih() {
+    if (selected.size === 0) return
+    const chosen = items.filter((i) => selected.has(i.id))
+    const ok = await confirm({
+      title: `Hapus ${chosen.length} pengurus terpilih?`,
+      description: `${chosen.length} pengurus akan dihapus permanen.`,
+      confirmText: 'Hapus',
+    })
+    if (!ok) return
+    try {
+      await Promise.all(chosen.map((i) => sendJSON(`/api/pengurus/${i.id}`, 'DELETE')))
+      toast.success(`${chosen.length} pengurus dihapus`)
+      setSelected(new Set())
+      await load()
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
+  }
+
   if (loading) return <PageSkeleton />
 
   return (
@@ -175,11 +208,21 @@ export default function PengurusPage() {
         ))}
       </div>
 
+      {selected.size > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
+          <p className="text-sm text-slate-600"><span className="font-semibold text-slate-900">{selected.size}</span> pengurus dipilih</p>
+          <button type="button" onClick={hapusTerpilih} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-700">
+            <Trash2 className="h-4 w-4" /> Hapus Terpilih
+          </button>
+        </div>
+      )}
+
       <section className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[560px] text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/70 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                {!isViewer && <th className="px-5 py-3"><input type="checkbox" checked={filtered.length > 0 && filtered.every((item) => selected.has(item.id))} onChange={toggleSelectAll} aria-label="Pilih semua" className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" /></th>}
                 <th className="px-5 py-3">Nama</th>
                 <th className="px-5 py-3">Divisi</th>
                 <th className="px-5 py-3">Pesanan</th>
@@ -191,13 +234,18 @@ export default function PengurusPage() {
             <tbody className="divide-y divide-slate-100/80">
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-5 py-12 text-center text-sm text-slate-400">
+                  <td colSpan={isViewer ? 6 : 7} className="px-5 py-12 text-center text-sm text-slate-400">
                     {items.length === 0 ? 'Belum ada data pengurus.' : 'Tidak ada pengurus yang cocok.'}
                   </td>
                 </tr>
               )}
               {paginated.map((item) => (
                 <tr key={item.id} className="transition-colors hover:bg-slate-50/70">
+                  {!isViewer && (
+                    <td className="px-5 py-3">
+                      <input type="checkbox" checked={selected.has(item.id)} onChange={() => toggleSelect(item.id)} aria-label={`Pilih ${item.nama}`} className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" />
+                    </td>
+                  )}
                   <td className="px-5 py-3 font-medium text-slate-900">{item.nama}</td>
                   <td className="px-5 py-3 text-slate-500">{item.divisi || '-'}</td>
                   <td className="px-5 py-3">

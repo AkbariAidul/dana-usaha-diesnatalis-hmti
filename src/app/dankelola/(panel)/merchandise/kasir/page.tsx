@@ -10,6 +10,7 @@ import { PageSkeleton } from '../../ui'
 import { BuktiPreviewModal, BuktiThumb } from '@/components/bukti'
 import type { MerchModalItem } from '@/lib/types'
 import { formatRupiah } from '@/lib/utils'
+import { useIsViewer } from '@/lib/dashboard-user'
 
 type KasirTransaksi = {
   id: string
@@ -27,11 +28,13 @@ type KasirTransaksi = {
 }
 
 export default function KasirPage() {
+  const isViewer = useIsViewer()
   const [transaksi, setTransaksi] = useState<KasirTransaksi[]>([])
   const [modalSatuan, setModalSatuan] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [previewBukti, setPreviewBukti] = useState<string | null>(null)
+  const [selectedKasir, setSelectedKasir] = useState<Set<string>>(new Set())
 
   const load = useCallback(async () => {
     const [data, modalItems] = await Promise.all([
@@ -52,6 +55,12 @@ export default function KasirPage() {
       .finally(() => setLoading(false))
   }, [load])
   useLiveRefresh(load)
+
+  function toggleSelectKasir(id: string) { setSelectedKasir((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n }) }
+  function toggleSelectAllKasir() {
+    const isAll = transaksi.length > 0 && transaksi.every((t) => selectedKasir.has(t.id))
+    setSelectedKasir(isAll ? new Set() : new Set(transaksi.map((t) => t.id)))
+  }
 
   if (loading) return <PageSkeleton />
   if (error) return (
@@ -101,6 +110,7 @@ export default function KasirPage() {
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left">
             <tr>
+              {!isViewer && <th className="px-3 py-2 w-8"><input type="checkbox" checked={transaksi.length > 0 && transaksi.every((t) => selectedKasir.has(t.id))} onChange={toggleSelectAllKasir} aria-label="Pilih semua" className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" /></th>}
               <th className="px-3 py-2">Waktu</th>
               <th className="px-3 py-2">Produk</th>
               <th className="px-3 py-2">Qty</th>
@@ -113,12 +123,13 @@ export default function KasirPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100/80">
-            {transaksi.length === 0 && <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-400">Belum ada transaksi hari ini.</td></tr>}
+            {transaksi.length === 0 && <tr><td colSpan={isViewer ? 9 : 10} className="px-3 py-6 text-center text-slate-400">Belum ada transaksi hari ini.</td></tr>}
             {transaksi.map((t) => {
               const modal = t.merchandise_id ? modalSatuan * t.qty : 0
               const laba = t.total - modal
               return (
                 <tr key={t.id} className="hover:bg-slate-50">
+                  {!isViewer && (<td className="px-3 py-2 align-top"><input type="checkbox" checked={selectedKasir.has(t.id)} onChange={() => toggleSelectKasir(t.id)} aria-label={`Pilih ${t.produk}`} className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" /></td>)}
                   <td className="px-3 py-2 text-slate-500">{new Date(t.tanggal).toLocaleString('id-ID')}</td>
                   <td className="px-3 py-2 font-medium">
                     {t.produk}

@@ -27,6 +27,8 @@ export default function HargaPage() {
   const [periods, setPeriods] = useState<PeriodeHarga[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const allSelected = kategori.length > 0 && kategori.every((k) => selected.has(k.id))
 
   const load = useCallback(async () => {
     const [m, b] = await Promise.all([
@@ -81,6 +83,23 @@ export default function HargaPage() {
     }
   }
 
+  function toggleSelect(id: string) {
+    setSelected((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next })
+  }
+  function toggleSelectAll() { setSelected(allSelected ? new Set() : new Set(kategori.map((k) => k.id))) }
+  async function hapusTerpilih() {
+    if (selected.size === 0) return
+    const chosen = kategori.filter((k) => selected.has(k.id))
+    const ok = await confirm({ title: `Hapus ${chosen.length} paket terpilih?`, description: 'Semua data terkait akan dihapus permanen.', confirmText: 'Hapus' })
+    if (!ok) return
+    try {
+      await Promise.all(chosen.map((k) => sendJSON('/api/master/kategori', 'DELETE', { id: k.id })))
+      toast.success(`${chosen.length} paket dihapus`)
+      setSelected(new Set())
+      await load()
+    } catch (e) { toast.error(String(e)) }
+  }
+
   const hargaPerKategori = useMemo(() => {
     const map = new Map<string, number | null>()
     for (const k of kategori) {
@@ -131,10 +150,20 @@ export default function HargaPage() {
         )}
       </div>
 
+      {selected.size > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
+          <p className="text-sm text-slate-600"><span className="font-semibold text-slate-900">{selected.size}</span> paket dipilih</p>
+          <button type="button" onClick={hapusTerpilih} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-700">
+            <Trash2 className="h-4 w-4" /> Hapus Terpilih
+          </button>
+        </div>
+      )}
+
       <div className="overflow-x-auto rounded-2xl border border-slate-200/70 bg-white shadow-sm">
         <table className="w-full min-w-[1000px] text-sm">
           <thead className="bg-slate-50 text-left text-xs font-medium text-slate-600">
             <tr>
+              {!isViewer && <th className="px-4 py-3 w-10"><input type="checkbox" checked={allSelected} onChange={toggleSelectAll} aria-label="Pilih semua" className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" /></th>}
               <th className="px-4 py-3">Thumbnail</th>
               <th className="px-4 py-3">Paket</th>
               <th className="px-4 py-3">Diskon Bundle</th>
@@ -145,7 +174,7 @@ export default function HargaPage() {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {kategori.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">Belum ada paket tenant.</td></tr>
+              <tr><td colSpan={isViewer ? 6 : 7} className="px-4 py-12 text-center text-slate-400">Belum ada paket tenant.</td></tr>
             )}
             {kategori.map((k) => {
               const harga = hargaPerKategori.get(k.id)
@@ -153,6 +182,9 @@ export default function HargaPage() {
               const aktif = k.aktif !== false
               return (
                 <tr key={k.id} className={`hover:bg-slate-50 ${aktif ? '' : 'opacity-60'}`}>
+                  {!isViewer && (
+                    <td className="px-4 py-3 align-top"><input type="checkbox" checked={selected.has(k.id)} onChange={() => toggleSelect(k.id)} aria-label={`Pilih ${k.nama}`} className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" /></td>
+                  )}
                   <td className="px-4 py-3">
                     <div className="h-14 w-14 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
                       {k.thumbnail_url ? (

@@ -37,6 +37,7 @@ export default function PenjualanPage() {
   const [rejectTarget, setRejectTarget] = useState<PesananTiket | null>(null)
   const [rejectReason, setRejectReason] = useState('')
   const [strukTarget, setStrukTarget] = useState<PesananTiket | null>(null)
+  const [selectedPenjualan, setSelectedPenjualan] = useState<Set<string>>(new Set())
 
   const load = useCallback(async () => {
     const [data, periode] = await Promise.all([
@@ -102,6 +103,9 @@ export default function PenjualanPage() {
     setRejectReason('')
   }
 
+  function toggleSelectPenjualan(id: string) { setSelectedPenjualan((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n }) }
+  function toggleSelectAllPenjualan() { const isAll = paginated.length > 0 && paginated.every((p) => selectedPenjualan.has(p.id)); setSelectedPenjualan(isAll ? new Set() : new Set(paginated.map((p) => p.id))) }
+
   if (loading) return <PageSkeleton />
   if (error) return (
     <div className="flex justify-center">
@@ -165,6 +169,7 @@ export default function PenjualanPage() {
           <table className="w-full min-w-[1040px] text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/70 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                {!isViewer && <th className="px-5 py-3 w-10"><input type="checkbox" checked={paginated.length > 0 && paginated.every((p) => selectedPenjualan.has(p.id))} onChange={toggleSelectAllPenjualan} aria-label="Pilih semua" className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" /></th>}
                 <th className="px-5 py-3">No. Pesanan</th>
                 <th className="px-5 py-3">Pembeli</th>
                 <th className="px-5 py-3">Kontak</th>
@@ -181,7 +186,7 @@ export default function PenjualanPage() {
             <tbody className="divide-y divide-slate-100/80">
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="px-5 py-12 text-center">
+                  <td colSpan={isViewer ? 11 : 12} className="px-5 py-12 text-center">
                     <Inbox className="mx-auto mb-2 h-8 w-8 text-slate-300" />
                     <p className="text-sm text-slate-400">
                       {pesanan.length === 0 ? 'Belum ada penjualan.' : 'Tidak ada pesanan yang cocok.'}
@@ -193,6 +198,7 @@ export default function PenjualanPage() {
                 const status = STATUS[p.status]
                 return (
                   <tr key={p.id} className="transition-colors hover:bg-slate-50/70">
+                    {!isViewer && (<td className="px-5 py-3 align-top"><input type="checkbox" checked={selectedPenjualan.has(p.id)} onChange={() => toggleSelectPenjualan(p.id)} aria-label={`Pilih ${p.no_pesanan}`} className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" /></td>)}
                     <td className="px-5 py-3 font-mono text-xs text-slate-500">{p.no_pesanan}</td>
                     <td className="px-5 py-3 font-medium text-slate-900">{p.nama_pembeli}</td>
                     <td className="px-5 py-3">

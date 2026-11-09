@@ -28,6 +28,8 @@ export default function TahapPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [togglingId, setTogglingId] = useState<string | null>(null)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const allSelected = tiket.length > 0 && tiket.every((t) => selected.has(t.id))
   const today = todayISO()
 
   const load = useCallback(async () => {
@@ -77,6 +79,23 @@ export default function TahapPage() {
     finally { setTogglingId(null) }
   }
 
+  function toggleSelect(id: string) {
+    setSelected((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next })
+  }
+  function toggleSelectAll() { setSelected(allSelected ? new Set() : new Set(tiket.map((t) => t.id))) }
+  async function hapusTerpilih() {
+    if (selected.size === 0) return
+    const chosen = tiket.filter((t) => selected.has(t.id))
+    const ok = await confirm({ title: `Hapus ${chosen.length} tipe tiket terpilih?`, description: 'Semua data terkait akan dihapus permanen.', confirmText: 'Hapus' })
+    if (!ok) return
+    try {
+      await Promise.all(chosen.map((t) => sendJSON('/api/ticket', 'DELETE', { id: t.id })))
+      toast.success(`${chosen.length} tipe tiket dihapus`)
+      setSelected(new Set())
+      await load()
+    } catch (e) { toast.error(String(e)) }
+  }
+
   if (loading) return <PageSkeleton />
   if (error) return (
     <div className="flex justify-center">
@@ -101,11 +120,21 @@ export default function TahapPage() {
         )}
       </div>
 
+      {selected.size > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
+          <p className="text-sm text-slate-600"><span className="font-semibold text-slate-900">{selected.size}</span> tipe tiket dipilih</p>
+          <button type="button" onClick={hapusTerpilih} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-700">
+            <Trash2 className="h-4 w-4" /> Hapus Terpilih
+          </button>
+        </div>
+      )}
+
       <div className="rounded-2xl border border-slate-200/70 bg-white shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
         <table className="w-full min-w-[960px] text-sm">
           <thead className="bg-slate-50 text-left border-b border-slate-200">
             <tr>
+              {!isViewer && <th className="px-4 py-3 w-10"><input type="checkbox" checked={allSelected} onChange={toggleSelectAll} aria-label="Pilih semua" className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" /></th>}
               <th className="px-4 py-3 font-medium text-slate-600">Thumbnail</th>
               <th className="px-4 py-3 font-medium text-slate-600">Nama</th>
               <th className="px-4 py-3 font-medium text-slate-600">Untuk</th>
@@ -120,7 +149,7 @@ export default function TahapPage() {
           <tbody className="divide-y divide-slate-100">
             {tiket.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-12 text-center text-slate-400">
+                <td colSpan={isViewer ? 9 : 10} className="px-4 py-12 text-center text-slate-400">
                   Belum ada tipe tiket.
                   <Link href="/dankelola/ticket/tipe/new" className="block mt-2 text-primary-600 hover:underline">+ Tambah Tipe Pertama</Link>
                 </td>
@@ -131,6 +160,11 @@ export default function TahapPage() {
               const tBundles = bundles.filter((b) => b.tiket_tipe_id === t.id)
               return (
                 <tr key={t.id} className="group hover:bg-slate-50 transition-colors">
+                  {!isViewer && (
+                    <td className="px-4 py-3 align-top">
+                      <input type="checkbox" checked={selected.has(t.id)} onChange={() => toggleSelect(t.id)} aria-label={`Pilih ${t.nama}`} className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" />
+                    </td>
+                  )}
                   {/* Thumbnail */}
                   <td className="px-4 py-3">
                     {t.thumbnail_url ? (

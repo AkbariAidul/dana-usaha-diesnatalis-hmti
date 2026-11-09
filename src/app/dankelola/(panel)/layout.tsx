@@ -612,9 +612,10 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               pathname.startsWith('/dankelola/laporan') ||
               pathname.startsWith('/dankelola/monitoring') ||
               pathname.startsWith('/dankelola/audit') ||
-               pathname.startsWith('/dankelola/pengaturan/qris') ||
-               pathname.startsWith('/dankelola/pengaturan/tenant')
-                 ? 'w-full'
+                pathname.startsWith('/dankelola/pengaturan/qris') ||
+                pathname.startsWith('/dankelola/pengaturan/tenant') ||
+                pathname.startsWith('/dankelola/pengaturan/users')
+                  ? 'w-full'
                 : 'mx-auto max-w-6xl'
             }`}
           >
