@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { Check, Trash2, X } from 'lucide-react'
+import { Check, Download, Trash2, X } from 'lucide-react'
 import { getJSON, sendJSON } from '../../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { useConfirm } from '@/components/confirm-dialog'
@@ -39,6 +39,7 @@ export default function PesananPaketPage() {
   const [error, setError] = useState<string | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [qrPreview, setQrPreview] = useState<QrPreview | null>(null)
+  const [strukTarget, setStrukTarget] = useState<OrderRow | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [rejectTarget, setRejectTarget] = useState<OrderRow | null>(null)
   const [rejectReason, setRejectReason] = useState('')
@@ -228,6 +229,16 @@ export default function PesananPaketPage() {
                     {!isViewer && (order.status === 'ditolak' || order.status === 'batal') && (
                       <button type="button" onClick={() => updateStatus(order, 'menunggu_verifikasi')} className="rounded bg-slate-600 px-2 py-1 text-xs text-white hover:bg-slate-700">Buka Lagi</button>
                     )}
+                    {order.status === 'lunas' && (
+                      <button
+                        type="button"
+                        onClick={() => setStrukTarget(order)}
+                        title={`Lihat struk ${order.no_pesanan}`}
+                        className="mt-1 inline-flex items-center gap-1 rounded border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-medium text-violet-700 hover:bg-violet-100"
+                      >
+                        <Download className="h-3 w-3" /> Struk
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -248,6 +259,53 @@ export default function PesananPaketPage() {
             </div>
             <p className="mt-3 text-xs text-slate-400">Scan lewat menu Scan QR untuk konfirmasi.</p>
           </div>
+        )}
+      </Modal>
+
+      <Modal open={!!strukTarget} onClose={() => setStrukTarget(null)} panelClassName="max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
+        {strukTarget && (
+          <>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">Struk {strukTarget.no_pesanan}</h2>
+                <p className="text-sm text-slate-500">{strukTarget.nama_pembeli} · {strukTarget.kontak}</p>
+              </div>
+              <span className="rounded bg-green-100 px-2 py-1 text-xs text-green-800">Lunas</span>
+            </div>
+
+            <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-left text-xs text-slate-500">
+                  <tr>
+                    <th className="px-3 py-2">Item</th>
+                    <th className="px-3 py-2">Varian</th>
+                    <th className="px-3 py-2 text-center">Qty</th>
+                    <th className="px-3 py-2 text-right">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {(strukTarget.items ?? []).map((it) => (
+                    <tr key={it.id}>
+                      <td className="px-3 py-2">{it.nama_snapshot}</td>
+                      <td className="px-3 py-2">{[it.warna, it.lengan, it.ukuran].filter(Boolean).join(' · ') || '-'}</td>
+                      <td className="px-3 py-2 text-center">{it.qty}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatRupiah(Number(it.subtotal))}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-3 flex justify-between rounded-xl bg-slate-50 p-3 text-sm">
+              <span className="text-slate-500">Total Paket</span>
+              <span className="font-semibold">{formatRupiah(Number(strukTarget.total))}</span>
+            </div>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" onClick={() => setStrukTarget(null)} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">Tutup</button>
+              <a href={`/api/paket/struk?kode=${encodeURIComponent(strukTarget.no_pesanan)}`} className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">Download PDF</a>
+            </div>
+          </>
         )}
       </Modal>
 

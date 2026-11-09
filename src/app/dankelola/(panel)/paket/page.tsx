@@ -112,6 +112,7 @@ export default function PaketPage() {
               )}
               {bundles.map((b) => {
                 const komponen = (b.items ?? []).reduce((sum, i) => sum + hargaItem(i) * Number(i.qty), 0)
+                const hargaCoret = Number(b.harga_coret ?? 0) > 0 ? Number(b.harga_coret) : komponen
                 return (
                   <tr key={b.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-3">
@@ -136,7 +137,7 @@ export default function PaketPage() {
                     </td>
                     <td className="px-4 py-3">
                       <p className="font-bold text-primary-600">{formatRupiah(Number(b.harga_bundle))}</p>
-                      {komponen > 0 && <p className="text-xs text-slate-400 line-through">{formatRupiah(komponen)}</p>}
+                      {hargaCoret > Number(b.harga_bundle) && <p className="text-xs text-slate-400 line-through">{formatRupiah(hargaCoret)}</p>}
                     </td>
                     <td className="px-4 py-3 text-slate-600">{Number(b.kuota) > 0 ? Number(b.kuota) : '∞'}</td>
                     <td className="px-4 py-3">
