@@ -189,6 +189,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const [tipeCount, setTipeCount] = useState<number | null>(null)
   const [produkCount, setProdukCount] = useState<number | null>(null)
   const [paketCount, setPaketCount] = useState<number | null>(null)
+  const [bundleCount, setBundleCount] = useState<number | null>(null)
+  const [bundleOrderCount, setBundleOrderCount] = useState<number | null>(null)
   const [pengurusCount, setPengurusCount] = useState<number | null>(null)
   const [preorderCount, setPreorderCount] = useState<number | null>(null)
   const [preorderLunasCount, setPreorderLunasCount] = useState<number | null>(null)
@@ -201,7 +203,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
       try { return await fn() } catch { return fallback }
     }
-    const [tipe, checkin, merchandise, pengurus, preorder, kasir, master, tenants] = await Promise.all([
+    const [tipe, checkin, merchandise, pengurus, preorder, kasir, master, tenants, bundle, bundleOrders] = await Promise.all([
       safe(() => getJSON<{ terjual: number | null }[]>('/api/ticket'), []),
       safe(() => getJSON<{ status: string }[]>('/api/ticket/checkin'), []),
       safe(() => getJSON<unknown[]>('/api/merchandise'), []),
@@ -210,6 +212,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       safe(() => getJSON<{ terjual: number; total: number }>('/api/merchandise/kasir?ringkasan=1'), { terjual: 0, total: 0 }),
       safe(() => getJSON<{ kategori: { kode: string }[] }>('/api/master'), { kategori: [] }),
       safe(() => getJSON<Tenant[]>('/api/tenants'), []),
+      safe(() => getJSON<unknown[]>('/api/paket'), []),
+      safe(() => getJSON<unknown[]>('/api/paket/pesanan'), []),
     ])
     const tenantAktif = (tenants ?? []).filter((t) => t.status !== 'batal')
     setTiketTerjual(((tipe ?? []) as Array<{ terjual?: number | null }>).reduce((sum, t) => sum + Number(t.terjual ?? 0), 0))
@@ -218,6 +222,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     setTipeCount((tipe ?? []).length)
     setProdukCount((merchandise ?? []).length)
     setPaketCount(((master?.kategori ?? []) as Array<{ kode?: string }>).filter((k) => k.kode && /^KT-\d+$/.test(k.kode) && k.kode !== 'KT-03').length)
+    setBundleCount((bundle ?? []).length)
+    setBundleOrderCount((bundleOrders ?? []).length)
     setPengurusCount((pengurus ?? []).length)
     setPreorderCount((preorder ?? []).length)
     setPreorderLunasCount(((preorder ?? []) as Array<{ status?: string }>).filter((po) => po.status === 'lunas').length)
@@ -418,6 +424,22 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                           className="ml-auto min-w-[1.5rem] shrink-0 rounded-full bg-white/20 px-2 py-0.5 text-center text-[10px] font-semibold tabular-nums text-white"
                         >
                           {paketCount}
+                        </span>
+                      )}
+                      {child.href === '/dankelola/paket' && bundleCount !== null && (
+                        <span
+                          title={`${bundleCount} paket combo`}
+                          className="ml-auto min-w-[1.5rem] shrink-0 rounded-full bg-white/20 px-2 py-0.5 text-center text-[10px] font-semibold tabular-nums text-white"
+                        >
+                          {bundleCount}
+                        </span>
+                      )}
+                      {child.href === '/dankelola/paket/pesanan' && bundleOrderCount !== null && (
+                        <span
+                          title={`${bundleOrderCount} pesanan paket`}
+                          className="ml-auto min-w-[1.5rem] shrink-0 rounded-full bg-white/20 px-2 py-0.5 text-center text-[10px] font-semibold tabular-nums text-white"
+                        >
+                          {bundleOrderCount}
                         </span>
                       )}
                       {child.href === '/dankelola/merchandise/produk' && produkCount !== null && (

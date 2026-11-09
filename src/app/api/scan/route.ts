@@ -71,6 +71,66 @@ export async function POST(request: Request) {
         })
       }
 
+      if (parsed.tipe === 'bundle') {
+        const { data: order } = await supabaseAdmin
+          .from('bundle_order')
+          .select('*')
+          .eq('no_pesanan', parsed.kode)
+          .maybeSingle()
+        if (!order) return NextResponse.json({ error: 'Pesanan paket tidak ditemukan' }, { status: 404 })
+        if (order.status !== 'lunas') return NextResponse.json({ error: 'Pesanan paket belum lunas' }, { status: 400 })
+
+        const { data: tiketOrders } = await supabaseAdmin
+          .from('pesanan_tiket')
+          .select('*')
+          .eq('bundle_order_id', order.id)
+        const tiketOrderIds = (tiketOrders ?? []).map((t) => t.id)
+        const { data: issued } = tiketOrderIds.length
+          ? await supabaseAdmin
+              .from('tiket_issued')
+              .select('*')
+              .in('pesanan_id', tiketOrderIds)
+              .order('created_at', { ascending: true })
+          : { data: [] as Record<string, unknown>[] }
+        if (!issued?.length) return NextResponse.json({ error: 'Tiket paket belum terbit' }, { status: 400 })
+
+        const belum = issued.filter((t) => t.status !== 'terpakai')
+        if (confirm && belum.length > 0) {
+          const sekarang = new Date().toISOString()
+          for (const t of belum) {
+            const { error } = await supabaseAdmin
+              .from('tiket_issued')
+              .update({ status: 'terpakai', digunakan_oleh: oleh, digunakan_pada: sekarang })
+              .eq('id', t.id)
+            if (error) throw error
+            await supabaseAdmin.from('checkin_log').insert({
+              tiket_issued_id: t.id,
+              kode_qr: t.kode_qr,
+              aksi: 'checkin',
+              dicatat_oleh: oleh,
+            })
+          }
+          await createAuditLog({ aksi: 'CHECKIN_BUNDLE_TIKET', target_type: 'bundle_order', target_id: order.id, data_baru: { jumlah: belum.length, oleh } })
+        }
+
+        const pertama = issued[0]
+        const pesananPertama = (tiketOrders ?? []).find((t) => t.id === pertama.pesanan_id) ?? null
+        const { data: tipeTiket } = pesananPertama?.tiket_tipe_id
+          ? await supabaseAdmin.from('tiket_tipe').select('nama').eq('id', pesananPertama.tiket_tipe_id).maybeSingle()
+          : { data: null }
+        const sudahCheckin = confirm || belum.length === 0
+
+        return NextResponse.json({
+          tipe: 'tiket',
+          tiket: { ...pertama, status: sudahCheckin ? 'terpakai' : pertama.status, nomor: 1, total: issued.length },
+          pesanan: pesananPertama
+            ? { ...pesananPertama, tiket_tipe: tipeTiket ?? null, periode_nama: null }
+            : null,
+          sudahCheckin,
+          confirmed: confirm,
+        })
+      }
+
       const { data: po } = await supabaseAdmin
         .from('merch_po')
         .select('*')

@@ -100,22 +100,41 @@ export async function GET() {
     const list = orders ?? []
     const ids = list.map((o) => o.id)
     const bundleIds = [...new Set(list.map((o) => o.bundle_id).filter(Boolean))] as string[]
-    const [{ data: items }, { data: bundles }] = await Promise.all([
+    const [{ data: items }, { data: bundles }, { data: pos }, { data: tiketOrders }] = await Promise.all([
       ids.length
         ? supabaseAdmin.from('bundle_order_item').select('*').in('bundle_order_id', ids)
         : Promise.resolve({ data: [] as Record<string, unknown>[] }),
       bundleIds.length
         ? supabaseAdmin.from('bundle').select('id,nama').in('id', bundleIds)
         : Promise.resolve({ data: [] as { id: string; nama: string }[] }),
+      ids.length
+        ? supabaseAdmin.from('merch_po').select('id,no_po,bundle_order_id').in('bundle_order_id', ids)
+        : Promise.resolve({ data: [] as { id: string; no_po: string; bundle_order_id: string }[] }),
+      ids.length
+        ? supabaseAdmin.from('pesanan_tiket').select('id,bundle_order_id').in('bundle_order_id', ids)
+        : Promise.resolve({ data: [] as { id: string; bundle_order_id: string }[] }),
     ])
     const bundleMap = new Map((bundles ?? []).map((b) => [b.id, b.nama]))
+    const poMap = new Map((pos ?? []).map((p) => [p.bundle_order_id, p]))
+    const tiketIds = (tiketOrders ?? []).map((t) => t.id)
+    const { data: issued } = tiketIds.length
+      ? await supabaseAdmin.from('tiket_issued').select('id,pesanan_id').in('pesanan_id', tiketIds)
+      : { data: [] as { id: string; pesanan_id: string }[] }
+    const pesananBerTiket = new Set((issued ?? []).map((i) => i.pesanan_id))
+    const bundlePunyaTiket = new Set(
+      (tiketOrders ?? []).filter((t) => pesananBerTiket.has(t.id)).map((t) => t.bundle_order_id),
+    )
 
-    const result = list.map((o) => ({
-      ...o,
-      bundle_nama: o.bundle_id ? bundleMap.get(o.bundle_id) ?? null : null,
-      qr: buatQrPayload('bundle', o.no_pesanan),
-      items: (items ?? []).filter((i) => i.bundle_order_id === o.id),
-    }))
+    const result = list.map((o) => {
+      const po = poMap.get(o.id)
+      return {
+        ...o,
+        bundle_nama: o.bundle_id ? bundleMap.get(o.bundle_id) ?? null : null,
+        qr_baju: o.status === 'lunas' && po ? buatQrPayload('po', po.no_po) : null,
+        qr_tiket: o.status === 'lunas' && bundlePunyaTiket.has(o.id) ? buatQrPayload('bundle', o.no_pesanan) : null,
+        items: (items ?? []).filter((i) => i.bundle_order_id === o.id),
+      }
+    })
     return NextResponse.json(result)
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 })

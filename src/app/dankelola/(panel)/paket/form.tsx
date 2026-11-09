@@ -18,6 +18,7 @@ type FormState = {
   deskripsi: string
   gambar_url: string
   harga_bundle: number
+  harga_coret: number
   aktif: boolean
   tgl_mulai: string
   tgl_selesai: string
@@ -31,6 +32,7 @@ const emptyForm: FormState = {
   deskripsi: '',
   gambar_url: '',
   harga_bundle: 0,
+  harga_coret: 0,
   aktif: true,
   tgl_mulai: '',
   tgl_selesai: '',
@@ -82,6 +84,7 @@ export default function PaketForm({ id }: { id?: string }) {
           deskripsi: found.deskripsi ?? '',
           gambar_url: found.gambar_url ?? '',
           harga_bundle: Number(found.harga_bundle),
+          harga_coret: Number(found.harga_coret ?? 0),
           aktif: found.aktif,
           tgl_mulai: toDateInput(found.tgl_mulai),
           tgl_selesai: toDateInput(found.tgl_selesai),
@@ -222,6 +225,11 @@ export default function PaketForm({ id }: { id?: string }) {
                 <input id="harga_bundle" type="number" min={0} className={input} value={form.harga_bundle || ''} onChange={(e) => setForm((f) => ({ ...f, harga_bundle: Number(e.target.value) }))} />
               </div>
               <div>
+                <label htmlFor="harga_coret" className="mb-1 block text-xs font-medium text-slate-500">Harga Coret (Rp)</label>
+                <input id="harga_coret" type="number" min={0} className={input} placeholder="Otomatis dari total item" value={form.harga_coret || ''} onChange={(e) => setForm((f) => ({ ...f, harga_coret: Number(e.target.value) }))} />
+                <p className="mt-1 text-[11px] text-slate-400">Harga normal yang tampil dicoret di katalog publik. Kosongkan untuk otomatis.</p>
+              </div>
+              <div>
                 <label htmlFor="kuota" className="mb-1 block text-xs font-medium text-slate-500">Kuota (0 = unlimited)</label>
                 <input id="kuota" type="number" min={0} className={input} value={form.kuota || ''} onChange={(e) => setForm((f) => ({ ...f, kuota: Number(e.target.value) }))} />
               </div>
@@ -252,7 +260,7 @@ export default function PaketForm({ id }: { id?: string }) {
               </div>
               <div className="flex items-center justify-between gap-2">
                 <span className="text-slate-500">Harga normal</span>
-                <span className="text-slate-700 line-through">{formatRupiah(totalKomponen)}</span>
+                <span className="text-slate-700 line-through">{formatRupiah(form.harga_coret > 0 ? form.harga_coret : totalKomponen)}</span>
               </div>
               <div className="flex items-center justify-between gap-2">
                 <span className="text-slate-500">Harga paket</span>

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { verifyRef } from '@/lib/link-token'
+import { signRef, verifyRef } from '@/lib/link-token'
+import { baseUrl, kirimWhatsApp } from '@/lib/notifikasi-tiket'
 
 export async function POST(request: Request) {
   try {
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
 
     const { data: order } = await supabaseAdmin
       .from('bundle_order')
-      .select('id,status')
+      .select('id,status,no_pesanan,nama_pembeli,kontak,total')
       .eq('no_pesanan', kode)
       .maybeSingle()
     if (!order) return NextResponse.json({ error: 'Pesanan tidak ditemukan' }, { status: 404 })
@@ -30,6 +31,26 @@ export async function POST(request: Request) {
       .update({ bukti_url: buktiUrl, status: 'menunggu_verifikasi', updated_at: new Date().toISOString() })
       .eq('id', order.id)
     if (error) throw error
+
+    try {
+      const link = `${baseUrl(request)}/lacak/${encodeURIComponent(order.no_pesanan)}?t=${encodeURIComponent(signRef('bundle', order.no_pesanan))}`
+      const message = [
+        `Halo ${order.nama_pembeli}, bukti pembayaran paket combo kamu sudah kami terima.`,
+        '',
+        `Kode pesanan: ${order.no_pesanan}`,
+        `Total: ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Number(order.total))}`,
+        '',
+        'Status: Menunggu verifikasi admin.',
+        '',
+        `Riwayat & struk: ${link}`,
+        '',
+        'Hormat Kami,',
+        'Panitia Danus In4Days XI',
+      ].join('\n')
+      await kirimWhatsApp(order.kontak, message)
+    } catch (notifError) {
+      console.error('Notifikasi paket gagal:', notifError)
+    }
 
     return NextResponse.json({ success: true, message: 'Bukti terkirim, menunggu verifikasi admin' })
   } catch (err: unknown) {

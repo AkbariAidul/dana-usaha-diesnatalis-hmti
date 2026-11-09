@@ -11,10 +11,12 @@ import { PageSkeleton } from '../../ui'
 import { DataError } from '@/components/data-error'
 import { useIsViewer } from '@/lib/dashboard-user'
 import { BuktiPreviewModal, BuktiThumb } from '@/components/bukti'
+import { QrImage } from '@/components/qr-image'
 import { formatRupiah } from '@/lib/utils'
 import type { BundleOrder, BundleOrderItem } from '@/lib/types'
 
-type OrderRow = BundleOrder & { bundle_nama: string | null; qr: string; items: BundleOrderItem[] }
+type OrderRow = BundleOrder & { bundle_nama: string | null; qr_baju: string | null; qr_tiket: string | null; items: BundleOrderItem[] }
+type QrPreview = { label: string; value: string; kode: string }
 
 const STATUS_LABEL: Record<string, string> = {
   menunggu_verifikasi: 'Menunggu Verifikasi',
@@ -36,6 +38,7 @@ export default function PesananPaketPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
+  const [qrPreview, setQrPreview] = useState<QrPreview | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [rejectTarget, setRejectTarget] = useState<OrderRow | null>(null)
   const [rejectReason, setRejectReason] = useState('')
@@ -156,6 +159,32 @@ export default function PesananPaketPage() {
                   <td className="px-4 py-3">
                     <p className="font-semibold text-slate-900">{order.no_pesanan}</p>
                     <p className="text-xs text-slate-500">{order.bundle_nama ?? 'Paket'}</p>
+                    {(order.qr_baju || order.qr_tiket) && (
+                      <div className="mt-2 flex items-start gap-2">
+                        {order.qr_baju && (
+                          <button
+                            type="button"
+                            onClick={() => setQrPreview({ label: 'QR Pengambilan Baju', value: order.qr_baju!, kode: order.no_pesanan })}
+                            className="flex flex-col items-center gap-1 rounded-lg border border-slate-200 p-1 transition hover:border-primary-300 hover:bg-primary-50/40"
+                            title="QR pengambilan merchandise"
+                          >
+                            <QrImage value={order.qr_baju} size={40} />
+                            <span className="text-[10px] font-medium text-slate-500">Baju</span>
+                          </button>
+                        )}
+                        {order.qr_tiket && (
+                          <button
+                            type="button"
+                            onClick={() => setQrPreview({ label: 'QR Regist Tiket', value: order.qr_tiket!, kode: order.no_pesanan })}
+                            className="flex flex-col items-center gap-1 rounded-lg border border-slate-200 p-1 transition hover:border-primary-300 hover:bg-primary-50/40"
+                            title="QR registrasi tiket"
+                          >
+                            <QrImage value={order.qr_tiket} size={40} />
+                            <span className="text-[10px] font-medium text-slate-500">Tiket</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <p className="font-medium text-slate-800">{order.nama_pembeli}</p>
@@ -208,6 +237,19 @@ export default function PesananPaketPage() {
       </div>
 
       <BuktiPreviewModal url={preview} onClose={() => setPreview(null)} />
+
+      <Modal open={!!qrPreview} onClose={() => setQrPreview(null)}>
+        {qrPreview && (
+          <div className="text-center">
+            <h2 className="text-lg font-semibold text-slate-900">{qrPreview.label}</h2>
+            <p className="text-sm text-slate-500">{qrPreview.kode}</p>
+            <div className="mx-auto mt-4 w-fit rounded-2xl border border-slate-200 bg-white p-3">
+              <QrImage value={qrPreview.value} size={240} />
+            </div>
+            <p className="mt-3 text-xs text-slate-400">Scan lewat menu Scan QR untuk konfirmasi.</p>
+          </div>
+        )}
+      </Modal>
 
       <Modal open={!!rejectTarget} onClose={() => setRejectTarget(null)}>
         <h2 className="mb-1 text-lg font-semibold text-slate-900">Tolak Pesanan</h2>

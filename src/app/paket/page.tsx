@@ -226,6 +226,7 @@ export default function PaketPage() {
               )}
               {bundles.map((b) => {
                 const komponen = (b.items ?? []).reduce((s, i) => s + Number(i.harga_satuan ?? 0) * Number(i.qty), 0)
+                const hargaCoret = Number(b.harga_coret ?? 0) > 0 ? Number(b.harga_coret) : komponen
                 return (
                   <div key={b.id} className="flex h-full flex-col rounded-2xl border border-slate-200/70 bg-white p-3 shadow-sm sm:p-4">
                     <div className="mb-3 aspect-square shrink-0 overflow-hidden rounded-xl bg-slate-100">
@@ -248,7 +249,7 @@ export default function PaketPage() {
                       <div className="mt-auto flex flex-col gap-2 pt-3 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-violet-600">{formatRupiah(Number(b.harga_bundle))}</p>
-                          {komponen > 0 && <p className="text-[11px] text-slate-400 line-through">{formatRupiah(komponen)}</p>}
+                          {hargaCoret > Number(b.harga_bundle) && <p className="text-[11px] text-slate-400 line-through">{formatRupiah(hargaCoret)}</p>}
                         </div>
                         <button onClick={() => pilihPaket(b)} className="flex w-full shrink-0 items-center justify-center gap-1 rounded-xl bg-violet-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-violet-700 sm:w-auto">
                           Pilih Paket
@@ -345,15 +346,12 @@ export default function PaketPage() {
               </div>
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex flex-col items-end gap-3 sm:flex-row sm:justify-end">
+              <Turnstile ref={turnstileRef} />
               <button onClick={pesan} className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-violet-700">
                 Lanjut ke Pembayaran
               </button>
             </div>
-
-            {TURNSTILE_ENABLED && (
-              <div className="hidden"><Turnstile ref={turnstileRef} /></div>
-            )}
           </div>
         )}
 

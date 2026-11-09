@@ -38,6 +38,7 @@ export async function POST(request: Request) {
       deskripsi: body.deskripsi ? String(body.deskripsi) : null,
       gambar_url: body.gambar_url ? String(body.gambar_url) : null,
       harga_bundle: Math.max(0, Number(body.harga_bundle) || 0),
+      harga_coret: Number(body.harga_coret) > 0 ? Number(body.harga_coret) : null,
       aktif: body.aktif !== false,
       tgl_mulai: body.tgl_mulai || null,
       // Input tanggal (YYYY-MM-DD) dianggap berlaku sampai akhir hari.

@@ -345,6 +345,7 @@ export interface Bundle {
   deskripsi: string | null
   gambar_url: string | null
   harga_bundle: number
+  harga_coret: number | null
   aktif: boolean
   tgl_mulai: string | null
   tgl_selesai: string | null

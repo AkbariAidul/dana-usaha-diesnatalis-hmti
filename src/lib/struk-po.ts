@@ -520,6 +520,51 @@ const STATUS_TIKET: Record<string, string> = {
   batal: 'Dibatalkan',
 }
 
+type StrukBundle = {
+  no_pesanan: string
+  nama_pembeli: string
+  kontak: string
+  email: string | null
+  total: number
+  status: string
+  created_at: string
+  bundle_nama: string | null
+}
+
+export async function buatStrukBundlePdf(
+  order: StrukBundle,
+  items: Array<{ nama: string; detail: string | null; qty: number; harga_satuan: number; subtotal: number }>,
+  qrUrl?: string
+): Promise<Buffer> {
+  const total = Number(order.total)
+  const dibayar = order.status === 'lunas' ? total : 0
+
+  return buatInvoicePdf({
+    jenis: 'INVOICE PAKET COMBO',
+    noInvoice: order.no_pesanan,
+    detailHeader: 'Varian',
+    meta: [
+      ['Nama', order.nama_pembeli, 'No. Invoice', order.no_pesanan],
+      ['Kontak', order.email ? `${order.kontak} - ${order.email}` : order.kontak, 'Tanggal', waktu(order.created_at)],
+      ['Paket', order.bundle_nama || 'Paket Combo', 'Status', STATUS_TIKET[order.status] ?? order.status.replace(/_/g, ' ')],
+      ['Total Paket', rupiah(total), 'Dibayar', rupiah(dibayar)],
+    ],
+    lines: items.map((item) => ({
+      nama: item.nama,
+      detail: item.detail,
+      qty: Number(item.qty),
+      harga_satuan: Number(item.harga_satuan),
+      subtotal: Number(item.subtotal),
+    })),
+    totals: [
+      { label: 'Total Paket', value: total, highlight: true, big: true },
+      { label: 'Sudah Dibayar', value: dibayar },
+    ],
+    note: 'Terima kasih telah membeli paket combo Danus In4Days XI. Simpan invoice ini sebagai bukti pembelian. QR tiket & pengambilan merchandise dapat dilihat pada halaman riwayat.',
+    qrUrl,
+  })
+}
+
 export async function buatStrukTiketPdf(pesanan: StrukTiket, qrUrl?: string): Promise<Buffer> {
   const jumlah = Number(pesanan.jumlah)
   const hargaSatuan = Number(pesanan.harga_satuan)

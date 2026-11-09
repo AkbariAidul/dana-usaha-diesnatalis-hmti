@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getStrukTiket } from '@/lib/queries'
-import { tipeDariKode, verifyRef } from '@/lib/link-token'
+import { signRef, tipeDariKode, verifyRef } from '@/lib/link-token'
 import { linkPo } from '@/lib/notifikasi-po'
-import { linkTiket } from '@/lib/notifikasi-tiket'
+import { baseUrl, linkTiket } from '@/lib/notifikasi-tiket'
 import { linkTenant } from '@/lib/notifikasi-tenant'
-import { buatStrukPoPdf, buatStrukTenantPdf, buatStrukTiketPdf, namaFileStruk } from '@/lib/struk-po'
+import { buatStrukBundlePdf, buatStrukPoPdf, buatStrukTenantPdf, buatStrukTiketPdf, namaFileStruk } from '@/lib/struk-po'
 
 export const runtime = 'nodejs'
 
@@ -75,6 +75,41 @@ export async function GET(request: Request) {
         headers: {
           'Content-Type': 'application/pdf',
           'Content-Disposition': `attachment; filename="${namaFileStruk(pesanan.no_pesanan)}"`,
+        },
+      })
+    }
+
+    if (tipe === 'bundle') {
+      const { data: order } = await supabaseAdmin.from('bundle_order').select('*').eq('no_pesanan', kode).maybeSingle()
+      if (!order) return NextResponse.json({ error: 'Pesanan paket tidak ditemukan' }, { status: 404 })
+      if (order.status !== 'lunas') {
+        return NextResponse.json({ error: 'Struk tersedia setelah pembayaran lunas' }, { status: 403 })
+      }
+
+      const [{ data: items }, { data: bundle }] = await Promise.all([
+        supabaseAdmin.from('bundle_order_item').select('*').eq('bundle_order_id', order.id),
+        order.bundle_id
+          ? supabaseAdmin.from('bundle').select('nama').eq('id', order.bundle_id).maybeSingle()
+          : Promise.resolve({ data: null as { nama: string } | null }),
+      ])
+
+      const qrUrl = `${baseUrl(request)}/lacak/${encodeURIComponent(kode)}?t=${encodeURIComponent(signRef('bundle', kode))}`
+      const buffer = await buatStrukBundlePdf(
+        { ...order, bundle_nama: bundle?.nama ?? null },
+        (items ?? []).map((item) => ({
+          nama: item.nama_snapshot,
+          detail: [item.warna, item.lengan, item.ukuran].filter(Boolean).join(' · ') || null,
+          qty: Number(item.qty),
+          harga_satuan: Number(item.harga_satuan),
+          subtotal: Number(item.subtotal),
+        })),
+        qrUrl
+      )
+
+      return new NextResponse(new Uint8Array(buffer), {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${namaFileStruk(order.no_pesanan)}"`,
         },
       })
     }
