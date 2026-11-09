@@ -118,6 +118,23 @@ export default async function Home() {
           <span>Dashboard</span>
         </Link>
       )}
+
+      <div className="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/90 px-3 py-2 shadow-lg shadow-slate-900/10 backdrop-blur">
+        <div className="relative h-7 w-16 shrink-0">
+          <Image
+            src="/shift-hd.webp"
+            alt="Logo Shift"
+            fill
+            sizes="64px"
+            className="object-contain object-right"
+          />
+        </div>
+        <p className="text-[11px] leading-tight text-slate-500">
+          Dibuat oleh Shift
+          <br />
+          <span className="text-slate-400">© {new Date().getFullYear()} Shift. Hak cipta dilindungi.</span>
+        </p>
+      </div>
     </div>
   )
 }
