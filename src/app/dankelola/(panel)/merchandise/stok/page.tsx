@@ -3,6 +3,8 @@
 import { DataError } from '@/components/data-error'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
+import { CalendarClock } from 'lucide-react'
 import { getJSON } from '../../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { formatRupiah } from '@/lib/utils'
@@ -90,7 +92,15 @@ export default function StokPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Produksi & Stok</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Produksi & Stok</h1>
+        <Link
+          href="/dankelola/merchandise/pengambilan"
+          className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-primary-700"
+        >
+          <CalendarClock className="h-4 w-4" /> Atur Pengambilan
+        </Link>
+      </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {perProduk.map((p) => (
