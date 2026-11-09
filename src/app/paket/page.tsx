@@ -32,7 +32,7 @@ type Produk = {
 }
 type Varian = { id: string; nama: string }
 type Pilihan = { varian_id: string; warna: string; lengan: string }
-type Pesanan = { id: string; no_pesanan: string; total: number; t: string }
+type Pesanan = { id: string; no_pesanan: string; total: number; t: string; items: Array<{ nama: string; qty: number }> }
 
 const input = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10'
 const TURNSTILE_ENABLED = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
@@ -204,9 +204,9 @@ export default function PaketPage() {
 
   return (
     <div className="min-h-screen bg-[#f7f9fc]">
-      <PublicNavbar title="Paket Combo" maxWidth="max-w-5xl" />
+      <PublicNavbar title="Paket Combo" maxWidth="max-w-7xl" />
 
-      <main className="mx-auto max-w-5xl space-y-6 px-4 py-8 pb-24 sm:px-6">
+      <main className="mx-auto max-w-7xl space-y-6 px-4 py-8 pb-28 sm:px-6">
         <PoStepper
           steps={[{ label: 'Pilih Paket' }, { label: 'Form Pemesan' }, { label: 'Pembayaran' }, { label: 'Selesai' }]}
           currentStep={step}
@@ -218,7 +218,7 @@ export default function PaketPage() {
               <h1 className="text-2xl font-semibold text-slate-900">Paket Combo</h1>
               <p className="text-sm text-slate-500">Dapatkan tiket dan merchandise sekaligus, bayar sekali.</p>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
               {bundles.length === 0 && (
                 <div className="col-span-full rounded-2xl border border-dashed border-slate-200 p-10 text-center text-sm text-slate-500">
                   Belum ada paket yang dibuka.
@@ -227,28 +227,30 @@ export default function PaketPage() {
               {bundles.map((b) => {
                 const komponen = (b.items ?? []).reduce((s, i) => s + Number(i.harga_satuan ?? 0) * Number(i.qty), 0)
                 return (
-                  <div key={b.id} className="flex flex-col overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm">
-                    <div className="aspect-video bg-slate-100">
+                  <div key={b.id} className="flex h-full flex-col rounded-2xl border border-slate-200/70 bg-white p-3 shadow-sm sm:p-4">
+                    <div className="mb-3 aspect-square shrink-0 overflow-hidden rounded-xl bg-slate-100">
                       {b.gambar_url ? (
                         <img src={b.gambar_url} alt={b.nama} className="h-full w-full object-cover" />
                       ) : (
-                        <div className="flex h-full items-center justify-center"><Package className="h-10 w-10 text-slate-300" /></div>
+                        <div className="flex h-full items-center justify-center"><Package className="h-8 w-8 text-slate-300" /></div>
                       )}
                     </div>
-                    <div className="flex flex-1 flex-col p-4">
-                      <h2 className="font-semibold text-slate-900">{b.nama}</h2>
-                      {b.deskripsi && <p className="mt-1 text-sm text-slate-500">{b.deskripsi}</p>}
-                      <ul className="mt-3 space-y-1 text-sm text-slate-600">
+                    <div className="flex flex-1 flex-col">
+                      <h2 className="line-clamp-2 min-h-[2.5rem] font-medium text-slate-900">{b.nama}</h2>
+                      <div className="mt-1 min-h-[2rem]">
+                        {b.deskripsi ? <p className="line-clamp-2 text-xs text-slate-500">{b.deskripsi}</p> : null}
+                      </div>
+                      <ul className="mt-1 space-y-0.5 text-xs text-slate-500">
                         {(b.items ?? []).map((i) => (
-                          <li key={i.id}>{i.qty}× {i.nama} <span className="text-xs text-slate-400">({i.tipe === 'tiket' ? 'Tiket' : 'Merch'})</span></li>
+                          <li key={i.id} className="line-clamp-1">{i.qty}× {i.nama} <span className="text-slate-400">({i.tipe === 'tiket' ? 'Tiket' : 'Merch'})</span></li>
                         ))}
                       </ul>
-                      <div className="mt-auto flex items-end justify-between gap-3 pt-4">
-                        <div>
-                          <p className="text-lg font-bold text-violet-600">{formatRupiah(Number(b.harga_bundle))}</p>
-                          {komponen > 0 && <p className="text-xs text-slate-400 line-through">{formatRupiah(komponen)}</p>}
+                      <div className="mt-auto flex flex-col gap-2 pt-3 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-violet-600">{formatRupiah(Number(b.harga_bundle))}</p>
+                          {komponen > 0 && <p className="text-[11px] text-slate-400 line-through">{formatRupiah(komponen)}</p>}
                         </div>
-                        <button onClick={() => pilihPaket(b)} className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700">
+                        <button onClick={() => pilihPaket(b)} className="flex w-full shrink-0 items-center justify-center gap-1 rounded-xl bg-violet-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-violet-700 sm:w-auto">
                           Pilih Paket
                         </button>
                       </div>
@@ -261,7 +263,7 @@ export default function PaketPage() {
         )}
 
         {step === 2 && selected && (
-          <div className="space-y-4">
+          <div className="max-w-6xl space-y-4">
             <button onClick={() => setStep(1)} className="inline-flex items-center gap-1 text-sm text-slate-600 hover:underline">
               <ChevronLeft className="h-4 w-4" /> Pilih paket lain
             </button>
@@ -356,31 +358,50 @@ export default function PaketPage() {
         )}
 
         {step === 3 && pesanan && (
-          <div className="mx-auto max-w-md space-y-4">
+          <div className="max-w-4xl space-y-4">
             <h1 className="text-2xl font-semibold text-slate-900">Pembayaran</h1>
-            <div className="rounded-2xl border border-slate-200/70 bg-white p-5 text-center shadow-sm">
-              <p className="text-sm text-slate-500">Total pembayaran</p>
-              <p className="text-2xl font-bold text-violet-600">{formatRupiah(Number(pesanan.total))}</p>
-              <p className="mt-1 text-xs text-slate-400">{pesanan.no_pesanan}</p>
-              <div className="mx-auto mt-4 aspect-square w-56 overflow-hidden rounded-xl bg-slate-100">
-                {qr ? <img src={qr} alt="QRIS" className="h-full w-full object-contain" /> : <div className="flex h-full items-center justify-center text-xs text-slate-400">Memuat QRIS...</div>}
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="space-y-2 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+                <h2 className="text-lg font-semibold text-slate-900">Detail Pesanan</h2>
+                <p className="text-sm"><span className="text-slate-500">No. Pesanan</span> : {pesanan.no_pesanan}</p>
+                <div className="mt-2 space-y-1">
+                  {pesanan.items.map((it, i) => (
+                    <p key={i} className="text-sm">
+                      <span className="text-slate-500">{it.nama}</span> × {it.qty}
+                    </p>
+                  ))}
+                </div>
+                <p className="text-sm"><span className="text-slate-500">Nama</span> : {form.nama_pembeli}</p>
+                <p className="text-sm"><span className="text-slate-500">Kontak</span> : {form.kontak}</p>
+                <p className="text-sm"><span className="text-slate-500">Total</span> : {formatRupiah(Number(pesanan.total))}</p>
               </div>
-              <p className="mt-3 text-xs text-slate-500">Scan QRIS di atas, lalu unggah bukti pembayaran.</p>
-            </div>
 
-            <div className="space-y-3 rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm">
-              <label className="block text-sm font-medium text-slate-700">Bukti pembayaran</label>
-              <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => pilihFile(e.target.files?.[0] ?? null)} className="block w-full text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-violet-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-violet-700" />
-              {preview && <img src={preview} alt="Pratinjau" className="max-h-56 w-full rounded-xl object-contain" />}
-              <button onClick={upload} disabled={uploading || !file} className="w-full rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">
-                {uploading ? 'Mengupload...' : 'Upload Bukti Bayar'}
-              </button>
+              <div className="space-y-4 rounded-2xl border border-slate-200/70 bg-white p-6 text-center shadow-sm">
+                <h2 className="text-lg font-semibold text-slate-900">Scan QRIS</h2>
+                <div className="mx-auto w-fit rounded-2xl border-4 border-violet-500 bg-white p-3 shadow-lg shadow-violet-100">
+                  {qr ? (
+                    <img src={qr} alt="QRIS" className="h-72 w-72 rounded-lg object-contain" />
+                  ) : (
+                    <div className="flex h-72 w-72 items-center justify-center text-xs text-slate-400">Memuat QRIS...</div>
+                  )}
+                </div>
+                <p className="text-sm text-slate-500">Nominal QRIS otomatis {formatRupiah(Number(pesanan.total))}.</p>
+                <div className="space-y-3 text-left">
+                  <label className="block text-sm font-medium text-slate-700">Bukti pembayaran</label>
+                  <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => pilihFile(e.target.files?.[0] ?? null)} className="block w-full text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-violet-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-violet-700 hover:file:bg-violet-100" />
+                  <p className="text-xs text-slate-500">JPG, PNG, atau WebP. Maksimal 5MB.</p>
+                  {preview && <img src={preview} alt="Pratinjau" className="max-h-56 w-full rounded-xl object-contain" />}
+                  <button onClick={upload} disabled={uploading || !file} className="w-full rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">
+                    {uploading ? 'Mengupload...' : 'Upload Bukti Bayar'}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
 
         {step === 4 && pesanan && (
-          <div className="mx-auto max-w-md space-y-4 rounded-2xl border border-emerald-200 bg-white p-8 text-center shadow-sm">
+          <div className="mx-auto w-full max-w-4xl space-y-4 rounded-2xl border border-emerald-200 bg-white p-8 text-center shadow-sm">
             <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500" />
             <h1 className="text-xl font-semibold text-slate-900">Bukti terkirim</h1>
             <p className="text-sm text-slate-500">Pesanan {pesanan.no_pesanan} menunggu verifikasi admin. Pantau status lewat halaman lacak.</p>

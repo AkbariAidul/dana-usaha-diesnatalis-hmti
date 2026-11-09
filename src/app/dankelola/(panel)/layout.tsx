@@ -134,6 +134,8 @@ function getBreadcrumbs(pathname: string) {
     breadcrumbs.push({ label: 'Transaksi Baru', href: pathname })
   } else if (pathname === '/dankelola/merchandise/modal') {
     breadcrumbs.push({ label: 'Kelola Modal', href: pathname })
+  } else if (pathname === '/dankelola/paket/new' || /^\/dankelola\/paket\/[^/]+\/edit$/.test(pathname)) {
+    breadcrumbs.push({ label: pathname === '/dankelola/paket/new' ? 'Tambah Paket' : 'Edit Paket', href: pathname })
   }
 
   return breadcrumbs
@@ -608,6 +610,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               pathname.startsWith('/dankelola/ticket/penjualan') ||
               pathname.startsWith('/dankelola/ticket/checkin') ||
               pathname.startsWith('/dankelola/merchandise') ||
+              pathname.startsWith('/dankelola/paket') ||
               pathname.startsWith('/dankelola/tenants') ||
               pathname.startsWith('/dankelola/laporan') ||
               pathname.startsWith('/dankelola/monitoring') ||
