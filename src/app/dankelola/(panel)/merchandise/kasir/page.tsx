@@ -4,13 +4,16 @@ import { DataError } from '@/components/data-error'
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { getJSON } from '../../../api'
+import { toast } from 'sonner'
+import { getJSON, sendJSON } from '../../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { PageSkeleton } from '../../ui'
 import { BuktiPreviewModal, BuktiThumb } from '@/components/bukti'
 import type { MerchModalItem } from '@/lib/types'
 import { formatRupiah } from '@/lib/utils'
 import { useIsViewer } from '@/lib/dashboard-user'
+import { useConfirm } from '@/components/confirm-dialog'
+import { Trash2 } from 'lucide-react'
 
 type KasirTransaksi = {
   id: string
@@ -28,6 +31,7 @@ type KasirTransaksi = {
 }
 
 export default function KasirPage() {
+  const confirm = useConfirm()
   const isViewer = useIsViewer()
   const [transaksi, setTransaksi] = useState<KasirTransaksi[]>([])
   const [modalSatuan, setModalSatuan] = useState(0)
@@ -60,6 +64,17 @@ export default function KasirPage() {
   function toggleSelectAllKasir() {
     const isAll = transaksi.length > 0 && transaksi.every((t) => selectedKasir.has(t.id))
     setSelectedKasir(isAll ? new Set() : new Set(transaksi.map((t) => t.id)))
+  }
+  async function hapusTerpilih() {
+    if (selectedKasir.size === 0) return
+    const ok = await confirm({ title: `Hapus ${selectedKasir.size} transaksi terpilih?`, description: 'Stok produk yang相关 akan dikembalikan.', confirmText: 'Hapus' })
+    if (!ok) return
+    try {
+      await sendJSON('/api/merchandise/kasir', 'DELETE', { ids: [...selectedKasir] })
+      toast.success(`${selectedKasir.size} transaksi dihapus`)
+      setSelectedKasir(new Set())
+      await load()
+    } catch (e) { toast.error(String(e)) }
   }
 
   if (loading) return <PageSkeleton />
@@ -109,6 +124,9 @@ export default function KasirPage() {
       {selectedKasir.size > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
           <p className="text-sm text-slate-600"><span className="font-semibold text-slate-900">{selectedKasir.size}</span> transaksi dipilih</p>
+          <button type="button" onClick={hapusTerpilih} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-700">
+            <Trash2 className="h-4 w-4" /> Hapus Terpilih
+          </button>
         </div>
       )}
 

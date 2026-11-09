@@ -3,7 +3,7 @@
 import { DataError } from '@/components/data-error'
 
 import { useCallback, useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight, Download, Inbox, Search } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, Inbox, Search, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
 import { PageSkeleton } from '../../ui'
@@ -104,7 +104,22 @@ export default function PenjualanPage() {
   }
 
   function toggleSelectPenjualan(id: string) { setSelectedPenjualan((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n }) }
-  function toggleSelectAllPenjualan() { const isAll = paginated.length > 0 && paginated.every((p) => selectedPenjualan.has(p.id)); setSelectedPenjualan(isAll ? new Set() : new Set(paginated.map((p) => p.id))) }
+  function toggleSelectAllPenjualan() {
+    const isAll = paginated.length > 0 && paginated.every((p) => selectedPenjualan.has(p.id))
+    setSelectedPenjualan(isAll ? new Set() : new Set(paginated.map((p) => p.id)))
+  }
+  async function hapusTerpilih() {
+    const chosen = pesanan.filter((p) => selectedPenjualan.has(p.id))
+    if (chosen.length === 0) return
+    const ok = await confirm({ title: `Hapus ${chosen.length} pesanan terpilih?`, description: 'Pesanan akan ditandai batal dan tiket terkait dibatalkan.', confirmText: 'Hapus' })
+    if (!ok) return
+    try {
+      await sendJSON('/api/ticket/penjualan', 'DELETE', { ids: [...selectedPenjualan] })
+      toast.success(`${chosen.length} pesanan dihapus`)
+      setSelectedPenjualan(new Set())
+      await load()
+    } catch (e) { toast.error(String(e)) }
+  }
 
   if (loading) return <PageSkeleton />
   if (error) return (
@@ -167,6 +182,9 @@ export default function PenjualanPage() {
       {selectedPenjualan.size > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
           <p className="text-sm text-slate-600"><span className="font-semibold text-slate-900">{selectedPenjualan.size}</span> pesanan dipilih</p>
+          <button type="button" onClick={hapusTerpilih} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-700">
+            <Trash2 className="h-4 w-4" /> Hapus Terpilih
+          </button>
         </div>
       )}
 

@@ -155,3 +155,37 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: String(err) }, { status: 500 })
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const { ids }: { ids: string[] } = await request.json()
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return NextResponse.json({ error: 'ID wajib diisi' }, { status: 400 })
+    }
+    // Ambil data sebelum dihapus untuk restorasi stok
+    const { data: existing } = await supabaseAdmin
+      .from('kasir_transaksi')
+      .select('id, merchandise_id, qty')
+      .in('id', ids)
+    const toRestore = (existing ?? []).filter((r) => r.merchandise_id != null && Number(r.qty) > 0)
+
+    const { error } = await supabaseAdmin.from('kasir_transaksi').delete().in('id', ids)
+    if (error) throw error
+
+    // Restore stok produk yang finite
+    const restoredMap = new Map<string, number>()
+    for (const r of toRestore) {
+      const mid = String(r.merchandise_id)
+      restoredMap.set(mid, (restoredMap.get(mid) ?? 0) + Number(r.qty))
+    }
+    for (const [mid, qty] of restoredMap.entries()) {
+      const { data: produk } = await supabaseAdmin.from('merchandise').select('stok,stok_unlimited').eq('id', mid).maybeSingle()
+      if (produk && !produk.stok_unlimited && produk.stok != null) {
+        await supabaseAdmin.from('merchandise').update({ stok: Number(produk.stok) + qty }).eq('id', mid)
+      }
+    }
+    return NextResponse.json({ success: true, deleted: ids.length })
+  } catch (err: unknown) {
+    return NextResponse.json({ error: String(err) }, { status: 500 })
+  }
+}
