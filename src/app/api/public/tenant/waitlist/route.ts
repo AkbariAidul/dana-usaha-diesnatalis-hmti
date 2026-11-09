@@ -4,6 +4,7 @@ import { hitungPendaftaran, PendaftaranError, type BodyPendaftaran } from '@/lib
 import { turnstileFailure, verifyTurnstile } from '@/lib/turnstile'
 import { kirimWhatsApp } from '@/lib/notifikasi-tiket'
 import { formatRupiah } from '@/lib/utils'
+import { clientIp, rateLimit } from '@/lib/rate-limit'
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message
@@ -20,6 +21,9 @@ function waLink(kontak: string) {
 
 export async function POST(request: Request) {
   try {
+    if (!rateLimit(`waitlist:${clientIp(request.headers)}`, 5, 10 * 60 * 1000)) {
+      return NextResponse.json({ error: 'Terlalu banyak permintaan. Coba lagi nanti.' }, { status: 429 })
+    }
     const body = (await request.json()) as BodyPendaftaran
     const namaUsaha = String(body.nama_usaha ?? '').trim()
     const kontak = String(body.kontak ?? '').trim()

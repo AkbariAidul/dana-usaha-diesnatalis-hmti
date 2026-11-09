@@ -3,9 +3,13 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { verifyRef } from '@/lib/link-token'
 import { isBuktiUrl } from '@/lib/bukti'
 import { kirimNotifTenantMenungguVerifikasi } from '@/lib/notifikasi-tenant'
+import { clientIp, rateLimit } from '@/lib/rate-limit'
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    if (!rateLimit(`tenant-bukti:${clientIp(request.headers)}`, 20, 10 * 60 * 1000)) {
+      return NextResponse.json({ error: 'Terlalu banyak permintaan. Coba lagi nanti.' }, { status: 429 })
+    }
     const { id } = await params
     const body = await request.json()
     const buktiUrl = String(body.bukti_url ?? '').trim()

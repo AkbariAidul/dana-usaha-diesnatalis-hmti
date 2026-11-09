@@ -6,9 +6,13 @@ import { kirimNotifPoDiambil } from '@/lib/notifikasi-po'
 import { kirimNotifTenantCheckin } from '@/lib/notifikasi-tenant'
 import { createAuditLog } from '@/lib/queries'
 import { getSessionUser } from '@/lib/session-server'
+import { clientIp, rateLimit } from '@/lib/rate-limit'
 
 export async function POST(request: Request) {
   try {
+    if (!rateLimit(`scan:${clientIp(request.headers)}`, 120, 10 * 60 * 1000)) {
+      return NextResponse.json({ error: 'Terlalu banyak scan. Coba lagi nanti.' }, { status: 429 })
+    }
     const body = await request.json()
     const payload = String(body.payload ?? '').trim()
     const confirm = body.action === 'confirm'
@@ -214,6 +218,19 @@ export async function POST(request: Request) {
       .select('*')
       .eq('id', tiket.pesanan_id)
       .maybeSingle()
+    if (pesanan && ['batal', 'ditolak'].includes(pesanan.status)) {
+      return NextResponse.json({ error: 'Tiket sudah dibatalkan' }, { status: 403 })
+    }
+    if (pesanan?.bundle_order_id) {
+      const { data: bundleOrder } = await supabaseAdmin
+        .from('bundle_order')
+        .select('status')
+        .eq('id', pesanan.bundle_order_id)
+        .maybeSingle()
+      if (bundleOrder && bundleOrder.status !== 'lunas') {
+        return NextResponse.json({ error: 'Pesanan paket belum lunas / dibatalkan' }, { status: 403 })
+      }
+    }
     const { data: tipeTiket } = pesanan?.tiket_tipe_id
       ? await supabaseAdmin.from('tiket_tipe').select('nama').eq('id', pesanan.tiket_tipe_id).maybeSingle()
       : { data: null }

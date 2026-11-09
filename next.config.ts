@@ -32,6 +32,7 @@ const nextConfig: NextConfig = {
     '/api/pembayaran': sharpFiles,
     '/api/merchandise': sharpFiles,
     '/api/public/struk': ['./public/logo-dies-struk.png'],
+    '/api/paket/struk': ['./public/logo-dies-struk.png'],
     '/api/merchandise/preorder/struk': ['./public/logo-dies-struk.png'],
     '/api/ticket/struk': ['./public/logo-dies-struk.png'],
   },

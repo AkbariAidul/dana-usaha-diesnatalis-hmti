@@ -8,6 +8,7 @@ import { hargaUntuk, opsiLengan, opsiWarna, type Lengan } from '@/lib/merch-harg
 import { signRef } from '@/lib/link-token'
 import { turnstileFailure, verifyTurnstile } from '@/lib/turnstile'
 import type { BundleItem, Merchandise } from '@/lib/types'
+import { clientIp, rateLimit } from '@/lib/rate-limit'
 
 type MerchPilihan = { bundle_item_id?: string; varian_id?: string; warna?: string; lengan?: string }
 
@@ -39,6 +40,9 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    if (!rateLimit(`paket:${clientIp(request.headers)}`, 10, 10 * 60 * 1000)) {
+      return NextResponse.json({ error: 'Terlalu banyak permintaan. Coba lagi nanti.' }, { status: 429 })
+    }
     const body = await request.json()
     const bundleId = String(body.bundle_id ?? '')
     const nama = String(body.nama_pembeli ?? '').trim()

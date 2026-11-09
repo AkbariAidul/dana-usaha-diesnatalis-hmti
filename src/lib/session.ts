@@ -9,6 +9,7 @@ type SessionPayload = {
   n: string
   r: DashboardRole
   e: number
+  i: number
   jti: string
 }
 
@@ -48,10 +49,12 @@ async function hmacKey() {
 
 export async function signSession(user: SessionUser, maxAge = SESSION_MAX_AGE) {
   const jti = crypto.randomUUID()
+  const now = Math.floor(Date.now() / 1000)
   const payload: SessionPayload = {
     n: user.name,
     r: user.role,
-    e: Math.floor(Date.now() / 1000) + maxAge,
+    e: now + maxAge,
+    i: now,
     jti,
   }
   const body = toBase64Url(new TextEncoder().encode(JSON.stringify(payload)))
@@ -74,12 +77,47 @@ export async function verifySession(token: string | null | undefined): Promise<S
     const payload = JSON.parse(new TextDecoder().decode(fromBase64Url(body))) as SessionPayload
     if (!payload?.n || !payload?.e) return null
     if (payload.e < Math.floor(Date.now() / 1000)) return null
-    // ponytail: JTI revocation check requires DB lookup; skip at verify time
-    // to keep middleware fast. Revoke list is checked at logout-all-device call.
+    if (await isSessionRevoked(payload.n, payload.i ?? 0)) return null
     return { name: payload.n, role: payload.r === 'viewer' ? 'viewer' : payload.r }
   } catch {
     return null
   }
+}
+
+const revokedCache = new Map<string, { at: number; revoked: boolean }>()
+const REVOKE_TTL = 30_000
+
+// Sesi dicabut jika ada baris revoke untuk user yang dibuat setelah iat sesi.
+async function isSessionRevoked(name: string, iat: number) {
+  const cacheKey = `${name}:${iat}`
+  const cached = revokedCache.get(cacheKey)
+  if (cached && Date.now() - cached.at < REVOKE_TTL) return cached.revoked
+
+  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!rawUrl || !key) return false
+
+  let revoked = false
+  try {
+    const base = rawUrl.replace(/\/rest\/v1\/?$/, '')
+    const iso = new Date(iat * 1000).toISOString()
+    const res = await fetch(
+      `${base}/rest/v1/dashboard_session_jti?user_name=eq.${encodeURIComponent(name)}&created_at=gt.${encodeURIComponent(iso)}&select=jti&limit=1`,
+      {
+        headers: { apikey: key, Authorization: `Bearer ${key}` },
+        signal: AbortSignal.timeout(1500),
+      },
+    )
+    if (res.ok) {
+      const rows = await res.json()
+      revoked = Array.isArray(rows) && rows.length > 0
+    }
+  } catch {
+    // ponytail: fail-open saat Supabase tidak terjangkau; perketat jika ada penyalahgunaan
+  }
+  // ponytail: cache 30 detik agar middleware tidak query DB tiap request
+  revokedCache.set(cacheKey, { at: Date.now(), revoked })
+  return revoked
 }
 
 export function getSessionJti(token: string | null | undefined): string | null {

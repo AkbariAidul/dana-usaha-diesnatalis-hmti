@@ -160,7 +160,7 @@ export default function TenantsPage() {
     const [t, m, d, p, w] = await Promise.all([
       getJSON<Tenant[]>('/api/tenants'),
       getJSON<{ kategori: KategoriSewa[] }>('/api/master'),
-      getJSON<Pendaftaran[]>('/api/public/tenant'),
+      getJSON<Pendaftaran[]>('/api/public/tenant').catch(() => []),
       getJSON<Pembayaran[]>('/api/pembayaran'),
       getJSON<Waitlist[]>('/api/tenant/waitlist').catch(() => []),
     ])

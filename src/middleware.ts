@@ -17,6 +17,9 @@ const PUBLIC_API: Array<{ method: string; pattern: RegExp }> = [
   { method: 'GET', pattern: /^\/api\/public\/tenant\/katalog$/ },
   { method: 'GET', pattern: /^\/api\/public\/peralatan$/ },
   { method: 'POST', pattern: /^\/api\/public\/po$/ },
+  { method: 'GET', pattern: /^\/api\/public\/paket$/ },
+  { method: 'POST', pattern: /^\/api\/public\/paket$/ },
+  { method: 'POST', pattern: /^\/api\/public\/paket\/bukti$/ },
   { method: 'POST', pattern: /^\/api\/public\/tenant$/ },
   { method: 'POST', pattern: /^\/api\/public\/tenant\/waitlist$/ },
   { method: 'POST', pattern: /^\/api\/public\/tenant\/[^/]+\/bukti$/ },
@@ -30,6 +33,11 @@ const PUBLIC_API: Array<{ method: string; pattern: RegExp }> = [
 
 const VIEWER_ALLOWED_WRITE = new Set(['/api/audit/page'])
 // Viewer TIDAK boleh akses audit log sama sekali (berisi data sensitif pembayaran & login)
+
+const VIEWER_BLOCKED_API: RegExp[] = [
+  /^\/api\/public\/tenant$/,
+  /^\/api\/public\/tenant\/[^/]+\/verifikasi$/,
+]
 
 const VIEWER_BLOCKED_PAGES: Array<{ pattern: RegExp; redirectTo: string }> = [
   { pattern: /^\/dankelola\/tenants\/harga\/new$/, redirectTo: '/dankelola/tenants/harga' },
@@ -53,6 +61,9 @@ export async function middleware(request: NextRequest) {
     if (isPublicApi(request.method, pathname)) return NextResponse.next()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    if (user.role === 'viewer' && VIEWER_BLOCKED_API.some((pattern) => pattern.test(pathname))) {
+      return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 })
     }
     if (
       user.role === 'viewer' &&

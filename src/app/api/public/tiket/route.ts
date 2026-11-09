@@ -3,9 +3,13 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { getTicketKatalog } from '@/lib/queries'
 import { signRef } from '@/lib/link-token'
 import { turnstileFailure, verifyTurnstile } from '@/lib/turnstile'
+import { clientIp, rateLimit } from '@/lib/rate-limit'
 
 export async function POST(request: Request) {
   try {
+    if (!rateLimit(`tiket:${clientIp(request.headers)}`, 10, 10 * 60 * 1000)) {
+      return NextResponse.json({ error: 'Terlalu banyak permintaan. Coba lagi nanti.' }, { status: 429 })
+    }
     const body = await request.json()
     if (!body.nama_pembeli || !body.kontak) throw new Error('Nama dan kontak wajib diisi')
 

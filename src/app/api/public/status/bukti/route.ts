@@ -4,9 +4,14 @@ import { tipeDariKode, verifyRef } from '@/lib/link-token'
 import { todayISO } from '@/lib/utils'
 import { kirimNotifPoMenungguVerifikasi } from '@/lib/notifikasi-po'
 import { kirimNotifTenantMenungguVerifikasi } from '@/lib/notifikasi-tenant'
+import { isBuktiUrl } from '@/lib/bukti'
+import { clientIp, rateLimit } from '@/lib/rate-limit'
 
 export async function POST(request: Request) {
   try {
+    if (!rateLimit(`status-bukti:${clientIp(request.headers)}`, 20, 10 * 60 * 1000)) {
+      return NextResponse.json({ error: 'Terlalu banyak permintaan. Coba lagi nanti.' }, { status: 429 })
+    }
     const body = await request.json()
     const kode = String(body.kode ?? '').trim().toUpperCase()
     const t = body.t as string | null
@@ -17,6 +22,9 @@ export async function POST(request: Request) {
     }
     if (!buktiUrl) {
       return NextResponse.json({ error: 'Bukti pembayaran wajib diupload' }, { status: 400 })
+    }
+    if (!isBuktiUrl(buktiUrl)) {
+      return NextResponse.json({ error: 'Bukti pembayaran tidak valid' }, { status: 400 })
     }
 
     if (tipe === 'tenant') {

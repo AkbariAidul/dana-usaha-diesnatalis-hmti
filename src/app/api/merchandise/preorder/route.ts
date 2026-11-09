@@ -215,6 +215,17 @@ export async function DELETE(request: Request) {
     if (!Array.isArray(ids) || ids.length === 0) {
       return NextResponse.json({ error: 'ID wajib diisi' }, { status: 400 })
     }
+    const { data: bundled } = await supabaseAdmin
+      .from('merch_po')
+      .select('no_po,bundle_order_id')
+      .in('id', ids)
+      .not('bundle_order_id', 'is', null)
+    if (bundled?.length) {
+      return NextResponse.json(
+        { error: `PO bagian Paket Combo tidak bisa dihapus: ${bundled.map((p) => p.no_po).join(', ')}` },
+        { status: 400 },
+      )
+    }
     // Hapus item terlebih dahulu (child record)
     for (const id of ids) {
       await supabaseAdmin.from('merch_po_item').delete().eq('po_id', id)

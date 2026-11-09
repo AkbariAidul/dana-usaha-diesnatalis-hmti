@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { signRef } from '@/lib/link-token'
 import { turnstileFailure, verifyTurnstile } from '@/lib/turnstile'
 import { hitungPendaftaran, PendaftaranError, type BodyPendaftaran } from '@/lib/tenant-pendaftaran'
+import { clientIp, rateLimit } from '@/lib/rate-limit'
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message
@@ -26,6 +27,9 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    if (!rateLimit(`tenant:${clientIp(request.headers)}`, 5, 10 * 60 * 1000)) {
+      return NextResponse.json({ error: 'Terlalu banyak permintaan. Coba lagi nanti.' }, { status: 429 })
+    }
     const body = (await request.json()) as BodyPendaftaran
     const dataBody: Record<string, unknown> = {}
     for (const key of ['nama_usaha', 'kontak', 'email', 'alamat', 'deskripsi_usaha', 'kategori_sewa_id', 'jenis_usaha']) {

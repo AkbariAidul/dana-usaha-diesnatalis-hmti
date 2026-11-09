@@ -81,6 +81,17 @@ export default function PesananPaketPage() {
     await updateStatus(order, 'lunas')
   }
 
+  async function batalkan(order: OrderRow) {
+    const ok = await confirm({
+      title: 'Batalkan pesanan paket?',
+      description: `Pesanan ${order.no_pesanan} akan dibatalkan. Tiket yang sudah terbit dihapus dan kuota dikembalikan.`,
+      confirmText: 'Batalkan',
+      danger: true,
+    })
+    if (!ok) return
+    await updateStatus(order, 'batal')
+  }
+
   async function tolak() {
     if (!rejectTarget) return
     await updateStatus(rejectTarget, 'ditolak', rejectReason)
@@ -224,7 +235,7 @@ export default function PesananPaketPage() {
                       </div>
                     )}
                     {!isViewer && order.status === 'lunas' && (
-                      <button type="button" onClick={() => updateStatus(order, 'batal')} className="rounded bg-slate-600 px-2 py-1 text-xs text-white hover:bg-slate-700">Batalkan</button>
+                      <button type="button" onClick={() => batalkan(order)} className="rounded bg-slate-600 px-2 py-1 text-xs text-white hover:bg-slate-700">Batalkan</button>
                     )}
                     {!isViewer && (order.status === 'ditolak' || order.status === 'batal') && (
                       <button type="button" onClick={() => updateStatus(order, 'menunggu_verifikasi')} className="rounded bg-slate-600 px-2 py-1 text-xs text-white hover:bg-slate-700">Buka Lagi</button>

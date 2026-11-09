@@ -42,6 +42,33 @@ async function terbitkanTiket(pesananId: string) {
   }
 }
 
+async function lepasTiketBundle(bundleOrderId: string) {
+  const { data: tiketOrders } = await supabaseAdmin
+    .from('pesanan_tiket')
+    .select('id,tiket_tipe_id,jumlah')
+    .eq('bundle_order_id', bundleOrderId)
+  for (const t of tiketOrders ?? []) {
+    const { data: issued } = await supabaseAdmin
+      .from('tiket_issued')
+      .select('id')
+      .eq('pesanan_id', t.id)
+      .limit(1)
+    if (!issued?.length) continue
+    await supabaseAdmin.from('tiket_issued').delete().eq('pesanan_id', t.id)
+    const { data: tipe } = await supabaseAdmin
+      .from('tiket_tipe')
+      .select('terjual')
+      .eq('id', t.tiket_tipe_id)
+      .maybeSingle()
+    if (tipe) {
+      await supabaseAdmin
+        .from('tiket_tipe')
+        .update({ terjual: Math.max(0, Number(tipe.terjual ?? 0) - Number(t.jumlah)) })
+        .eq('id', t.tiket_tipe_id)
+    }
+  }
+}
+
 async function kirimNotifOrder(request: Request, bundleOrderId: string) {
   const { data: order } = await supabaseAdmin
     .from('bundle_order')
@@ -200,6 +227,10 @@ export async function PATCH(request: Request) {
         .eq('id', po.id)
     }
 
+    if (status !== 'lunas') {
+      await lepasTiketBundle(id)
+    }
+
     if (status === 'lunas') {
       const { data: tiketOrders } = await supabaseAdmin
         .from('pesanan_tiket')
@@ -225,13 +256,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'ID wajib diisi' }, { status: 400 })
     }
     for (const id of ids) {
-      const { data: tiketOrders } = await supabaseAdmin
-        .from('pesanan_tiket')
-        .select('id')
-        .eq('bundle_order_id', id)
-      for (const t of tiketOrders ?? []) {
-        await supabaseAdmin.from('tiket_issued').delete().eq('pesanan_id', t.id)
-      }
+      await lepasTiketBundle(id)
       const { data: pos } = await supabaseAdmin.from('merch_po').select('id').eq('bundle_order_id', id)
       for (const p of pos ?? []) {
         await supabaseAdmin.from('merch_po_item').delete().eq('po_id', p.id)

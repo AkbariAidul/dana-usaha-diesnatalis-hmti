@@ -5,6 +5,7 @@ import { signRef } from '@/lib/link-token'
 import { hitungDiskon } from '@/lib/merch-diskon'
 import { hargaUntuk, opsiLengan, opsiWarna, type Lengan } from '@/lib/merch-harga'
 import { turnstileFailure, verifyTurnstile } from '@/lib/turnstile'
+import { clientIp, rateLimit } from '@/lib/rate-limit'
 
 type ItemBody = {
   merchandise_id: string
@@ -17,6 +18,9 @@ type Varian = { id: string; nama: string }
 
 export async function POST(request: Request) {
   try {
+    if (!rateLimit(`po:${clientIp(request.headers)}`, 10, 10 * 60 * 1000)) {
+      return NextResponse.json({ error: 'Terlalu banyak permintaan. Coba lagi nanti.' }, { status: 429 })
+    }
     const body = await request.json()
     const tipe = body.tipe_pemesan === 'Pengurus Himpunan' ? 'Pengurus Himpunan' : 'Umum'
     const items: ItemBody[] = Array.isArray(body.items) ? body.items : []

@@ -360,7 +360,8 @@ export async function uploadBuktiBayar(file: File, tenantId: string): Promise<st
     contentType = result.mimeType
     ext = result.mimeType === 'image/webp' ? 'webp' : (file.name.split('.').pop()?.toLowerCase() ?? 'bin')
   }
-  const path = `bukti-bayar/${tenantId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+  const safeTenant = String(tenantId).replace(/[^a-zA-Z0-9_-]/g, '')
+  const path = `bukti-bayar/${safeTenant}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
   const { error } = await supabaseAdmin.storage
     .from('bukti')
     .upload(path, uploadBytes, { contentType, cacheControl: '31536000' })

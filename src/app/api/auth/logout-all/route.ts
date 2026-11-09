@@ -7,11 +7,10 @@ export async function POST() {
   const session = await getSessionUser()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Delete all JTI revocations for this user (allow re-login)
+  // Tandai semua sesi user yang terbit sebelum sekarang sebagai dicabut.
   await supabaseAdmin
     .from('dashboard_session_jti')
-    .delete()
-    .eq('user_name', session.name)
+    .insert({ jti: crypto.randomUUID(), user_name: session.name })
 
   await createAuditLog({
     aksi: 'LOGOUT_ALL_DEVICES',
