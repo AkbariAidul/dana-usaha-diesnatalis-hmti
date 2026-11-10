@@ -214,9 +214,11 @@ export default function HargaPage() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    {harga != null ? (
+                    {!activePeriod ? (
+                      <span className="text-xs text-slate-400">Tidak ada periode aktif</span>
+                    ) : harga != null ? (
                       <div>
-                        <p className="text-xs font-medium text-slate-700">{activePeriod?.nama ?? 'Periode berjalan'}</p>
+                        <p className="text-xs font-medium text-slate-700">{activePeriod.nama}</p>
                         <p className="font-bold text-primary-600">{formatRupiah(harga)}</p>
                       </div>
                     ) : (

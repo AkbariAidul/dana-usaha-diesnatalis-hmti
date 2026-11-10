@@ -4,6 +4,7 @@ import { DataError } from '@/components/data-error'
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../api'
 import { useLiveRefresh } from '@/lib/use-live-refresh'
@@ -27,7 +28,6 @@ export default function TahapPage() {
   const [bundles, setBundles] = useState<TicketBundleDiscount[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [togglingId, setTogglingId] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const allSelected = tiket.length > 0 && tiket.every((t) => selected.has(t.id))
   const today = todayISO()
@@ -69,17 +69,14 @@ export default function TahapPage() {
     periods.find((p) => p.tiket_tipe_id === t.id && today >= p.tanggal_mulai && today <= p.tanggal_selesai) ?? null
 
   async function toggleAktif(t: TicketKatalogItem) {
-    if (togglingId) return
     const aktif = !t.aktif
-    setTogglingId(t.id)
     setTiket((prev) => prev.map((x) => x.id === t.id ? { ...x, aktif } : x))
     try {
       await sendJSON('/api/ticket', 'POST', { id: t.id, aktif })
-      toast.success(aktif ? 'Tiket diaktifkan' : 'Tiket dinonaktifkan')
     } catch (e) {
-      setTiket((prev) => prev.map((x) => x.id === t.id ? { ...x, aktif: !aktif } : x))
+      setTiket((prev) => prev.map((x) => x.id === t.id && x.aktif === aktif ? { ...x, aktif: !aktif } : x))
       toast.error(String(e))
-    } finally { setTogglingId(null) }
+    }
   }
 
   function toggleSelect(id: string) {
@@ -171,11 +168,9 @@ export default function TahapPage() {
                   {/* Thumbnail */}
                   <td className="px-4 py-3">
                     {t.thumbnail_url ? (
-                      <img
-                        src={t.thumbnail_url}
-                        alt={t.nama}
-                        className="h-16 w-[52px] rounded-lg border border-slate-200 object-cover"
-                      />
+                      <div className="relative h-16 w-[52px] overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                        <Image src={t.thumbnail_url} alt={t.nama} fill sizes="52px" className="object-cover" />
+                      </div>
                     ) : (
                       <span className="text-xs text-slate-400">—</span>
                     )}
@@ -209,12 +204,11 @@ export default function TahapPage() {
                         type="button"
                         role="switch"
                         aria-checked={t.aktif}
-                        disabled={togglingId === t.id}
                         onClick={() => toggleAktif(t)}
-                        className={`inline-flex h-6 w-11 items-center rounded-full p-0.5 transition-colors disabled:opacity-50 ${t.aktif ? 'bg-green-500' : 'bg-slate-300'}`}
+                        className={`inline-flex h-6 w-11 items-center rounded-full p-0.5 transition-colors duration-200 ${t.aktif ? 'bg-green-500' : 'bg-slate-300'}`}
                         title={t.aktif ? 'Nonaktifkan tiket' : 'Aktifkan tiket'}
                       >
-                        <span className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${t.aktif ? 'translate-x-5' : 'translate-x-0'}`} />
+                        <span className={`h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${t.aktif ? 'translate-x-5' : 'translate-x-0'}`} />
                       </button>
                     )}
                   </td>

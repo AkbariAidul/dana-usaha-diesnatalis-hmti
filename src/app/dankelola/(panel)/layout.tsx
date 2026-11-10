@@ -635,6 +635,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               pathname.startsWith('/dankelola/paket') ||
               pathname.startsWith('/dankelola/tenants') ||
               pathname.startsWith('/dankelola/laporan') ||
+              pathname.startsWith('/dankelola/scan') ||
               pathname.startsWith('/dankelola/monitoring') ||
               pathname.startsWith('/dankelola/audit') ||
                 pathname.startsWith('/dankelola/notifikasi') ||

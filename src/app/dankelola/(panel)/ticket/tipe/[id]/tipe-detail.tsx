@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { getJSON, sendJSON } from '../../../../api'
@@ -307,9 +308,13 @@ export default function TipeDetail({
         </div>
         <div><label className={label}>Deskripsi</label><textarea disabled={readOnly} className={input} rows={2} placeholder="Deskripsi singkat tipe tiket" value={form.deskripsi} onChange={e => setForm({ ...form, deskripsi: e.target.value })} /></div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="h-24 w-[76px] shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+          <div className="relative h-24 w-[76px] shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
             {thumbnailPreview ? (
-              <img src={thumbnailPreview} alt="Thumbnail tiket" className="h-full w-full object-cover" />
+              thumbnailPreview.startsWith('blob:') ? (
+                <img src={thumbnailPreview} alt="Thumbnail tiket" className="h-full w-full object-cover" />
+              ) : (
+                <Image src={thumbnailPreview} alt="Thumbnail tiket" fill sizes="76px" className="object-cover" />
+              )
             ) : (
               <div className="grid h-full w-full place-items-center text-[10px] text-slate-400">4:5</div>
             )}
