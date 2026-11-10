@@ -1,24 +1,8 @@
 {
   "crons": [
     {
-      "path": "/api/cron/reminder-tiket",
-      "schedule": "0 2 * * *"
-    },
-    {
-      "path": "/api/cron/reminder-po",
+      "path": "/api/cron/daily",
       "schedule": "0 1 * * *"
-    },
-    {
-      "path": "/api/cron/reminder-tenant",
-      "schedule": "0 1 * * *"
-    },
-    {
-      "path": "/api/cron/reminder-ambil",
-      "schedule": "0 1 * * *"
-    },
-    {
-      "path": "/api/cron/wa-retry",
-      "schedule": "*/10 * * * *"
     }
   ]
 }
