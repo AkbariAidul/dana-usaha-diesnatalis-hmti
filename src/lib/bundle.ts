@@ -1,11 +1,20 @@
 import { supabaseAdmin } from '@/lib/supabase'
 import type { Bundle, BundleItem } from '@/lib/types'
 
+// Tanggal dari form admin berupa YYYY-MM-DD tanpa zona waktu. Perlakukan
+// sebagai hari penuh WIB, bukan tengah malam UTC.
+function batasHari(value: string, akhir: boolean) {
+  if (/[zZ]|[+-]\d{2}:?\d{2}$/.test(value)) return new Date(value).getTime()
+  const tanggal = value.slice(0, 10)
+  return new Date(`${tanggal}T${akhir ? '23:59:59.999' : '00:00:00.000'}+07:00`).getTime()
+}
+
 /** Apakah paket sedang bisa dibeli (aktif + dalam periode). Kuota dicek terpisah. */
 export function bundleSedangBuka(bundle: Pick<Bundle, 'aktif' | 'tgl_mulai' | 'tgl_selesai'>, now = new Date()) {
   if (!bundle.aktif) return false
-  if (bundle.tgl_mulai && now < new Date(bundle.tgl_mulai)) return false
-  if (bundle.tgl_selesai && now > new Date(bundle.tgl_selesai)) return false
+  const waktu = now.getTime()
+  if (bundle.tgl_mulai && waktu < batasHari(bundle.tgl_mulai, false)) return false
+  if (bundle.tgl_selesai && waktu > batasHari(bundle.tgl_selesai, true)) return false
   return true
 }
 

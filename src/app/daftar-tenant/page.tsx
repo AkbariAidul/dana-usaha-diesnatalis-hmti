@@ -251,7 +251,7 @@ export default function InfoTenantPage() {
                             <h3 className="text-base font-semibold text-slate-900">{k.nama}</h3>
                             {sisa !== null && (
                               <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${habis ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                                {habis ? 'Slot habis' : `Sisa ${sisa} slot`}
+                                {habis ? `Slot habis (${k.slot_tenant})` : `Sisa ${sisa} dari ${k.slot_tenant} slot`}
                               </span>
                             )}
                             {k.include_listrik && (

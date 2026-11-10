@@ -129,11 +129,10 @@ export default function PoMerchandisePage() {
 
   useEffect(() => {
     Promise.all([
-      getJSON<Produk[]>('/api/public/produk'),
-      getJSON<{ pengurus?: Pengurus[]; varian?: Varian[] }>('/api/public/po/katalog'),
+      getJSON<{ pengurus?: Pengurus[]; varian?: Varian[]; items?: Produk[] }>('/api/public/po/katalog'),
       getJSON<Record<string, string>>('/api/pengaturan/qris'),
-    ]).then(([produk, k, q]) => {
-      setProdukList(Array.isArray(produk) ? produk : [])
+    ]).then(([k, q]) => {
+      setProdukList(Array.isArray(k?.items) ? k.items : [])
       setPengurus(Array.isArray(k?.pengurus) ? k.pengurus : [])
       setVarianList(Array.isArray(k?.varian) ? k.varian : [])
       setQris(q ?? {})

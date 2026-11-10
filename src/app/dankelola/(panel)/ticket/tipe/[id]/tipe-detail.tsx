@@ -20,6 +20,7 @@ type FormState = {
   aktif: boolean
   is_hari_h: boolean
   kuota: number
+  mulai_jual: string
   selesai_jual: string
 }
 
@@ -45,7 +46,7 @@ export default function TipeDetail({
   const [ticket, setTicket] = useState<TicketKatalogItem | null>(null)
   const [periods, setPeriods] = useState<TicketPeriode[]>([])
   const [bundles, setBundles] = useState<TicketBundleDiscount[]>([])
-  const [form, setForm] = useState<FormState>({ nama: '', deskripsi: '', thumbnail_url: '', harga: 0, jumlah_orang: 1, aktif: true, is_hari_h: false, kuota: 10, selesai_jual: '' })
+  const [form, setForm] = useState<FormState>({ nama: '', deskripsi: '', thumbnail_url: '', harga: 0, jumlah_orang: 1, aktif: true, is_hari_h: false, kuota: 10, mulai_jual: '', selesai_jual: '' })
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null)
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -85,6 +86,7 @@ export default function TipeDetail({
         aktif: found.aktif,
         is_hari_h: Boolean(found.is_hari_h),
         kuota: Number(found.kuota ?? 0) || 10,
+        mulai_jual: toLocalInput(found.mulai_jual),
         selesai_jual: toLocalInput(found.selesai_jual),
       })
       setLoading(false)
@@ -103,6 +105,10 @@ export default function TipeDetail({
 
   async function simpan() {
     if (!form.nama.trim() || !form.harga) { toast.error('Nama dan harga wajib diisi'); return }
+    if (form.mulai_jual && form.selesai_jual && new Date(form.selesai_jual) <= new Date(form.mulai_jual)) {
+      toast.error('Tutup penjualan harus setelah mulai jual')
+      return
+    }
     setSubmitting(true)
     try {
       let thumbnailUrl = form.thumbnail_url.trim() || null
@@ -126,7 +132,8 @@ export default function TipeDetail({
         aktif: form.aktif,
         is_hari_h: form.is_hari_h,
         kuota: form.is_hari_h ? Number(form.kuota) || 10 : 0,
-        selesai_jual: form.is_hari_h && form.selesai_jual ? new Date(form.selesai_jual).toISOString() : null,
+        mulai_jual: form.mulai_jual ? new Date(form.mulai_jual).toISOString() : null,
+        selesai_jual: form.selesai_jual ? new Date(form.selesai_jual).toISOString() : null,
       }) as TicketKatalogItem
       if (!ticket) {
         setTicket(saved)
@@ -323,11 +330,13 @@ export default function TipeDetail({
           <label className="flex items-center gap-2 text-sm"><input disabled={readOnly} type="checkbox" checked={form.aktif} onChange={e => setForm({ ...form, aktif: e.target.checked })} /> <span>Buka order</span></label>
           <label className="flex items-center gap-2 text-sm"><input disabled={readOnly} type="checkbox" checked={form.is_hari_h} onChange={e => setForm({ ...form, is_hari_h: e.target.checked, kuota: e.target.checked ? form.kuota || 10 : 0 })} /> <span>Tiket Hari H (kuota terbatas)</span></label>
         </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div><label className={label}>Mulai Jual</label><input disabled={readOnly} type="datetime-local" className={input} value={form.mulai_jual} onChange={e => setForm({ ...form, mulai_jual: e.target.value })} /></div>
+          <div><label className={label}>Tutup Penjualan</label><input disabled={readOnly} type="datetime-local" className={input} value={form.selesai_jual} onChange={e => setForm({ ...form, selesai_jual: e.target.value })} /></div>
+        </div>
+        <p className="-mt-2 text-xs text-slate-400">Kosongkan bila tiket mengikuti periode harga atau tanpa batas tanggal.</p>
         {form.is_hari_h && (
-          <div className="grid gap-3 md:grid-cols-2">
-            <div><label className={label}>Kuota</label><input disabled={readOnly} type="number" min={1} className={input} placeholder="cth: 10" value={form.kuota || ''} onChange={e => setForm({ ...form, kuota: Number(e.target.value) })} /></div>
-            <div><label className={label}>Tutup Penjualan</label><input disabled={readOnly} type="datetime-local" className={input} value={form.selesai_jual} onChange={e => setForm({ ...form, selesai_jual: e.target.value })} /></div>
-          </div>
+          <div className="w-44"><label className={label}>Kuota</label><input disabled={readOnly} type="number" min={1} className={input} placeholder="cth: 10" value={form.kuota || ''} onChange={e => setForm({ ...form, kuota: Number(e.target.value) })} /></div>
         )}
         <div className="flex justify-end gap-2 pt-2">
           {readOnly ? (

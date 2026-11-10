@@ -70,13 +70,16 @@ export default function TahapPage() {
 
   async function toggleAktif(t: TicketKatalogItem) {
     if (togglingId) return
+    const aktif = !t.aktif
     setTogglingId(t.id)
+    setTiket((prev) => prev.map((x) => x.id === t.id ? { ...x, aktif } : x))
     try {
-      await sendJSON('/api/ticket', 'POST', { id: t.id, aktif: !t.aktif })
-      await load()
-      toast.success(t.aktif ? 'Tiket dinonaktifkan' : 'Tiket diaktifkan')
-    } catch (e) { toast.error(String(e)) }
-    finally { setTogglingId(null) }
+      await sendJSON('/api/ticket', 'POST', { id: t.id, aktif })
+      toast.success(aktif ? 'Tiket diaktifkan' : 'Tiket dinonaktifkan')
+    } catch (e) {
+      setTiket((prev) => prev.map((x) => x.id === t.id ? { ...x, aktif: !aktif } : x))
+      toast.error(String(e))
+    } finally { setTogglingId(null) }
   }
 
   function toggleSelect(id: string) {
@@ -208,7 +211,7 @@ export default function TahapPage() {
                         aria-checked={t.aktif}
                         disabled={togglingId === t.id}
                         onClick={() => toggleAktif(t)}
-                        className={`inline-flex h-6 w-11 items-center rounded-full p-0.5 transition-colors disabled:opacity-50 ${t.aktif ? 'bg-primary-600' : 'bg-slate-300'}`}
+                        className={`inline-flex h-6 w-11 items-center rounded-full p-0.5 transition-colors disabled:opacity-50 ${t.aktif ? 'bg-green-500' : 'bg-slate-300'}`}
                         title={t.aktif ? 'Nonaktifkan tiket' : 'Aktifkan tiket'}
                       >
                         <span className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${t.aktif ? 'translate-x-5' : 'translate-x-0'}`} />

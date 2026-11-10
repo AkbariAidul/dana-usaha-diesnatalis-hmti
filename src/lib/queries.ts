@@ -563,8 +563,9 @@ export async function getTicketKatalog(): Promise<TicketKatalogItem[]> {
   const today = todayISO()
   const now = new Date()
   return ((tipeRes.data ?? []) as Ticket[]).map((t) => {
-    const periode = periods.find(
-      (p) => p.tiket_tipe_id === t.id && today >= p.tanggal_mulai && today <= p.tanggal_selesai
+    const tipePeriods = periods.filter((p) => p.tiket_tipe_id === t.id)
+    const periode = tipePeriods.find(
+      (p) => today >= p.tanggal_mulai && today <= p.tanggal_selesai
     ) ?? null
     const pendingQty = pending.get(t.id) ?? 0
     const kuota = Number(t.kuota ?? 0)
@@ -573,12 +574,13 @@ export async function getTicketKatalog(): Promise<TicketKatalogItem[]> {
       t.aktif &&
       (!t.mulai_jual || now >= new Date(t.mulai_jual)) &&
       (!t.selesai_jual || now <= new Date(t.selesai_jual)) &&
+      (tipePeriods.length === 0 || periode !== null) &&
       (sisa === null || sisa > 0)
     return {
       ...t,
       harga_aktif: Number(periode?.harga ?? t.harga),
       periode_aktif: periode,
-      periode: periods.filter((p) => p.tiket_tipe_id === t.id),
+      periode: tipePeriods,
       pending: pendingQty,
       sisa,
       buka,

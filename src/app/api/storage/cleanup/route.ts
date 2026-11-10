@@ -19,14 +19,29 @@ const URL_SOURCES: Array<[table: string, column: string]> = [
   ['bundle_order', 'bukti_url'],
 ]
 
+const PAGE_SIZE = 1000
+
 async function getActivePaths(): Promise<Set<string>> {
   const active = new Set<string>()
   for (const [table, column] of URL_SOURCES) {
-    const { data } = await supabaseAdmin.from(table).select(column)
-    for (const row of (data ?? []) as unknown[]) {
-      const raw = (row as Record<string, unknown>)[column] as string | null | undefined
-      const path = storagePathFromUrl(raw)
-      if (path) active.add(path)
+    let from = 0
+    while (true) {
+      const { data, error } = await supabaseAdmin
+        .from(table)
+        .select(column)
+        .order(column, { ascending: true })
+        .range(from, from + PAGE_SIZE - 1)
+      // Jangan pernah lanjut dengan daftar aktif yang tidak lengkap: cleanup
+      // bisa menghapus file yang masih dipakai.
+      if (error) throw new Error(`Gagal membaca ${table}.${column}: ${error.message}`)
+      const rows = (data ?? []) as unknown[]
+      for (const row of rows) {
+        const raw = (row as Record<string, unknown>)[column] as string | null | undefined
+        const path = storagePathFromUrl(raw)
+        if (path) active.add(path)
+      }
+      if (rows.length < PAGE_SIZE) break
+      from += PAGE_SIZE
     }
   }
   return active
@@ -89,6 +104,13 @@ export async function POST(request: Request) {
         orphanBytes,
         files: orphans.map((f) => f.path).slice(0, 100),
       })
+    }
+
+    if (activePaths.size === 0) {
+      return NextResponse.json(
+        { error: 'Cleanup dibatalkan: tidak ada file aktif yang terbaca dari database.' },
+        { status: 409 },
+      )
     }
 
     if (orphans.length === 0) {
