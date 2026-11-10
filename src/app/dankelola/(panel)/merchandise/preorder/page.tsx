@@ -70,6 +70,7 @@ type PreOrder = {
   picked_up_at: string | null
   picked_up_by: string | null
   created_at: string
+  bundle_order_id?: string | null
   modal_satuan: number
   modal_total: number
   keuntungan: number
@@ -351,6 +352,11 @@ export default function PreorderPage() {
                   )}
                   <td className="px-3 py-2 align-top">
                     <div className="font-mono text-xs">{item.no_po}</div>
+                    {item.bundle_order_id && (
+                      <span className="mt-1 inline-block rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-medium text-violet-700">
+                        Paket Combo
+                      </span>
+                    )}
                     <button
                       type="button"
                       onClick={() => setQrPreview(item.qr)}

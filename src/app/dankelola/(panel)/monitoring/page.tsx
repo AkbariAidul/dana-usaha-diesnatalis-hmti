@@ -102,6 +102,7 @@ const TABLE_LABEL: Record<string, string> = {
   merch_po: 'Preorder',
   kasir_transaksi: 'Transaksi kasir',
   pesanan_tiket: 'Pesanan tiket',
+  bundle_order: 'Pesanan paket combo',
   audit_log: 'Audit log',
   public_visitor: 'Kunjungan publik',
 }

@@ -4,12 +4,8 @@ import { signRef } from '@/lib/link-token'
 import { turnstileFailure, verifyTurnstile } from '@/lib/turnstile'
 import { hitungPendaftaran, PendaftaranError, type BodyPendaftaran } from '@/lib/tenant-pendaftaran'
 import { clientIp, rateLimit } from '@/lib/rate-limit'
-
-function errorMessage(err: unknown): string {
-  if (err instanceof Error) return err.message
-  if (err && typeof err === 'object' && 'message' in err) return String((err as { message: unknown }).message)
-  return String(err)
-}
+import { apiError, rpcError } from '@/lib/api-error'
+import { normalizeIdempotency } from '@/lib/idempotency'
 
 export async function GET() {
   try {
@@ -21,7 +17,7 @@ export async function GET() {
     if (error) throw error
     return NextResponse.json(data ?? [])
   } catch (err: unknown) {
-    return NextResponse.json({ error: errorMessage(err) }, { status: 500 })
+    return apiError(err)
   }
 }
 
@@ -46,58 +42,39 @@ export async function POST(request: Request) {
       throw err
     }
 
-    const slot = Number(hasil.kategori.slot_tenant) || 0
-    if (slot > 0) {
-      const { data: terpakai } = await supabaseAdmin
-        .from('pendaftaran_tenant_pub')
-        .select('jumlah_tenant')
-        .eq('kategori_sewa_id', body.kategori_sewa_id)
-        .not('status', 'in', '("ditolak","batal")')
-      const used = (terpakai ?? []).reduce((sum: number, row: { jumlah_tenant?: number }) => sum + Number(row.jumlah_tenant ?? 1), 0)
-      if (used + hasil.jumlahTenant > slot) {
-        return NextResponse.json({ error: `Slot kategori tersisa ${Math.max(0, slot - used)}` }, { status: 400 })
-      }
-    }
-
-    const existing = await supabaseAdmin.from('pendaftaran_tenant_pub').select('kode_pendaftaran')
-    const maxKode = (existing.data || []).reduce((m: number, t: { kode_pendaftaran: string }) => {
-      const n = Number(/(\d+)$/.exec(t.kode_pendaftaran)?.[1] ?? 0)
-      return n > m ? n : m
-    }, 0)
-    const kode = `TP-${String(maxKode + 1).padStart(4, '0')}`
-    const payload = {
-      ...dataBody,
-      jenis_usaha: hasil.jenisUsaha,
-      jenis_usaha_qty: { fnb: hasil.qtyFnb, nonFnb: hasil.qtyNonFnb },
-      jumlah_tenant: hasil.jumlahTenant,
-      asal: 'Internal Kampus',
-      lokasi: hasil.lokasi,
-      addon: hasil.addon,
-      tgl_daftar: hasil.tglDaftar,
-      tgl_acara: hasil.tglAcara,
-      periode_daftar: hasil.periode,
-      harga_akhir: hasil.harga,
-      dp_wajib: Math.ceil(hasil.harga / 2),
-      kode_pendaftaran: kode,
-      status: 'menunggu_verifikasi',
-      sudah_dibayar: 0,
-    }
     const turnstile = await verifyTurnstile((body as { turnstile_token?: unknown }).turnstile_token, request.headers)
     if (!turnstile.ok) {
       const failure = turnstileFailure(turnstile.reason)
       return NextResponse.json({ error: failure.error }, { status: failure.status })
     }
-    let inserted = await supabaseAdmin.from('pendaftaran_tenant_pub').insert(payload).select().single()
-    if (inserted.error && String(inserted.error.message).includes('jenis_usaha_qty')) {
-      // ponytail: kolom belum ada (migrasi 037 belum dijalankan). Tetap simpan pendaftaran.
-      const rest = { ...payload }
-      delete (rest as Record<string, unknown>).jenis_usaha_qty
-      inserted = await supabaseAdmin.from('pendaftaran_tenant_pub').insert(rest).select().single()
-    }
-    if (inserted.error) throw inserted.error
-    const data = inserted.data
-    return NextResponse.json({ ...data, t: signRef('tenant', data.kode_pendaftaran) }, { status: 201 })
+
+    const { data, error } = await supabaseAdmin.rpc('create_tenant_order', {
+      p_payload: {
+        idempotency_key: normalizeIdempotency((body as { idempotency_key?: unknown }).idempotency_key),
+        nama_usaha: dataBody.nama_usaha,
+        kontak: dataBody.kontak,
+        email: dataBody.email ?? null,
+        kategori_sewa_id: body.kategori_sewa_id,
+        jenis_usaha: hasil.jenisUsaha,
+        jenis_usaha_qty: { fnb: hasil.qtyFnb, nonFnb: hasil.qtyNonFnb },
+        jumlah_tenant: hasil.jumlahTenant,
+        asal: 'Internal Kampus',
+        lokasi: hasil.lokasi,
+        periode_daftar: hasil.periode,
+        harga_akhir: hasil.harga,
+        dp_wajib: Math.ceil(hasil.harga / 2),
+        tgl_daftar: hasil.tglDaftar,
+        tgl_acara: hasil.tglAcara,
+        alamat: dataBody.alamat ?? null,
+        deskripsi_usaha: dataBody.deskripsi_usaha ?? null,
+        addon: hasil.addon,
+      },
+    })
+    if (error) return rpcError(error)
+
+    const order = (data as { order: { kode_pendaftaran: string } & Record<string, unknown> }).order
+    return NextResponse.json({ ...order, t: signRef('tenant', order.kode_pendaftaran) }, { status: 201 })
   } catch (err: unknown) {
-    return NextResponse.json({ error: errorMessage(err) }, { status: 500 })
+    return apiError(err)
   }
 }

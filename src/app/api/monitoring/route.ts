@@ -279,7 +279,7 @@ export async function GET() {
     storageUsage(),
     vercelStatus(),
     Promise.all(
-      ['tenants', 'pendaftaran_tenant_pub', 'pembayaran', 'merchandise', 'merch_po', 'kasir_transaksi', 'pesanan_tiket', 'audit_log', 'public_visitor']
+      ['tenants', 'pendaftaran_tenant_pub', 'pembayaran', 'merchandise', 'merch_po', 'kasir_transaksi', 'pesanan_tiket', 'bundle_order', 'audit_log', 'public_visitor']
         .map(async (table) => [table, await tableCount(table)] as const),
     ),
   ])

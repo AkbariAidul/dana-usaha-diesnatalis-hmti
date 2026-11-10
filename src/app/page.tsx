@@ -110,6 +110,18 @@ export default async function Home() {
         </section>
       </main>
 
+      <footer className="border-t border-slate-200/70 px-4 py-6">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-3 text-xs text-slate-500">
+          <Link href="/kebijakan-privasi" className="transition hover:text-primary-700">
+            Kebijakan Privasi
+          </Link>
+          <span aria-hidden="true" className="text-slate-300">·</span>
+          <Link href="/syarat-ketentuan" className="transition hover:text-primary-700">
+            Syarat &amp; Ketentuan
+          </Link>
+        </div>
+      </footer>
+
       {authed && (
         <Link
           href="/dankelola"

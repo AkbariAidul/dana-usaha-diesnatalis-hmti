@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import {
   ArrowRight,
   CalendarDays,
@@ -235,9 +236,9 @@ export default function InfoTenantPage() {
                   return (
                     <article key={k.id} className={`overflow-hidden rounded-2xl border bg-white shadow-sm shadow-slate-200/40 ${habis ? 'border-rose-200/70' : 'border-slate-200/70'}`}>
                       <div className="grid gap-3 p-3.5 sm:grid-cols-[88px_minmax(0,1fr)_auto] sm:items-center">
-                        <div className="aspect-[4/5] w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                        <div className="relative aspect-[4/5] w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
                           {k.thumbnail_url ? (
-                            <img src={k.thumbnail_url} alt={k.nama} className="h-full w-full object-cover" />
+                            <Image src={k.thumbnail_url} alt={k.nama} fill sizes="80px" className="object-cover" />
                           ) : (
                             <div className="grid h-full w-full place-items-center text-slate-400">
                               <Store className="h-6 w-6" />

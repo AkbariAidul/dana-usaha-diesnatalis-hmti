@@ -40,11 +40,19 @@ function verifyPin(record: DashboardUserRecord, pin: string): boolean {
 }
 
 export function defaultDashboardUsers(): DashboardUserRecord[] {
+  const pin = process.env.DASHBOARD_PIN
+  const pinNazwa = process.env.DASHBOARD_PIN_NAZWA
+  const pinSyifa = process.env.DASHBOARD_PIN_SYIFA
+  const pinViewer = process.env.DASHBOARD_PIN_VIEWER
+  if (process.env.NODE_ENV === 'production' && (!pin || !pinNazwa || !pinSyifa || !pinViewer)) {
+    console.warn('[security] DASHBOARD_PIN belum di-set di environment produksi; fitur login PIN dinonaktifkan')
+    return []
+  }
   return [
-    { name: OWNER_NAME, pin: process.env.DASHBOARD_PIN || '079876', role: 'pengelola', aktif: true, owner: true },
-    { name: 'Nazwa Nur Rahma', pin: process.env.DASHBOARD_PIN_NAZWA || '112233', role: 'pengelola', aktif: true },
-    { name: 'Nor Syifa', pin: process.env.DASHBOARD_PIN_SYIFA || '445566', role: 'pengelola', aktif: true },
-    { name: process.env.DASHBOARD_VIEWER_NAME || 'Pelihat', pin: process.env.DASHBOARD_PIN_VIEWER || '778899', role: 'viewer', aktif: true },
+    { name: OWNER_NAME, pin: pin || undefined, role: 'pengelola', aktif: true, owner: true },
+    { name: 'Nazwa Nur Rahma', pin: pinNazwa ? pinNazwa : undefined, role: 'pengelola', aktif: true },
+    { name: 'Nor Syifa', pin: pinSyifa ? pinSyifa : undefined, role: 'pengelola', aktif: true },
+    { name: pinViewer ? pinViewer : 'Pelihat', pin: pinViewer ? pinViewer : undefined, role: 'viewer', aktif: true },
   ]
 }
 

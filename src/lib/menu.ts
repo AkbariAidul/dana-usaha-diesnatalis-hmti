@@ -87,6 +87,7 @@ export const menuConfig: MenuGroup[] = [
       { label: 'Pengaturan QRIS', href: '/dankelola/pengaturan/qris' },
       { label: 'Pengaturan Tenant', href: '/dankelola/pengaturan/tenant' },
       { label: 'Kelola User', href: '/dankelola/pengaturan/users' },
+      { label: 'Notifikasi WA', href: '/dankelola/notifikasi' },
       { label: 'Audit Log', href: '/dankelola/audit' },
     ],
   },

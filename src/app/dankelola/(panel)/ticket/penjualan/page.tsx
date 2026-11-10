@@ -223,7 +223,14 @@ export default function PenjualanPage() {
                 return (
                   <tr key={p.id} className="transition-colors hover:bg-slate-50/70">
                     {!isViewer && (<td className="px-5 py-3 align-top"><input type="checkbox" checked={selectedPenjualan.has(p.id)} onChange={() => toggleSelectPenjualan(p.id)} aria-label={`Pilih ${p.no_pesanan}`} className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" /></td>)}
-                    <td className="px-5 py-3 font-mono text-xs text-slate-500">{p.no_pesanan}</td>
+                    <td className="px-5 py-3 font-mono text-xs text-slate-500">
+                      <div>{p.no_pesanan}</div>
+                      {p.bundle_order_id && (
+                        <span className="mt-1 inline-block rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-medium text-violet-700">
+                          Paket Combo
+                        </span>
+                      )}
+                    </td>
                     <td className="px-5 py-3 font-medium text-slate-900">{p.nama_pembeli}</td>
                     <td className="px-5 py-3">
                       <p className="text-slate-700">{p.kontak}</p>

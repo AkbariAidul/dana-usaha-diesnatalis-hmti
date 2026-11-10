@@ -9,15 +9,10 @@ import { signRef } from '@/lib/link-token'
 import { turnstileFailure, verifyTurnstile } from '@/lib/turnstile'
 import type { BundleItem, Merchandise } from '@/lib/types'
 import { clientIp, rateLimit } from '@/lib/rate-limit'
+import { apiError, rpcError } from '@/lib/api-error'
+import { normalizeIdempotency } from '@/lib/idempotency'
 
 type MerchPilihan = { bundle_item_id?: string; varian_id?: string; warna?: string; lengan?: string }
-
-function maxNomor(rows: { [k: string]: string }[] | null, field: string) {
-  return (rows ?? []).reduce((m, row) => {
-    const n = Number(/(\d+)$/.exec(row[field] ?? '')?.[1] ?? 0)
-    return n > m ? n : m
-  }, 0)
-}
 
 export async function GET() {
   try {
@@ -34,7 +29,7 @@ export async function GET() {
     }
     return NextResponse.json(hasil)
   } catch (err: unknown) {
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    return apiError(err)
   }
 }
 
@@ -183,146 +178,61 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: failure.error }, { status: failure.status })
     }
 
-    const { data: existingBundle } = await supabaseAdmin.from('bundle_order').select('no_pesanan')
-    const noBundle = `BD-${String(maxNomor(existingBundle, 'no_pesanan') + 1).padStart(4, '0')}`
-
-    const { data: order, error: orderError } = await supabaseAdmin
-      .from('bundle_order')
-      .insert({
-        no_pesanan: noBundle,
+    const { data, error } = await supabaseAdmin.rpc('create_bundle_order', {
+      p_payload: {
+        idempotency_key: normalizeIdempotency(body.idempotency_key),
         bundle_id: bundle.id,
         nama_pembeli: nama,
         kontak,
         email,
         total: Number(bundle.harga_bundle),
-        status: 'menunggu_verifikasi',
-      })
-      .select()
-      .single()
-    if (orderError) throw orderError
-
-    try {
-      // ── Tiket hilir (satu pesanan per tipe tiket) ──
-      const { data: existingTiket } = await supabaseAdmin.from('pesanan_tiket').select('no_pesanan')
-      let tiketMax = maxNomor(existingTiket, 'no_pesanan')
-      const tiketPesananIds: string[] = []
-      for (const { tipe, qty } of tiketValid) {
-        tiketMax += 1
-        const { data: pesanan, error } = await supabaseAdmin
-          .from('pesanan_tiket')
-          .insert({
-            no_pesanan: `TK-${String(tiketMax).padStart(4, '0')}`,
-            nama_pembeli: nama,
-            kontak,
-            email,
-            tiket_tipe_id: tipe.id,
-            jumlah: qty,
-            harga_satuan: Number(tipe.harga_aktif),
-            diskon_persen: 0,
-            total: Number(tipe.harga_aktif) * qty,
-            status: 'menunggu_verifikasi',
-            bundle_order_id: order.id,
-          })
-          .select()
-          .single()
-        if (error) throw error
-        tiketPesananIds.push(pesanan.id)
-      }
-
-      // ── Merchandise hilir (satu PO gabungan) ──
-      let merchPoId: string | null = null
-      if (merchValid.length > 0) {
-        const { data: existingPo } = await supabaseAdmin.from('merch_po').select('no_po')
-        const noPo = `PO-${String(maxNomor(existingPo, 'no_po') + 1).padStart(4, '0')}`
-        const totalPo = merchValid.reduce((sum, v) => sum + v.subtotal, 0)
-        const { data: po, error } = await supabaseAdmin
-          .from('merch_po')
-          .insert({
-            no_po: noPo,
-            nama_pemesan: nama,
-            kontak,
-            email,
-            tipe_pemesan: 'Umum',
-            harga_per_item: 0,
-            total: totalPo,
-            sudah_dibayar: 0,
-            status: 'menunggu_verifikasi',
-            pembayaran_metode: 'QRIS',
-            pembayaran_tipe: 'lunas',
-            bundle_order_id: order.id,
-          })
-          .select()
-          .single()
-        if (error) throw error
-        merchPoId = po.id
-        const { error: itemError } = await supabaseAdmin.from('merch_po_item').insert(
-          merchValid.map((v) => ({
-            po_id: po.id,
-            merchandise_id: v.produk.id,
-            varian_id: v.varian?.id ?? null,
-            ukuran: v.varian?.nama ?? null,
-            warna: v.warna,
-            lengan: v.lengan,
-            qty: v.qty,
-            harga_satuan: v.harga,
-            diskon: v.diskon,
-            subtotal: v.subtotal,
-          })),
-        )
-        if (itemError) throw itemError
-      }
-
-      // ── Snapshot item paket ──
-      const snapshot = [
-        ...tiketValid.map(({ tipe, qty }) => ({
-          bundle_order_id: order.id,
-          tipe: 'tiket' as const,
-          ref_id: tipe.id,
-          nama_snapshot: tipe.nama,
+        tiket_items: tiketValid.map(({ tipe, qty }) => ({
+          tipe_id: tipe.id,
           qty,
-          varian_id: null,
-          ukuran: null,
-          warna: null,
-          lengan: null,
           harga_satuan: Number(tipe.harga_aktif),
-          subtotal: Number(tipe.harga_aktif) * qty,
         })),
-        ...merchValid.map((v) => ({
-          bundle_order_id: order.id,
-          tipe: 'merch' as const,
-          ref_id: v.produk.id,
-          nama_snapshot: v.produk.nama,
-          qty: v.qty,
+        merch_items: merchValid.map((v) => ({
+          merchandise_id: v.produk.id,
           varian_id: v.varian?.id ?? null,
           ukuran: v.varian?.nama ?? null,
           warna: v.warna,
           lengan: v.lengan,
+          qty: v.qty,
           harga_satuan: v.harga,
+          diskon: v.diskon,
           subtotal: v.subtotal,
         })),
-      ]
-      const { error: snapError } = await supabaseAdmin.from('bundle_order_item').insert(snapshot)
-      if (snapError) throw snapError
+        snapshot: [
+          ...tiketValid.map(({ tipe, qty }) => ({
+            tipe: 'tiket',
+            ref_id: tipe.id,
+            nama_snapshot: tipe.nama,
+            qty,
+            varian_id: null,
+            ukuran: null,
+            warna: null,
+            lengan: null,
+            harga_satuan: Number(tipe.harga_aktif),
+            subtotal: Number(tipe.harga_aktif) * qty,
+          })),
+          ...merchValid.map((v) => ({
+            tipe: 'merch',
+            ref_id: v.produk.id,
+            nama_snapshot: v.produk.nama,
+            qty: v.qty,
+            varian_id: v.varian?.id ?? null,
+            ukuran: v.varian?.nama ?? null,
+            warna: v.warna,
+            lengan: v.lengan,
+            harga_satuan: v.harga,
+            subtotal: v.subtotal,
+          })),
+        ],
+      },
+    })
+    if (error) return rpcError(error)
 
-      await supabaseAdmin
-        .from('bundle_order')
-        .update({
-          tiket_pesanan_id: tiketPesananIds[0] ?? null,
-          merch_po_id: merchPoId,
-        })
-        .eq('id', order.id)
-    } catch (err) {
-      // Rollback: hapus record hilir + order agar tidak ada data setengah jadi.
-      const { data: pos } = await supabaseAdmin.from('merch_po').select('id').eq('bundle_order_id', order.id)
-      for (const p of pos ?? []) {
-        await supabaseAdmin.from('merch_po_item').delete().eq('po_id', p.id)
-        await supabaseAdmin.from('merch_po_cicilan').delete().eq('po_id', p.id)
-      }
-      await supabaseAdmin.from('merch_po').delete().eq('bundle_order_id', order.id)
-      await supabaseAdmin.from('pesanan_tiket').delete().eq('bundle_order_id', order.id)
-      await supabaseAdmin.from('bundle_order').delete().eq('id', order.id)
-      throw err
-    }
+    const order = (data as { order: { id: string; no_pesanan: string; total: number } }).order
 
     return NextResponse.json(
       {
@@ -338,6 +248,6 @@ export async function POST(request: Request) {
       { status: 201 },
     )
   } catch (err: unknown) {
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    return apiError(err)
   }
 }

@@ -4,6 +4,7 @@ import { SESSION_COOKIE, verifySession } from '@/lib/session'
 
 const PUBLIC_API: Array<{ method: string; pattern: RegExp }> = [
   { method: 'GET', pattern: /^\/api\/cron\// },
+  { method: 'GET', pattern: /^\/api\/health$/ },
   { method: 'POST', pattern: /^\/api\/auth\/pin$/ },
   { method: 'POST', pattern: /^\/api\/auth\/logout$/ },
   { method: 'POST', pattern: /^\/api\/public\/lookup$/ },

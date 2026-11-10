@@ -1,6 +1,7 @@
 ﻿'use client'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Upload } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -410,9 +411,11 @@ export default function DaftarTenantPublik() {
                         <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-sm">
                           <input type="checkbox" checked={checked} onChange={(e) => togglePilihan(item.id, e.target.checked)} className="h-4 w-4 shrink-0 rounded border-slate-300 text-primary-600 focus:ring-primary-500" />
                           {item.gambar_url && (
-                            <img
+                            <Image
                               src={item.gambar_url}
                               alt={item.nama}
+                              width={28}
+                              height={28}
                               onClick={(e) => {
                                 e.preventDefault()
                                 e.stopPropagation()

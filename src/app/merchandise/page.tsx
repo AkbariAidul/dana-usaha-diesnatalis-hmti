@@ -1,10 +1,18 @@
 ﻿import { Image as ImageIcon } from "lucide-react";
+import type { Metadata } from "next";
+import Image from "next/image";
 import { PublicBreadcrumb, PublicNavbar } from "@/components/public-navbar";
 import { getMerchandise } from "@/lib/queries";
 import { formatRupiah } from "@/lib/utils";
 import { AutoRefresh } from "@/components/auto-refresh";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Merchandise In4Days XI",
+  description: "Katalog merchandise resmi In4Days XI beserta harga dan varian yang tersedia.",
+  alternates: { canonical: "/merchandise" },
+};
 
 export default async function MerchandisePage() {
   const items = (await getMerchandise(true)).filter((item) => Number(item.harga) > 0);
@@ -31,9 +39,9 @@ export default async function MerchandisePage() {
           <div className="grid md:grid-cols-2 gap-6">
             {items.map((item) => (
               <div key={item.id} className="bg-white rounded-xl shadow overflow-hidden hover:shadow-md transition-shadow">
-                <div className="h-48 bg-gray-100 flex items-center justify-center overflow-hidden">
+                <div className="relative h-48 bg-gray-100 flex items-center justify-center overflow-hidden">
                   {item.gambar_url ? (
-                    <img src={item.gambar_url} alt={item.nama} className="h-full w-full object-cover" />
+                    <Image src={item.gambar_url} alt={item.nama} fill sizes="(min-width: 768px) 50vw, 100vw" className="object-cover" />
                   ) : (
                     <ImageIcon className="w-16 h-16 text-gray-300" />
                   )}

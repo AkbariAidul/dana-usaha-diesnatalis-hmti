@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { toast } from 'sonner'
 import { PublicBreadcrumb, PublicNavbar } from '@/components/public-navbar'
 import { PoStepper } from '@/components/po-stepper'
@@ -104,6 +105,7 @@ export default function BeliTiketPublik() {
   const [qr, setQr] = useState('')
   const turnstileRef = useRef<TurnstileHandle>(null)
   const turnstileLock = useRef(false)
+  const idemKey = useRef('')
   const [step, setStep] = useState(1)
   const nominalBayar = Number(pesanan?.total || 0)
 
@@ -199,10 +201,12 @@ export default function BeliTiketPublik() {
           return
         }
       }
+      if (!idemKey.current) idemKey.current = crypto.randomUUID()
       const res = await sendJSON('/api/public/tiket', 'POST', {
         ...form,
         jumlah: Math.max(1, Number(form.jumlah) || 1),
         turnstile_token: token,
+        idempotency_key: idemKey.current,
       })
       setPesanan(
         res as {
@@ -215,6 +219,7 @@ export default function BeliTiketPublik() {
         }
       )
       setStep(2)
+      idemKey.current = crypto.randomUUID()
       toast.success('Pesanan dibuat, silakan bayar')
     } catch (e: unknown) {
       turnstileRef.current?.reset()
@@ -317,8 +322,8 @@ export default function BeliTiketPublik() {
                     >
                       <div className="flex items-start gap-3">
                         {t.thumbnail_url ? (
-                          <div className="h-28 w-[90px] shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
-                            <img src={t.thumbnail_url} alt={t.nama} className="h-full w-full object-cover" />
+                          <div className="relative h-28 w-[90px] shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                            <Image src={t.thumbnail_url} alt={t.nama} fill sizes="90px" className="object-cover" />
                           </div>
                         ) : (
                           <div className="grid h-28 w-[90px] shrink-0 place-items-center rounded-xl border border-slate-200 bg-slate-50 text-slate-300">
@@ -556,8 +561,8 @@ export default function BeliTiketPublik() {
                       <div className="space-y-4 p-5">
                         <div className="flex gap-3">
                           {tipe.thumbnail_url ? (
-                            <div className="h-16 w-[52px] shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
-                              <img src={tipe.thumbnail_url} alt={tipe.nama} className="h-full w-full object-cover" />
+                            <div className="relative h-16 w-[52px] shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                              <Image src={tipe.thumbnail_url} alt={tipe.nama} fill sizes="52px" className="object-cover" />
                             </div>
                           ) : (
                             <div className="grid h-16 w-[52px] shrink-0 place-items-center rounded-xl border border-slate-200 bg-slate-50 text-slate-300">

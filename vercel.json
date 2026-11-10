@@ -15,6 +15,10 @@
     {
       "path": "/api/cron/reminder-ambil",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/wa-retry",
+      "schedule": "*/10 * * * *"
     }
   ]
 }

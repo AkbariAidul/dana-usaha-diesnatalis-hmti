@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import QRCode from 'qrcode'
 import { toast } from 'sonner'
 import { CheckCircle2, ChevronLeft, Package } from 'lucide-react'
@@ -53,6 +54,7 @@ export default function PaketPage() {
   const [uploading, setUploading] = useState(false)
   const turnstileRef = useRef<TurnstileHandle>(null)
   const submitting = useRef(false)
+  const idemKey = useRef('')
 
   useEffect(() => {
     Promise.all([
@@ -142,6 +144,7 @@ export default function PaketPage() {
         try { token = await turnstileRef.current?.waitForToken() ?? null } finally { toast.dismiss(id) }
         if (!token) { toast.error('Verifikasi Cloudflare belum selesai. Coba lagi.'); return }
       }
+      if (!idemKey.current) idemKey.current = crypto.randomUUID()
       const res = await fetch('/api/public/paket', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -149,6 +152,7 @@ export default function PaketPage() {
           bundle_id: selected.id,
           ...form,
           turnstile_token: token,
+          idempotency_key: idemKey.current,
           merch: (selected.items ?? [])
             .filter((i) => i.tipe === 'merch')
             .map((i) => ({ bundle_item_id: i.id, ...(pilihan[i.id] ?? {}) })),
@@ -156,9 +160,10 @@ export default function PaketPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Gagal membuat pesanan')
-      setPesanan(data)
-      setStep(3)
-      toast.success('Pesanan paket dibuat, silakan bayar')
+setPesanan(data)
+idemKey.current = crypto.randomUUID()
+setStep(3)
+toast.success('Pesanan paket dibuat, silakan bayar')
     } catch (e) {
       turnstileRef.current?.reset()
       toast.error((e as Error).message)
@@ -229,9 +234,9 @@ export default function PaketPage() {
                 const hargaCoret = Number(b.harga_coret ?? 0) > 0 ? Number(b.harga_coret) : komponen
                 return (
                   <div key={b.id} className="flex h-full flex-col rounded-2xl border border-slate-200/70 bg-white p-3 shadow-sm sm:p-4">
-                    <div className="mb-3 aspect-square shrink-0 overflow-hidden rounded-xl bg-slate-100">
+                    <div className="relative mb-3 aspect-square shrink-0 overflow-hidden rounded-xl bg-slate-100">
                       {b.gambar_url ? (
-                        <img src={b.gambar_url} alt={b.nama} className="h-full w-full object-cover" />
+                        <Image src={b.gambar_url} alt={b.nama} fill sizes="(min-width: 640px) 33vw, 50vw" className="object-cover" />
                       ) : (
                         <div className="flex h-full items-center justify-center"><Package className="h-8 w-8 text-slate-300" /></div>
                       )}
@@ -312,7 +317,7 @@ export default function PaketPage() {
                     return (
                       <div key={item.id} className="rounded-xl border border-slate-200 p-3">
                         <div className="flex items-center gap-3">
-                          {produk.gambar_url && <img src={produk.gambar_url} alt={produk.nama} className="h-12 w-12 rounded-lg object-cover" />}
+                          {produk.gambar_url && <Image src={produk.gambar_url} alt={produk.nama} width={48} height={48} className="h-12 w-12 rounded-lg object-cover" />}
                           <p className="text-sm font-medium text-slate-900">{item.qty}× {produk.nama}</p>
                         </div>
                         <div className="mt-2 flex flex-wrap gap-2">

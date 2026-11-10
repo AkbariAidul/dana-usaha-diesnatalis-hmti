@@ -1,4 +1,5 @@
 import { signRef } from './link-token'
+import { supabaseAdmin } from './supabase'
 import { formatDate, formatRupiah } from './utils'
 
 type PesananNotif = {
@@ -51,7 +52,8 @@ function detailPesanan(pesanan: PesananNotif, tipeNama: string, link: string) {
   ].join('\n')
 }
 
-export async function kirimWhatsApp(target: string, message: string) {
+/** Kirim langsung ke Fonnte tanpa outbox. Dipakai cron retry. */
+export async function kirimWhatsAppLangsung(target: string, message: string) {
   const token = process.env.FONNTE_TOKEN
   if (!token) {
     console.warn('FONNTE_TOKEN belum diset, notifikasi WhatsApp dilewati')
@@ -85,6 +87,42 @@ export async function kirimWhatsApp(target: string, message: string) {
     console.error('Fonnte gagal mengirim:', err)
     return false
   }
+}
+
+/** Simpan pesan ke outbox untuk dicoba ulang cron. */
+export async function queueWhatsApp(
+  target: string,
+  message: string,
+  ref?: { type?: string; id?: string },
+) {
+  const { error } = await supabaseAdmin.from('wa_outbox').insert({
+    target,
+    message,
+    ref_type: ref?.type ?? null,
+    ref_id: ref?.id ?? null,
+  })
+  if (error) {
+    console.error('Gagal menyimpan WhatsApp ke outbox:', error)
+    return false
+  }
+  return true
+}
+
+/**
+ * Coba kirim langsung; jika gagal, simpan ke outbox untuk retry.
+ * Mengembalikan true bila pesan terkirim ATAU berhasil masuk antrean.
+ */
+export async function kirimWhatsApp(
+  target: string,
+  message: string,
+  ref?: { type?: string; id?: string },
+) {
+  if (!process.env.FONNTE_TOKEN) {
+    console.warn('FONNTE_TOKEN belum diset, notifikasi WhatsApp dilewati')
+    return false
+  }
+  if (await kirimWhatsAppLangsung(target, message)) return true
+  return queueWhatsApp(target, message, ref)
 }
 
 export async function kirimNotifMenungguVerifikasi(

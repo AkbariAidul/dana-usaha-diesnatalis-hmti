@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -27,6 +28,11 @@ const sharpFiles = ['./node_modules/sharp/**/*', './node_modules/@img/**/*'];
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ['sharp'],
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: '**.supabase.co' },
+    ],
+  },
   outputFileTracingIncludes: {
     '/api/upload': sharpFiles,
     '/api/pembayaran': sharpFiles,
@@ -41,4 +47,8 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  silent: true,
+  disableLogger: true,
+  sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
+});

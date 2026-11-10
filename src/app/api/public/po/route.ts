@@ -6,6 +6,8 @@ import { hitungDiskon } from '@/lib/merch-diskon'
 import { hargaUntuk, opsiLengan, opsiWarna, type Lengan } from '@/lib/merch-harga'
 import { turnstileFailure, verifyTurnstile } from '@/lib/turnstile'
 import { clientIp, rateLimit } from '@/lib/rate-limit'
+import { apiError, rpcError } from '@/lib/api-error'
+import { normalizeIdempotency } from '@/lib/idempotency'
 
 type ItemBody = {
   merchandise_id: string
@@ -161,57 +163,39 @@ export async function POST(request: Request) {
       })
     }
 
-    const { data: existing } = await supabaseAdmin.from('merch_po').select('no_po')
-    const max = (existing ?? []).reduce((m, p) => {
-      const n = Number(/(\d+)$/.exec(p.no_po)?.[1] ?? 0)
-      return n > m ? n : m
-    }, 0)
-    const noPo = `PO-${String(max + 1).padStart(4, '0')}`
-
     const turnstile = await verifyTurnstile(body.turnstile_token, request.headers)
     if (!turnstile.ok) {
       const failure = turnstileFailure(turnstile.reason)
       return NextResponse.json({ error: failure.error }, { status: failure.status })
     }
 
-    const { data: po, error } = await supabaseAdmin
-      .from('merch_po')
-      .insert({
-        no_po: noPo,
+    const { data, error } = await supabaseAdmin.rpc('create_po_order', {
+      p_payload: {
+        idempotency_key: normalizeIdempotency(body.idempotency_key),
         nama_pemesan: nama,
         kontak,
         email,
         tipe_pemesan: tipe,
         pengurus_id: pengurusId,
-        harga_per_item: 0,
-        total,
-        sudah_dibayar: 0,
-        status: 'menunggu_verifikasi',
         pembayaran_metode: pembayaranMetode,
         pembayaran_tipe: pembayaranTipe,
-      })
-      .select()
-      .single()
-    if (error) throw error
+        total,
+        items: validatedItems.map((v) => ({
+          merchandise_id: v.produk.id,
+          varian_id: v.varian?.id ?? null,
+          ukuran: v.varian?.nama ?? null,
+          warna: v.warna,
+          lengan: v.lengan,
+          qty: v.qty,
+          harga_satuan: v.harga,
+          diskon: v.diskon,
+          subtotal: v.subtotal,
+        })),
+      },
+    })
+    if (error) return rpcError(error)
 
-    const insertItems = validatedItems.map((v) => ({
-      po_id: po.id,
-      merchandise_id: v.produk.id,
-      varian_id: v.varian?.id ?? null,
-      ukuran: v.varian?.nama ?? null,
-      warna: v.warna,
-      lengan: v.lengan,
-      qty: v.qty,
-      harga_satuan: v.harga,
-      diskon: v.diskon,
-      subtotal: v.subtotal,
-    }))
-
-    const { error: itemError } = await supabaseAdmin.from('merch_po_item').insert(insertItems)
-    if (itemError) {
-      await supabaseAdmin.from('merch_po').delete().eq('id', po.id)
-      throw itemError
-    }
+    const po = (data as { order: { id: string; no_po: string; total: number } }).order
 
     return NextResponse.json({
       id: po.id,
@@ -227,6 +211,6 @@ export async function POST(request: Request) {
       t: signRef('po', po.no_po),
     }, { status: 201 })
   } catch (err: unknown) {
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    return apiError(err)
   }
 }

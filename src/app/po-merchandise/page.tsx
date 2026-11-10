@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import QRCode from 'qrcode'
 import { toast } from 'sonner'
 import { Check, ChevronDown, Clock, Shirt, Trash2, Plus, Minus, X } from 'lucide-react'
@@ -124,6 +125,7 @@ export default function PoMerchandisePage() {
   const turnstileRef = useRef<TurnstileHandle>(null)
   const turnstileLock = useRef(false)
   const submitting = useRef(false)
+  const idemKey = useRef('')
 
   useEffect(() => {
     Promise.all([
@@ -280,12 +282,14 @@ export default function PoMerchandisePage() {
           return
         }
       }
+      if (!idemKey.current) idemKey.current = crypto.randomUUID()
       const res = await fetch('/api/public/po', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
           turnstile_token: token,
+          idempotency_key: idemKey.current,
           items: keranjang.map((item) => ({
             merchandise_id: item.produk.id,
             varian_id: item.varian?.id ?? null,
@@ -298,6 +302,7 @@ export default function PoMerchandisePage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Gagal membuat pesanan')
       setPesanan(data)
+      idemKey.current = crypto.randomUUID()
       setStep(4)
       toast.success('Pesanan PO dibuat, silakan bayar')
     } catch (e) {
@@ -384,9 +389,9 @@ export default function PoMerchandisePage() {
               )}
               {produkList.map((item) => (
                 <div key={item.id} className="flex h-full flex-col rounded-2xl border border-slate-200/70 bg-white p-3 shadow-sm sm:p-4">
-                  <div className="mb-3 aspect-square shrink-0 overflow-hidden rounded-xl bg-slate-100">
+                  <div className="relative mb-3 aspect-square shrink-0 overflow-hidden rounded-xl bg-slate-100">
                     {item.gambar_url ? (
-                      <img src={item.gambar_url} alt={item.nama} className="h-full w-full object-cover" />
+                      <Image src={item.gambar_url} alt={item.nama} fill sizes="(min-width: 640px) 33vw, 50vw" className="object-cover" />
                     ) : (
                       <div className="flex h-full items-center justify-center">
                         <Shirt className="h-8 w-8 text-slate-300" />
@@ -481,7 +486,7 @@ export default function PoMerchandisePage() {
                               aria-label={`Perbesar foto ${item.produk.nama}`}
                               className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-white ring-1 ring-slate-200 transition hover:ring-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-200"
                             >
-                              <img src={item.produk.gambar_url} alt={item.produk.nama} className="h-full w-full object-cover" />
+                              <Image src={item.produk.gambar_url} alt={item.produk.nama} width={56} height={56} className="h-full w-full object-cover" />
                             </button>
                           ) : (
                             <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-100">
