@@ -1,6 +1,6 @@
 ﻿import { Image as ImageIcon } from "lucide-react";
 import type { Metadata } from "next";
-import Image from "next/image";
+import { ProductImage } from "@/components/product-image";
 import { PublicBreadcrumb, PublicNavbar } from "@/components/public-navbar";
 import { getMerchandise } from "@/lib/queries";
 import { formatRupiah } from "@/lib/utils";
@@ -40,11 +40,14 @@ export default async function MerchandisePage() {
             {items.map((item) => (
               <div key={item.id} className="bg-white rounded-xl shadow overflow-hidden hover:shadow-md transition-shadow">
                 <div className="relative h-48 bg-gray-100 flex items-center justify-center overflow-hidden">
-                  {item.gambar_url ? (
-                    <Image src={item.gambar_url} alt={item.nama} fill sizes="(min-width: 768px) 50vw, 100vw" className="object-cover" />
-                  ) : (
-                    <ImageIcon className="w-16 h-16 text-gray-300" />
-                  )}
+                  <ProductImage
+                    src={item.gambar_url}
+                    alt={item.nama}
+                    fill
+                    sizes="(min-width: 768px) 50vw, 100vw"
+                    className="object-cover"
+                    fallback={<ImageIcon className="w-16 h-16 text-gray-300" />}
+                  />
                 </div>
                 <div className="p-5">
                   <h3 className="font-semibold text-lg">{item.nama}</h3>

@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import QRCode from 'qrcode'
 import { toast } from 'sonner'
 import { Check, ChevronDown, Clock, Shirt, Trash2, Plus, Minus, X } from 'lucide-react'
 import { PublicNavbar } from '@/components/public-navbar'
+import { ProductImage } from '@/components/product-image'
 import { PoStepper } from '@/components/po-stepper'
 import { Turnstile, type TurnstileHandle } from '@/components/turnstile'
 import { getJSON } from '@/app/dankelola/api'
@@ -412,13 +412,18 @@ export default function PoMerchandisePage() {
                 return (
                 <div key={item.id} className="flex h-full flex-col rounded-2xl border border-slate-200/70 bg-white p-3 shadow-sm sm:p-4">
                   <div className="relative mb-3 aspect-square shrink-0 overflow-hidden rounded-xl bg-slate-100">
-                    {item.gambar_url ? (
-                      <Image src={item.gambar_url} alt={item.nama} fill sizes="(min-width: 640px) 33vw, 50vw" className="object-cover" />
-                    ) : (
-                      <div className="flex h-full items-center justify-center">
-                        <Shirt className="h-8 w-8 text-slate-300" />
-                      </div>
-                    )}
+                    <ProductImage
+                      src={item.gambar_url}
+                      alt={item.nama}
+                      fill
+                      sizes="(min-width: 640px) 33vw, 50vw"
+                      className="object-cover"
+                      fallback={
+                        <div className="flex h-full items-center justify-center">
+                          <Shirt className="h-8 w-8 text-slate-300" />
+                        </div>
+                      }
+                    />
                   </div>
                   <div className="flex flex-1 flex-col">
                     <h2 className="line-clamp-2 min-h-[2.5rem] font-medium text-slate-900">{item.nama}</h2>
@@ -509,7 +514,14 @@ export default function PoMerchandisePage() {
                               aria-label={`Perbesar foto ${item.produk.nama}`}
                               className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-white ring-1 ring-slate-200 transition hover:ring-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-200"
                             >
-                              <Image src={item.produk.gambar_url} alt={item.produk.nama} width={56} height={56} className="h-full w-full object-cover" />
+                              <ProductImage
+                                src={item.produk.gambar_url}
+                                alt={item.produk.nama}
+                                width={56}
+                                height={56}
+                                className="h-full w-full object-cover"
+                                fallback={<Shirt className="h-5 w-5 text-slate-300" />}
+                              />
                             </button>
                           ) : (
                             <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-100">
